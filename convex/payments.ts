@@ -126,6 +126,72 @@ export const fulfillDeposit = internalMutation({
   },
 });
 
+export const requestWithdrawal = mutation({
+  args: {
+    amount: v.number(),
+    accountNumber: v.string(),
+    bankCode: v.string(),
+    bankName: v.string(),
+    accountName: v.string(),
+  },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    if (user.balance < args.amount) {
+      return { success: false, message: "Insufficient capital for withdrawal." };
+    }
+
+    // Deduct balance immediately (Escrow)
+    await ctx.db.patch(userId, { balance: user.balance - args.amount });
+
+    await ctx.db.insert("withdrawals", {
+      userId,
+      amount: args.amount,
+      status: "pending",
+      requested_at: Date.now(),
+      bank_details: {
+        account_number: args.accountNumber,
+        bank_code: args.bankCode,
+        bank_name: args.bankName,
+        account_name: args.accountName,
+      },
+    });
+
+    await ctx.db.insert("transactions", {
+      userId,
+      amount: -args.amount,
+      type: "platform_fee", // Using platform_fee for deduction log
+      status: "pending",
+      description: `Withdrawal request to ${args.bankName} (${args.accountNumber})`,
+    });
+
+    return { 
+        success: true, 
+        message: "Request logged. Capital held in escrow. Disbursement expected in 24-48 hours." 
+    };
+  },
+});
+
+export const getTransactions = query({
+  args: {},
+  returns: v.array(v.any()),
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return [];
+
+    return await ctx.db
+      .query("transactions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(50);
+  },
+});
+
 export const getBalance = query({
   args: {},
   returns: v.number(),

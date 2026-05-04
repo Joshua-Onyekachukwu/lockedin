@@ -60,3 +60,120 @@ export const triggerWeeklyDistribution = mutation({
         return null;
     }
 });
+
+export const getPendingWithdrawals = query({
+  args: {},
+  returns: v.array(v.any()),
+  handler: async (ctx) => {
+    await checkAdmin(ctx);
+    const withdrawals = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+
+    const results = [];
+    for (const w of withdrawals) {
+      const user = await ctx.db.get(w.userId);
+      results.push({ ...w, user });
+    }
+    return results;
+  },
+});
+
+export const approveWithdrawal = mutation({
+  args: { withdrawalId: v.id("withdrawals") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const withdrawal = await ctx.db.get(args.withdrawalId);
+    if (!withdrawal || withdrawal.status !== "pending") return null;
+
+    await ctx.db.patch(args.withdrawalId, {
+      status: "completed",
+      processed_at: Date.now(),
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: withdrawal.userId,
+      title: "Extraction Complete",
+      message: `Your withdrawal of ₦${(withdrawal.amount / 100).toLocaleString()} has been processed.`,
+      type: "verification_needed", // Reusing type or add more
+      read: false,
+    });
+
+    // Update transaction status
+    const tx = await ctx.db
+      .query("transactions")
+      .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
+      .filter((q) => q.and(
+          q.eq(q.field("amount"), -withdrawal.amount),
+          q.eq(q.field("status"), "pending")
+      ))
+      .first();
+    
+    if (tx) {
+        await ctx.db.patch(tx._id, { status: "completed" });
+    }
+
+    return null;
+  },
+});
+
+export const getBreachCandidates = query({
+    args: {},
+    returns: v.array(v.any()),
+    handler: async (ctx) => {
+        await checkAdmin(ctx);
+        // Vaults that are active and might need manual failure enforcement
+        const activeVaults = await ctx.db
+            .query("vaults")
+            .withIndex("by_status", q => q.eq("status", "active"))
+            .collect();
+        
+        const results = [];
+        for (const vault of activeVaults) {
+            const user = await ctx.db.get(vault.userId);
+            const goal = await ctx.db
+                .query("goals")
+                .withIndex("by_vault", q => q.eq("vaultId", vault._id))
+                .unique();
+            
+            // Check if they missed a check-in recently
+            // This is just a basic list for now
+            results.push({ ...vault, user, goal });
+        }
+        return results;
+    }
+});
+
+export const enforceProtocolBreach = mutation({
+    args: { vaultId: v.id("vaults") },
+    returns: v.null(),
+    handler: async (ctx, args) => {
+        await checkAdmin(ctx);
+        const vault = await ctx.db.get(args.vaultId);
+        if (!vault || vault.status !== "active") return null;
+
+        await ctx.db.patch(args.vaultId, { status: "failed" });
+
+        // Logic for penalty distribution
+        await ctx.db.insert("transactions", {
+            userId: vault.userId,
+            amount: -vault.amount,
+            type: "penalty",
+            vaultId: vault._id,
+            status: "completed",
+            description: "Protocol Breach: Total principal forfeiture enforced by Admin."
+        });
+
+        await ctx.db.insert("notifications", {
+            userId: vault.userId,
+            title: "PROTOCOL BREACH ENFORCED",
+            message: "System has detected an unrecoverable mandate failure. Principal has been forfeited.",
+            type: "streak_alert",
+            read: false,
+        });
+
+        return null;
+    }
+});

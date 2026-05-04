@@ -1,0 +1,6 @@
+convex/mono.ts(3,18): error TS6133: 'internalAction' is declared but its value is never read.
+convex/mono.ts(5,10): error TS6133: 'api' is declared but its value is never read.
+convex/mono.ts(70,19): error TS6133: 'ctx' is declared but its value is never read.
+convex/security.ts(1,20): error TS6133: 'query' is declared but its value is never read.
+src/routes/dashboard.tsx(55,29): error TS6133: 'userId' is declared but its value is never read.
+src/routes/verify-bvn.tsx(4,10): error TS6133: 'ShieldCheck' is declared but its value is never read.

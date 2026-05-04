@@ -129,4 +129,18 @@ export default defineSchema({
     metadata: v.optional(v.any()),
   }).index("by_reference", ["reference"])
     .index("by_user", ["userId"]),
+
+  withdrawals: defineTable({
+    userId: v.id("users"),
+    amount: v.number(),
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected"), v.literal("completed")),
+    requested_at: v.number(),
+    processed_at: v.optional(v.number()),
+    bank_details: v.optional(v.object({
+        account_number: v.string(),
+        bank_code: v.string(),
+        bank_name: v.string(),
+        account_name: v.string(),
+    })),
+  }).index("by_user", ["userId"]).index("by_status", ["status"]),
 });

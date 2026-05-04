@@ -13,7 +13,12 @@ import {
   Camera,
   AlertCircle,
   Trophy,
-  CreditCard
+  CreditCard,
+  ArrowDownLeft,
+  ArrowUpRight,
+  History,
+  Building2,
+  User
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -56,11 +61,14 @@ function DashboardContent({ user }: { user: any }) {
   const { data: vaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, {}) as any);
   const { data: pendingVerifications } = useSuspenseQuery(convexQuery(api.verifications.getPendingVerifications, {}) as any);
   const { data: notifications } = useSuspenseQuery(convexQuery((api as any).notifications.list, {}) as any);
+  const { data: transactions } = useSuspenseQuery(convexQuery(api.payments.getTransactions, {}) as any);
   
   const [isCreating, setIsCreating] = useState(false);
   const [isFunding, setIsFunding] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [checkingInGoal, setCheckingInGoal] = useState<any>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [activeTab, setActiveTab] = useState<'protocols' | 'wallet'>('protocols');
   
   const verifyLog = useMutation(api.verifications.verifyLog);
   const markRead = useMutation((api as any).notifications.markRead);
@@ -87,11 +95,10 @@ function DashboardContent({ user }: { user: any }) {
         
         <div className="flex items-center gap-8 text-left font-bold">
           <div className="hidden sm:flex items-center gap-6 text-sm font-black uppercase tracking-widest text-white/40">
-            <Link to="/leaderboard" className="hover:text-white cursor-pointer transition-colors active:scale-95 flex items-center gap-2 italic">
+            <Link to="/leaderboard" className="hover:text-white cursor-pointer transition-colors active:scale-95 flex items-center gap-2 italic text-[10px]">
                 <Trophy size={14} className="text-yellow-500" /> Leaderboard
             </Link>
-            <Link to="/community" className="hover:text-white cursor-pointer transition-colors active:scale-95">Community</Link>
-            <span className="hover:text-white cursor-pointer transition-colors active:scale-95 opacity-20">Stakes</span>
+            <Link to="/community" className="hover:text-white cursor-pointer transition-colors active:scale-95 text-[10px]">Community</Link>
           </div>
           <div className="h-6 w-px bg-white/10 hidden sm:block" />
           
@@ -106,12 +113,11 @@ function DashboardContent({ user }: { user: any }) {
           </button>
 
           <button 
-            onClick={() => setIsFunding(true)}
-            className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 shadow-inner hover:bg-white/10 transition-all active:scale-95"
+            onClick={() => setActiveTab('wallet')}
+            className={`flex items-center gap-3 px-4 py-2 rounded-2xl transition-all active:scale-95 border ${activeTab === 'wallet' ? 'bg-blue-600/10 border-blue-500 text-white shadow-xl shadow-blue-900/10' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'}`}
           >
-            <Wallet size={16} className="text-[#ff7a00]" />
-            <span className="text-sm font-bold tracking-tight text-white italic">₦{(user?.balance / 100)?.toLocaleString()}</span>
-            <Plus size={12} className="text-white/40" />
+            <Wallet size={16} className={activeTab === 'wallet' ? 'text-blue-500' : 'text-[#ff7a00]'} />
+            <span className="text-sm font-black tracking-tight italic">₦{(user?.balance / 100)?.toLocaleString()}</span>
           </button>
 
           <Link 
@@ -128,116 +134,231 @@ function DashboardContent({ user }: { user: any }) {
       {/* Notifications Slide-over */}
       <AnimatePresence>
         {showNotifications && (
-            <motion.div 
-                initial={{ x: 400 }} animate={{ x: 0 }} exit={{ x: 400 }}
-                className="fixed top-0 right-0 h-full w-full max-w-sm bg-[#0a0f1a] border-l border-white/10 z-50 shadow-[0_0_80px_rgba(0,0,0,1)] p-8 overflow-y-auto backdrop-blur-3xl"
-            >
-                <div className="flex items-center justify-between mb-10 text-left">
-                    <h3 className="font-bold text-xl text-left text-white font-black uppercase tracking-widest">Protocol Logs</h3>
-                    <button onClick={() => setShowNotifications(false)} className="text-white/20 hover:text-white transition-colors active:scale-95"><X size={24} /></button>
-                </div>
+            <>
+                <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    onClick={() => setShowNotifications(false)}
+                    className="fixed inset-0 bg-[#050810]/60 backdrop-blur-sm z-40"
+                />
+                <motion.div 
+                    initial={{ x: 400 }} animate={{ x: 0 }} exit={{ x: 400 }}
+                    className="fixed top-0 right-0 h-full w-full max-w-sm bg-[#0a0f1a] border-l border-white/10 z-50 shadow-[0_0_80px_rgba(0,0,0,1)] p-8 overflow-y-auto backdrop-blur-3xl"
+                >
+                    <div className="flex items-center justify-between mb-10 text-left">
+                        <h3 className="font-bold text-xl text-left text-white font-black uppercase tracking-widest">Protocol Logs</h3>
+                        <button onClick={() => setShowNotifications(false)} className="text-white/20 hover:text-white transition-colors active:scale-95"><X size={24} /></button>
+                    </div>
 
-                <div className="space-y-4 text-left">
-                    {(notifications as any[]).length === 0 ? (
-                        <div className="text-center mt-20">
-                            <Bell className="mx-auto text-white/5 mb-4 opacity-10" size={60} />
-                            <p className="text-sm text-white/20 italic font-medium">System logs are currently clear.</p>
-                        </div>
-                    ) : (
-                        (notifications as any[]).map((n: any) => (
-                            <div 
-                                key={n._id} 
-                                onClick={() => markRead?.({ notificationId: n._id })}
-                                className={`p-6 rounded-[2rem] border transition-all text-left group cursor-pointer active:scale-[0.98] ${n.read ? 'bg-transparent border-white/5 opacity-50' : 'bg-white/[0.03] border-white/10 shadow-xl shadow-black/40 hover:bg-white/[0.05] hover:border-white/20'}`}
-                            >
-                                <div className="flex items-start gap-4 text-left">
-                                    <div className={`mt-1 h-8 w-8 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${n.read ? 'bg-white/5 text-white/20' : 'bg-blue-600/10 text-blue-500 group-hover:scale-110 transition-transform shadow-blue-900/20'}`}>
-                                        <Bell size={14} />
-                                    </div>
-                                    <div className="flex-1 text-left">
-                                        <p className="font-bold text-sm text-white italic">{n.title}</p>
-                                        <p className="text-xs text-white/30 mt-1 leading-relaxed font-medium italic">{n.message}</p>
+                    <div className="space-y-4 text-left">
+                        {(notifications as any[]).length === 0 ? (
+                            <div className="text-center mt-20">
+                                <Bell className="mx-auto text-white/5 mb-4 opacity-10" size={60} />
+                                <p className="text-sm text-white/20 italic font-medium">System logs are currently clear.</p>
+                            </div>
+                        ) : (
+                            (notifications as any[]).map((n: any) => (
+                                <div 
+                                    key={n._id} 
+                                    onClick={() => markRead?.({ notificationId: n._id })}
+                                    className={`p-6 rounded-[2rem] border transition-all text-left group cursor-pointer active:scale-[0.98] ${n.read ? 'bg-transparent border-white/5 opacity-50' : 'bg-white/[0.03] border-white/10 shadow-xl shadow-black/40 hover:bg-white/[0.05] hover:border-white/20'}`}
+                                >
+                                    <div className="flex items-start gap-4 text-left">
+                                        <div className={`mt-1 h-8 w-8 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${n.read ? 'bg-white/5 text-white/20' : 'bg-blue-600/10 text-blue-500 group-hover:scale-110 transition-transform shadow-blue-900/20'}`}>
+                                            <Bell size={14} />
+                                        </div>
+                                        <div className="flex-1 text-left">
+                                            <p className="font-bold text-sm text-white italic">{n.title}</p>
+                                            <p className="text-xs text-white/30 mt-1 leading-relaxed font-medium italic">{n.message}</p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </motion.div>
+                            ))
+                        )}
+                    </div>
+                </motion.div>
+            </>
         )}
       </AnimatePresence>
 
       <main className="max-w-7xl mx-auto p-6 lg:p-12 text-left relative z-10">
-        <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8 text-left">
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-8 text-left">
           <div className="text-left">
             <h1 className="text-4xl font-bold tracking-tight md:text-5xl lg:text-6xl text-left text-white leading-tight font-black italic uppercase">
-              Operational <span className="text-blue-500 text-left">Intelligence.</span>
+              {activeTab === 'protocols' ? 'Operational ' : 'Capital '}
+              <span className="text-blue-500 text-left">{activeTab === 'protocols' ? 'Intelligence.' : 'Command.'}</span>
             </h1>
             <p className="text-white/30 mt-6 text-lg max-w-2xl leading-relaxed text-left font-medium italic">
-                Welcome back, {user.name}. Your current Integrity Score is <span className="text-white font-black italic">{user.integrityScore || 100}%</span>. Protocol adherence is mandatory.
+                {activeTab === 'protocols' 
+                    ? `Welcome back, ${user.name}. Integrity Score: ${user.integrityScore || 100}%. Protocol adherence is mandatory.`
+                    : `Command your liquid capital. Deploy stakes to enforce behavioral mandates.`
+                }
             </p>
           </div>
-          <button 
-            onClick={() => setIsCreating(true)}
-            className="group relative px-8 py-5 rounded-[2rem] bg-white text-black font-black text-xs uppercase tracking-[0.2em] shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-3 overflow-hidden shadow-white/10"
-          >
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-            <Plus size={20} /> Initiate Protocol
-          </button>
+          
+          <div className="flex gap-4">
+             <button 
+                onClick={() => setActiveTab('protocols')}
+                className={`px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'protocols' ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+             >
+                 Protocols
+             </button>
+             <button 
+                onClick={() => setActiveTab('wallet')}
+                className={`px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'wallet' ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
+             >
+                 Vault Wallet
+             </button>
+          </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20 text-left">
-          {(vaults as any[]).map((vault: any) => (
-            <VaultCard key={vault._id} vault={vault} onCheckIn={() => setCheckingInGoal(vault)} />
-          ))}
-          
-          {(vaults as any[]).length === 0 && (
-            <div className="col-span-full py-32 rounded-[3.5rem] border border-dashed border-white/5 bg-white/[0.01] flex flex-col items-center justify-center text-center group hover:bg-white/[0.02] transition-colors">
-                <Target size={60} className="text-white/5 mb-8 group-hover:scale-110 transition-transform opacity-10" />
-                <p className="text-white/20 font-black uppercase tracking-[0.3em] text-xs italic">No Active Protocols Detected</p>
-                <button onClick={() => setIsCreating(true)} className="mt-8 text-blue-500 font-bold hover:underline active:scale-95 transition-transform uppercase tracking-widest text-[10px]">Begin Onboarding</button>
-            </div>
-          )}
-        </div>
+        <AnimatePresence mode="wait">
+            {activeTab === 'protocols' ? (
+                <motion.div 
+                    key="protocols"
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                    className="space-y-12"
+                >
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
+                        {(vaults as any[]).map((vault: any) => (
+                            <VaultCard key={vault._id} vault={vault} onCheckIn={() => setCheckingInGoal(vault)} />
+                        ))}
+                        
+                        <button 
+                            onClick={() => setIsCreating(true)}
+                            className="group relative rounded-[3rem] border border-dashed border-white/10 bg-white/[0.01] flex flex-col items-center justify-center text-center p-10 hover:bg-white/[0.03] hover:border-blue-500/20 transition-all min-h-[300px]"
+                        >
+                            <Plus size={40} className="text-white/10 mb-6 group-hover:scale-110 group-hover:text-blue-500 transition-all" />
+                            <p className="text-white/40 font-black uppercase tracking-[0.2em] text-xs italic">Initiate New Protocol</p>
+                            <p className="text-[9px] text-white/10 uppercase tracking-widest mt-2">Stake capital to enforce discipline</p>
+                        </button>
+                    </div>
 
-        {(pendingVerifications as any[]).length > 0 && (
-            <section className="mb-20 text-left">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
-                    <div className="h-px flex-1 bg-white/5 text-left" />
-                    Witness Authorization Required
-                    <div className="h-px flex-1 bg-white/5 text-left" />
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left font-bold">
-                    {(pendingVerifications as any[]).map((log: any) => (
-                        <div key={log._id} className="p-8 rounded-[2.5rem] border border-white/10 bg-white/[0.02] flex items-center justify-between group hover:border-blue-500/30 transition-all text-left shadow-2xl">
-                            <div className="flex items-center gap-6 text-left">
-                                <div className="h-14 w-14 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 shadow-xl shadow-blue-900/10 group-hover:scale-110 transition-transform">
-                                    <ShieldCheck size={28} />
-                                </div>
-                                <div className="text-left font-bold">
-                                    <p className="font-black text-white uppercase italic tracking-tight">{log.goalTitle}</p>
-                                    <p className="text-xs text-white/30 mt-1 italic font-medium uppercase tracking-widest">Awaiting Verification</p>
-                                </div>
+                    {(pendingVerifications as any[]).length > 0 && (
+                        <section className="pt-12 text-left">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
+                                <div className="h-px flex-1 bg-white/5 text-left" />
+                                Witness Authorization Required
+                                <div className="h-px flex-1 bg-white/5 text-left" />
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left font-bold">
+                                {(pendingVerifications as any[]).map((log: any) => (
+                                    <div key={log._id} className="p-8 rounded-[2.5rem] border border-white/10 bg-white/[0.02] flex items-center justify-between group hover:border-blue-500/30 transition-all text-left shadow-2xl">
+                                        <div className="flex items-center gap-6 text-left">
+                                            <div className="h-14 w-14 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 shadow-xl shadow-blue-900/10 group-hover:scale-110 transition-transform">
+                                                <ShieldCheck size={28} />
+                                            </div>
+                                            <div className="text-left font-bold">
+                                                <p className="font-black text-white uppercase italic tracking-tight">{log.goalTitle}</p>
+                                                <p className="text-xs text-white/30 mt-1 italic font-medium uppercase tracking-widest">Awaiting Verification</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-left font-black">
+                                            <button 
+                                                onClick={() => handleVerify(log._id, 'rejected')}
+                                                className="p-4 rounded-2xl bg-white/5 text-white/20 hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90 shadow-xl"
+                                            >
+                                                <X size={20} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleVerify(log._id, 'approved')}
+                                                className="p-4 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-90 shadow-lg shadow-blue-900/20"
+                                            >
+                                                <CheckCircle size={20} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className="flex items-center gap-3 text-left font-black">
-                                <button 
-                                    onClick={() => handleVerify(log._id, 'rejected')}
-                                    className="p-4 rounded-2xl bg-white/5 text-white/20 hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-90 shadow-xl"
-                                >
-                                    <X size={20} />
-                                </button>
-                                <button 
-                                    onClick={() => handleVerify(log._id, 'approved')}
-                                    className="p-4 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 transition-all active:scale-90 shadow-lg shadow-blue-900/20"
-                                >
-                                    <CheckCircle size={20} />
-                                </button>
+                        </section>
+                    )}
+                </motion.div>
+            ) : (
+                <motion.div 
+                    key="wallet"
+                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                    className="grid grid-cols-1 lg:grid-cols-12 gap-10"
+                >
+                    <div className="lg:col-span-5 space-y-8">
+                        <div className="p-12 rounded-[3.5rem] bg-[#0a0f1a] border border-white/5 relative overflow-hidden shadow-2xl">
+                            <div className="absolute top-0 right-0 p-10 text-blue-600/5 -z-0">
+                                <Wallet size={200} strokeWidth={1} />
+                            </div>
+                            <div className="relative z-10">
+                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 mb-10 italic">Liquid Position</p>
+                                <h3 className="text-6xl font-black italic tracking-tighter mb-4 text-white">₦{(user?.balance / 100)?.toLocaleString()}</h3>
+                                <p className="text-xs text-white/30 font-medium italic uppercase tracking-widest mb-12">Available for staking</p>
+                                
+                                <div className="flex flex-col gap-4">
+                                    <button 
+                                        onClick={() => setIsFunding(true)}
+                                        className="w-full py-6 rounded-3xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] shadow-xl shadow-blue-900/40 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3"
+                                    >
+                                        <Plus size={18} /> Inject Capital
+                                    </button>
+                                    <button 
+                                        onClick={() => setIsWithdrawing(true)}
+                                        className="w-full py-6 rounded-3xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-white/10 active:scale-95 transition-all"
+                                    >
+                                        Extract Funds
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    ))}
-                </div>
-            </section>
-        )}
+
+                        <div className="p-8 rounded-[2.5rem] bg-white/[0.01] border border-dashed border-white/10">
+                             <div className="flex items-start gap-4">
+                                 <AlertCircle className="text-yellow-500 mt-1" size={18} />
+                                 <div className="text-left">
+                                     <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-2">Protocol Note</p>
+                                     <p className="text-xs text-white/20 leading-relaxed font-medium italic uppercase tracking-tighter">
+                                         Funds requested for withdrawal are processed within 24-48 hours. Capital currently staked in active protocols cannot be extracted until mandate completion or expiration.
+                                     </p>
+                                 </div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div className="lg:col-span-7">
+                         <div className="p-10 rounded-[3.5rem] bg-[#0a0f1a]/40 border border-white/5 backdrop-blur-3xl shadow-2xl h-full">
+                            <div className="flex items-center justify-between mb-12">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40">
+                                        <History size={18} />
+                                    </div>
+                                    <h4 className="text-xl font-black italic uppercase tracking-tight">Ledger History</h4>
+                                </div>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-white/10 italic">Most Recent 50</span>
+                            </div>
+
+                            <div className="space-y-4">
+                                {(transactions as any[]).length === 0 ? (
+                                    <div className="py-20 text-center">
+                                        <p className="text-sm text-white/10 italic font-black uppercase tracking-widest">No transaction logs detected</p>
+                                    </div>
+                                ) : (
+                                    (transactions as any[]).map((tx: any) => (
+                                        <div key={tx._id} className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 flex items-center justify-between hover:bg-white/[0.03] transition-colors group">
+                                            <div className="flex items-center gap-5">
+                                                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center shadow-lg ${tx.amount > 0 ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                    {tx.amount > 0 ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className="text-sm font-black text-white italic uppercase tracking-tight">{tx.description || tx.type}</p>
+                                                    <p className="text-[10px] text-white/20 mt-1 uppercase font-bold">{new Date(tx._creationTime).toLocaleDateString()} • {tx.status}</p>
+                                                </div>
+                                            </div>
+                                            <span className={`text-lg font-black italic ${tx.amount > 0 ? 'text-green-500' : 'text-white'}`}>
+                                                {tx.amount > 0 ? '+' : ''}₦{(tx.amount / 100).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                         </div>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
       </main>
 
       <AnimatePresence>
@@ -246,6 +367,9 @@ function DashboardContent({ user }: { user: any }) {
         )}
         {isFunding && (
           <FundWalletModal user={user} onClose={() => setIsFunding(false)} />
+        )}
+        {isWithdrawing && (
+          <WithdrawModal user={user} onClose={() => setIsWithdrawing(false)} />
         )}
         {checkingInGoal && (
           <CheckInModal vault={checkingInGoal} onClose={() => setCheckingInGoal(null)} />
@@ -298,10 +422,8 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
             return;
         }
         setLoading(true);
-        // We initialize on backend first to have a record
         try {
             await initializeDeposit({ amount: parseInt(amount) });
-            // Then open paystack
             initializePayment({onSuccess, onClose: onClosePaystack});
         } catch (err) {
             console.error(err);
@@ -370,6 +492,120 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
     );
 }
 
+function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
+    const [amount, setAmount] = useState('5000');
+    const [accountNumber, setAccountNumber] = useState('');
+    const [bankName, setBankName] = useState('');
+    const [loading, setLoading] = useState(false);
+    const requestWithdrawal = useMutation(api.payments.requestWithdrawal);
+
+    const handleSubmit = async (e: any) => {
+        e.preventDefault();
+        if (parseInt(amount) * 100 > user.balance) {
+            alert("Insufficient balance.");
+            return;
+        }
+        setLoading(true);
+        try {
+            const res = await requestWithdrawal({
+                amount: parseInt(amount) * 100,
+                accountNumber,
+                bankCode: '000', // Mock code
+                bankName,
+                accountName: user.name || 'Account Holder'
+            });
+            alert(res.message);
+            onClose();
+        } catch (err) {
+            console.error(err);
+            alert("Extraction Failed.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-6"
+        >
+            <motion.div 
+                initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+                className="w-full max-w-md bg-[#0a0f1a] border border-white/10 rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+            >
+                <form onSubmit={handleSubmit} className="p-12 text-left">
+                    <div className="flex items-center justify-between mb-12">
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-2xl bg-white/5 text-white flex items-center justify-center italic font-black border border-white/10 shadow-xl">
+                                <ArrowUpRight size={20} />
+                            </div>
+                            <h2 className="text-2xl font-black tracking-tight uppercase italic text-white leading-none">Extract Capital</h2>
+                        </div>
+                        <button type="button" onClick={onClose} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 text-white/20 hover:text-white transition-colors active:scale-90"><X size={20} /></button>
+                    </div>
+
+                    <div className="space-y-8">
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Extraction Amount (NGN)</label>
+                            <input 
+                                type="number"
+                                required
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white text-xl"
+                            />
+                        </div>
+                        
+                        <div className="grid grid-cols-1 gap-6">
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Destination Bank</label>
+                                <div className="relative">
+                                    <Building2 className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" size={16} />
+                                    <input 
+                                        required
+                                        value={bankName}
+                                        onChange={(e) => setBankName(e.target.value)}
+                                        placeholder="e.g. Zenith Bank"
+                                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-14 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white uppercase text-xs"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Account Number</label>
+                                <div className="relative">
+                                    <CreditCard className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" size={16} />
+                                    <input 
+                                        required
+                                        value={accountNumber}
+                                        onChange={(e) => setAccountNumber(e.target.value)}
+                                        placeholder="0123456789"
+                                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-14 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white uppercase text-xs"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 rounded-[2rem] bg-white/5 border border-white/10 flex items-start gap-4">
+                            <User className="text-white/20 mt-1" size={18} />
+                            <p className="text-[10px] text-white/40 leading-relaxed font-bold italic tracking-tight uppercase">
+                                Funds will be sent to the legal name anchored to your BVN: <span className="text-white">{user.name}</span>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button 
+                        type="submit"
+                        disabled={loading}
+                        className="w-full mt-12 py-5 rounded-2xl bg-white text-black font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all shadow-white/5 disabled:opacity-50"
+                    >
+                        {loading ? 'Processing...' : 'Authorize Extraction'}
+                    </button>
+                </form>
+            </motion.div>
+        </motion.div>
+    );
+}
+
 function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) {
   const isFailed = vault.status === 'failed';
   
@@ -391,7 +627,6 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
           : 'border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl hover:bg-[#0a0f1a] hover:border-blue-500/20'
       }`}
     >
-      {/* Glitch Overlay for Breach */}
       {isFailed && (
         <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: [0, 0.1, 0.05, 0.2, 0] }}
@@ -469,19 +704,27 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('50000');
     const [painTier, setPainTier] = useState<'serious' | 'lockedin'>('serious');
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: any) => {
         e.preventDefault();
-        await createVault({
-            title,
-            description: `Automatic protocol for ${title}. Adherence is strictly monitored.`,
-            stakedAmount: parseInt(amount) * 100, // NGN in Kobo
-            category: 'habit',
-            checkin_day: 'daily',
-            duration_weeks: 4, // Default duration
-            painTier: painTier as any
-        });
-        onClose();
+        setLoading(true);
+        try {
+            await createVault({
+                title,
+                description: `Automatic protocol for ${title}. Adherence is strictly monitored.`,
+                stakedAmount: parseInt(amount) * 100, // NGN in Kobo
+                category: 'habit',
+                checkin_day: 'daily',
+                duration_weeks: 4, 
+                painTier: painTier as any
+            });
+            onClose();
+        } catch (err: any) {
+            alert(err.message || "Failed to initialize protocol.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -553,9 +796,10 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
 
                     <button 
                         type="submit"
+                        disabled={loading}
                         className="w-full mt-12 py-5 rounded-2xl bg-white text-black font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all shadow-white/5"
                     >
-                        Initialize Mandate
+                        {loading ? 'Initializing...' : 'Initialize Mandate'}
                     </button>
                 </form>
             </motion.div>
@@ -575,11 +819,8 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
         setLoading(true);
         try {
             let proofImageId = undefined;
-            
             if (selectedFile) {
-                // 1. Get upload URL
                 const postUrl = await generateUploadUrl();
-                // 2. POST the file
                 const result = await fetch(postUrl, {
                     method: "POST",
                     headers: { "Content-Type": selectedFile.type },
@@ -588,10 +829,9 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
                 const { storageId } = await result.json();
                 proofImageId = storageId;
             }
-
             await checkIn({
                 goalId: vault.goal._id,
-                week_number: 1, // Current week logic
+                week_number: 1, 
                 note: note,
                 proofImageId: proofImageId as any
             });
