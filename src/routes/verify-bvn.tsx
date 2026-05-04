@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useMutation as useConvexMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { ShieldCheck, Fingerprint, ArrowRight, Loader2, Info, Lock } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Loader2, Info, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 

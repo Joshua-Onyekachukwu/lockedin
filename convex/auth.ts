@@ -4,7 +4,23 @@ import { convexAuth } from "@convex-dev/auth/server";
 
 export const { auth, signIn, signOut, store } = convexAuth({
   providers: [
-    Password,
+    Password({
+      profile(params) {
+        return {
+          email: params.email,
+          name: params.name,
+          // Custom fields for Lockedin
+          balance: 0,
+          bvn_verified: false,
+          integrityScore: 100,
+          streak_count: 0,
+          goals_completed: 0,
+          witness_discoverable: true,
+          tier: "bronze",
+          is_discoverable: true,
+        };
+      },
+    }),
     Google({
       profile(profile: any) {
         return {

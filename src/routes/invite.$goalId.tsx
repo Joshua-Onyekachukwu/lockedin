@@ -26,8 +26,7 @@ function PartnerInvite() {
   const joinAsPartner = useMutation(api.partners.join);
   
   const { data: vault }: { data: any } = useSuspenseQuery(convexQuery(api.goals.getFullContext, { 
-    vaultId: goalId as any, 
-    userId: user?._id ?? ("" as any) 
+    vaultId: goalId as any
   }));
 
   useEffect(() => {
@@ -40,7 +39,6 @@ function PartnerInvite() {
     if (!user?._id) return;
     await joinAsPartner({
         vaultId: goalId as any,
-        userId: user._id,
         role: 'verifier'
     });
     navigate({ to: '/dashboard' });

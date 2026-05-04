@@ -1,0 +1,2 @@
+origin	https://github.com/Joshua-Onyekachukwu/lockedin.git (fetch)
+origin	https://github.com/Joshua-Onyekachukwu/lockedin.git (push)

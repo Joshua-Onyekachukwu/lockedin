@@ -1,13 +1,17 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { auth } from "./auth";
 
 export const list = query({
-  args: { userId: v.id("users") },
+  args: {},
   returns: v.array(v.any()),
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) return [];
+
     return await ctx.db
       .query("notifications")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
       .collect();
   },
@@ -17,6 +21,14 @@ export const markRead = mutation({
   args: { notificationId: v.id("notifications") },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
+    const notification = await ctx.db.get(args.notificationId);
+    if (!notification || notification.userId !== userId) {
+        throw new Error("Authorization Breach: You cannot modify this log.");
+    }
+
     await ctx.db.patch(args.notificationId, { read: true });
     return null;
   },

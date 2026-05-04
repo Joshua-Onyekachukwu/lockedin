@@ -13,12 +13,9 @@ export const Route = createFileRoute('/vault/$id')({
 
 function VaultPage() {
   const { id: vaultId } = Route.useParams();
-  const { data: user } = useSuspenseQuery(convexQuery(api.users.current, {}));
-  const userId = user?._id ?? ("" as any);
   
   const { data: vault }: { data: any } = useSuspenseQuery(convexQuery(api.goals.getFullContext, { 
-    vaultId: vaultId as any, 
-    userId: userId
+    vaultId: vaultId as any
   }));
 
   if (!vault) return <div>Vault not found</div>;

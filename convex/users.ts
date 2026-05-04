@@ -48,12 +48,9 @@ export const verifyBvn = mutation({
     }
 
     // INTEGRATION INFRASTRUCTURE: MONO / DOJAH / SMILE ID
-    // This is where the secure server-side lookup happens.
-    // We would use an Action for the actual HTTP call to the provider.
     
     await ctx.db.patch(userId, {
       bvn_verified: true,
-      // If we got names from the BVN lookup, update the profile
       ...(args.firstName && args.lastName ? { name: `${args.firstName} ${args.lastName}` } : {}),
     });
 
@@ -98,5 +95,31 @@ export const listDiscoverable = query({
       .collect();
     
     return users.filter(u => u.is_discoverable);
+  },
+});
+
+export const getLeaderboard = query({
+  args: {},
+  returns: v.array(v.object({
+    _id: v.id("users"),
+    name: v.optional(v.string()),
+    integrityScore: v.number(),
+    streak_count: v.number(),
+    goals_completed: v.number(),
+  })),
+  handler: async (ctx) => {
+    // Sort by integrity score desc, then streak count desc
+    const users = await ctx.db
+      .query("users")
+      .collect();
+    
+    return users
+      .sort((a, b) => {
+        if (b.integrityScore !== a.integrityScore) {
+          return b.integrityScore - a.integrityScore;
+        }
+        return b.streak_count - a.streak_count;
+      })
+      .slice(0, 50);
   },
 });

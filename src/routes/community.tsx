@@ -31,7 +31,7 @@ function CommunityPage() {
   }, [isAuthenticated, authLoading, navigate]);
 
   const { data: discoverableUsers } = useSuspenseQuery(convexQuery((api.users as any).listDiscoverable || api.users.current, {}) as any);
-  const { data: myVaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, { userId: userId ?? ("" as any) }) as any);
+  const { data: myVaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, {}) as any);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -149,7 +149,6 @@ function CommunityPage() {
             <VaultPickerModal 
                 partner={requestingTo} 
                 vaults={myVaults} 
-                userId={userId}
                 onClose={() => setRequestingTo(null)} 
             />
         )}
@@ -158,7 +157,7 @@ function CommunityPage() {
   );
 }
 
-function VaultPickerModal({ partner, vaults, userId, onClose }: any) {
+function VaultPickerModal({ partner, vaults, onClose }: any) {
     const sendRequest = useMutation(api.partners.request);
     const [sending, setSending] = useState<string | null>(null);
 
@@ -167,7 +166,6 @@ function VaultPickerModal({ partner, vaults, userId, onClose }: any) {
         try {
             await sendRequest({
                 partnerId: partner._id,
-                requesterId: userId,
                 vaultId: vaultId,
             });
             onClose();

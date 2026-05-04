@@ -6,20 +6,21 @@ import { v } from "convex/values";
  * 20% remains as platform protocol revenue.
  */
 export const distributeWeeklyRewards = internalMutation({
-    args: { weekNumber: v.number() },
+    args: {},
     returns: v.null(),
-    handler: async (ctx, args) => {
+    handler: async (ctx) => {
+        const weekNumber = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
+        
         // 1. Calculate Pool
         const poolEntries = await (ctx.db as any)
             .query("reward_pool")
-            .withIndex("by_week_and_type", (q: any) => q.eq("week_number", args.weekNumber).eq("type", "penalty"))
+            .withIndex("by_week_and_type", (q: any) => q.eq("week_number", weekNumber).eq("type", "penalty"))
             .collect();
         
         const totalPool = poolEntries.reduce((sum: number, entry: any) => sum + entry.amount, 0);
         if (totalPool <= 0) return null;
 
         // 2. Identify High-Integrity Recipients
-        // Criteria: Verified BVN, Active Streak > 0, Integrity Score > 80
         const eligibleUsers = await ctx.db
             .query("users")
             .filter(q => 
@@ -46,7 +47,7 @@ export const distributeWeeklyRewards = internalMutation({
                 amount: dividendPerUser,
                 type: "dividend",
                 status: "completed",
-                description: `Weekly High-Integrity Dividend (Week ${args.weekNumber})`
+                description: `Weekly High-Integrity Dividend (Week ${weekNumber})`
             });
 
             await ctx.db.insert("notifications", {

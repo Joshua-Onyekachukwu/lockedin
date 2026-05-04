@@ -1,14 +1,17 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { auth } from "./auth";
 
 export const join = mutation({
   args: {
     vaultId: v.id("vaults"),
-    userId: v.id("users"),
     role: v.union(v.literal("viewer"), v.literal("verifier")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
     const vault = await ctx.db.get(args.vaultId);
     if (!vault) throw new Error("Vault not found");
 
@@ -22,7 +25,7 @@ export const join = mutation({
       vaultId: args.vaultId,
       goalId: goal._id,
       requesterId: vault.userId,
-      partnerId: args.userId,
+      partnerId: userId,
       status: "active",
       requester_accepted: true,
       partner_accepted: true,
@@ -35,39 +38,45 @@ export const join = mutation({
 export const request = mutation({
   args: {
     partnerId: v.id("users"),
-    requesterId: v.id("users"),
     vaultId: v.id("vaults"),
   },
   returns: v.id("accountability_partners"),
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
     const goal = await ctx.db
         .query("goals")
         .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
         .unique();
     if (!goal) throw new Error("Goal not found");
 
+    // SECURITY: Ensure the requester owns the vault
+    const vault = await ctx.db.get(args.vaultId);
+    if (!vault || vault.userId !== userId) {
+        throw new Error("Authorization Breach: You can only request witnesses for your own protocols.");
+    }
+
     // Check if already exists
     const existing = await ctx.db
         .query("accountability_partners")
         .withIndex("by_vault", q => q.eq("vaultId", args.vaultId))
+        .filter(q => q.eq(q.field("partnerId"), args.partnerId))
         .unique();
     
-    // Note: We should ideally have an index by vault and partner, but for now we filter in JS if multiple partners per vault are allowed.
-    // The schema only has index("by_vault", ["vaultId"])
-    
-    if (existing && existing.partnerId === args.partnerId) return existing._id;
+    if (existing) return existing._id;
 
     const partnerShipId = await ctx.db.insert("accountability_partners", {
       vaultId: args.vaultId,
       goalId: goal._id,
-      requesterId: args.requesterId,
+      requesterId: userId,
       partnerId: args.partnerId,
       status: "pending",
       requester_accepted: true,
       partner_accepted: false,
     });
 
-    const requester = await ctx.db.get(args.requesterId);
+    const requester = await ctx.db.get(userId);
 
     await ctx.db.insert("notifications", {
         userId: args.partnerId,
@@ -86,6 +95,14 @@ export const acceptRequest = mutation({
     args: { partnerShipId: v.id("accountability_partners") },
     returns: v.null(),
     handler: async (ctx, args) => {
+        const userId = await auth.getUserId(ctx);
+        if (userId === null) throw new Error("Unauthenticated");
+
+        const partnership = await ctx.db.get(args.partnerShipId);
+        if (!partnership || partnership.partnerId !== userId) {
+            throw new Error("Authorization Breach: You cannot accept this request.");
+        }
+
         await ctx.db.patch(args.partnerShipId, {
             status: "active",
             partner_accepted: true
@@ -95,12 +112,15 @@ export const acceptRequest = mutation({
 });
 
 export const listIncomingRequests = query({
-    args: { userId: v.id("users") },
+    args: {},
     returns: v.array(v.any()),
-    handler: async (ctx, args) => {
+    handler: async (ctx) => {
+        const userId = await auth.getUserId(ctx);
+        if (userId === null) return [];
+
         const requests = await ctx.db
             .query("accountability_partners")
-            .withIndex("by_partner_and_status", q => q.eq("partnerId", args.userId).eq("status", "pending"))
+            .withIndex("by_partner_and_status", q => q.eq("partnerId", userId).eq("status", "pending"))
             .collect();
         
         const results = [];

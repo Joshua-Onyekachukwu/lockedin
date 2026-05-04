@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
-import { useMutation, useConvexAuth } from 'convex/react';
+import { useMutation, useAction, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { 
   Bell, 
@@ -11,10 +11,15 @@ import {
   Wallet,
   X,
   Camera,
-  AlertCircle
+  AlertCircle,
+  Trophy,
+  CreditCard
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePaystackPayment } from 'react-paystack';
+
+const PAYSTACK_PUBLIC_KEY = "pk_live_a5789ea13824e2329d75420ee40bf1975b1a13d2";
 
 export const Route = createFileRoute('/dashboard')({
   component: Dashboard,
@@ -23,7 +28,7 @@ export const Route = createFileRoute('/dashboard')({
 function Dashboard() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
-  const { data: user } = useSuspenseQuery(convexQuery(api.users.current, {}) as any);
+  const { data: user }: { data: any } = useSuspenseQuery(convexQuery(api.users.current, {}) as any);
   
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -39,20 +44,21 @@ function Dashboard() {
     );
   }
 
-  if (!user.bvn_verified) {
+  if (!(user as any).bvn_verified) {
      navigate({ to: '/verify-bvn' });
      return null;
   }
 
-  return <DashboardContent userId={user._id} user={user} />;
+  return <DashboardContent userId={(user as any)._id} user={user} />;
 }
 
 function DashboardContent({ userId, user }: { userId: any, user: any }) {
-  const { data: vaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, { userId }) as any);
-  const { data: pendingVerifications } = useSuspenseQuery(convexQuery(api.verifications.getPendingVerifications, { userId }) as any);
-  const { data: notifications } = useSuspenseQuery(convexQuery((api as any).notifications.list, { userId }) as any);
+  const { data: vaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, {}) as any);
+  const { data: pendingVerifications } = useSuspenseQuery(convexQuery(api.verifications.getPendingVerifications, {}) as any);
+  const { data: notifications } = useSuspenseQuery(convexQuery((api as any).notifications.list, {}) as any);
   
   const [isCreating, setIsCreating] = useState(false);
+  const [isFunding, setIsFunding] = useState(false);
   const [checkingInGoal, setCheckingInGoal] = useState<any>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   
@@ -60,7 +66,7 @@ function DashboardContent({ userId, user }: { userId: any, user: any }) {
   const markRead = useMutation((api as any).notifications.markRead);
 
   const handleVerify = async (logId: any, status: 'approved' | 'rejected') => {
-      await verifyLog({ logId, verifierId: userId, status });
+      await verifyLog({ logId, status });
   };
 
   const unreadCount = (notifications as any[])?.filter?.((n: any) => !n.read).length || 0;
@@ -74,13 +80,16 @@ function DashboardContent({ userId, user }: { userId: any, user: any }) {
             <div className="relative h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold shadow-lg shadow-blue-900/40 transition-transform group-hover:scale-105 active:scale-95 text-white uppercase italic">L</div>
           </div>
           <div className="flex flex-col text-left">
-            <span className="font-bold tracking-tight text-lg leading-none text-white">Lockedin</span>
-            <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] mt-1 font-black">Operating Protocol</span>
+            <span className="font-black tracking-tighter text-xl leading-none text-white uppercase italic">Lock<span className="text-blue-500">edin</span></span>
+            <span className="text-[9px] text-white/20 uppercase tracking-[0.3em] mt-1 font-black">Operating Protocol</span>
           </div>
         </div>
         
         <div className="flex items-center gap-8 text-left font-bold">
           <div className="hidden sm:flex items-center gap-6 text-sm font-black uppercase tracking-widest text-white/40">
+            <Link to="/leaderboard" className="hover:text-white cursor-pointer transition-colors active:scale-95 flex items-center gap-2 italic">
+                <Trophy size={14} className="text-yellow-500" /> Leaderboard
+            </Link>
             <Link to="/community" className="hover:text-white cursor-pointer transition-colors active:scale-95">Community</Link>
             <span className="hover:text-white cursor-pointer transition-colors active:scale-95 opacity-20">Stakes</span>
           </div>
@@ -96,10 +105,14 @@ function DashboardContent({ userId, user }: { userId: any, user: any }) {
             )}
           </button>
 
-          <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 shadow-inner">
+          <button 
+            onClick={() => setIsFunding(true)}
+            className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 shadow-inner hover:bg-white/10 transition-all active:scale-95"
+          >
             <Wallet size={16} className="text-[#ff7a00]" />
             <span className="text-sm font-bold tracking-tight text-white italic">₦{(user?.balance / 100)?.toLocaleString()}</span>
-          </div>
+            <Plus size={12} className="text-white/40" />
+          </button>
 
           <Link 
             to="/profile"
@@ -229,7 +242,10 @@ function DashboardContent({ userId, user }: { userId: any, user: any }) {
 
       <AnimatePresence>
         {isCreating && (
-          <CreateVaultModal userId={userId} onClose={() => setIsCreating(false)} />
+          <CreateVaultModal onClose={() => setIsCreating(false)} />
+        )}
+        {isFunding && (
+          <FundWalletModal user={user} onClose={() => setIsFunding(false)} />
         )}
         {checkingInGoal && (
           <CheckInModal vault={checkingInGoal} onClose={() => setCheckingInGoal(null)} />
@@ -237,6 +253,121 @@ function DashboardContent({ userId, user }: { userId: any, user: any }) {
       </AnimatePresence>
     </div>
   );
+}
+
+function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) {
+    const [amount, setAmount] = useState('5000');
+    const initializeDeposit = useMutation(api.payments.initializeDeposit);
+    const verifyPayment = useAction(api.payments.verifyPayment);
+    const [loading, setLoading] = useState(false);
+
+    const config = {
+        reference: (new Date()).getTime().toString(),
+        email: user.email,
+        amount: parseInt(amount) * 100, // Paystack expects amount in kobo
+        publicKey: PAYSTACK_PUBLIC_KEY,
+    };
+
+    const initializePayment = usePaystackPayment(config);
+
+    const onSuccess = async (reference: any) => {
+        setLoading(true);
+        try {
+            const result = await verifyPayment({ reference: reference.reference });
+            if (result.success) {
+                alert("Protocol Funding Successful. Capital Secured.");
+                onClose();
+            } else {
+                alert("Verification Failed: " + result.message);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Verification Error.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const onClosePaystack = () => {
+        setLoading(false);
+    };
+
+    const handleStartPayment = async () => {
+        if (!amount || parseInt(amount) < 500) {
+            alert("Minimum deposit is ₦500");
+            return;
+        }
+        setLoading(true);
+        // We initialize on backend first to have a record
+        try {
+            await initializeDeposit({ amount: parseInt(amount) });
+            // Then open paystack
+            initializePayment({onSuccess, onClose: onClosePaystack});
+        } catch (err) {
+            console.error(err);
+            alert("Failed to initialize deposit.");
+            setLoading(false);
+        }
+    };
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-6"
+        >
+            <motion.div 
+                initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+                className="w-full max-w-md bg-[#0a0f1a] border border-white/10 rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+            >
+                <div className="p-12 text-left">
+                    <div className="flex items-center justify-between mb-12">
+                        <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-2xl bg-[#ff7a00]/10 text-[#ff7a00] flex items-center justify-center italic font-black border border-[#ff7a00]/20 shadow-xl">
+                                <Wallet size={20} />
+                            </div>
+                            <h2 className="text-2xl font-black tracking-tight uppercase italic text-white leading-none">Fund Wallet</h2>
+                        </div>
+                        <button onClick={onClose} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 text-white/20 hover:text-white transition-colors active:scale-90"><X size={20} /></button>
+                    </div>
+
+                    <p className="text-white/30 text-xs font-bold italic uppercase tracking-widest mb-10 leading-relaxed">
+                        Inject capital into your behavioral bank account. This capital is used to stake against your mandates.
+                    </p>
+
+                    <div className="space-y-8">
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Amount (NGN)</label>
+                            <div className="relative">
+                                <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-white/20">₦</span>
+                                <input 
+                                    type="number"
+                                    required
+                                    value={amount}
+                                    onChange={(e) => setAmount(e.target.value)}
+                                    className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-12 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white text-xl"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-6 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
+                            <CreditCard className="text-blue-500 mt-1" size={20} />
+                            <p className="text-[10px] text-blue-500 leading-relaxed font-bold italic tracking-tight uppercase">
+                                Payments are secured via Paystack. Funds are instantly available for protocol staking.
+                            </p>
+                        </div>
+                    </div>
+
+                    <button 
+                        onClick={handleStartPayment}
+                        disabled={loading}
+                        className="w-full mt-12 py-5 rounded-2xl bg-white text-black font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all shadow-white/5 disabled:opacity-50"
+                    >
+                        {loading ? 'Processing...' : 'Authorize Deposit'}
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>
+    );
 }
 
 function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) {
@@ -248,7 +379,6 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
       animate={{ 
         opacity: 1, 
         y: 0,
-        // High-intensity breach animation if failed
         x: isFailed ? [0, -2, 2, -2, 2, 0] : 0,
       }}
       transition={{ 
@@ -258,7 +388,7 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
       className={`group relative rounded-[3rem] border transition-all text-left shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden ${
         isFailed 
           ? 'border-red-500/30 bg-red-950/10' 
-          : 'border-white/10 bg-[#0a0f1a]/50 hover:bg-[#0a0f1a]'
+          : 'border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl hover:bg-[#0a0f1a] hover:border-blue-500/20'
       }`}
     >
       {/* Glitch Overlay for Breach */}
@@ -334,7 +464,7 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
   );
 }
 
-function CreateVaultModal({ userId, onClose }: { userId: any, onClose: () => void }) {
+function CreateVaultModal({ onClose }: { onClose: () => void }) {
     const createVault = useMutation(api.goals.create);
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('50000');
@@ -343,7 +473,6 @@ function CreateVaultModal({ userId, onClose }: { userId: any, onClose: () => voi
     const handleSubmit = async (e: any) => {
         e.preventDefault();
         await createVault({
-            userId,
             title,
             description: `Automatic protocol for ${title}. Adherence is strictly monitored.`,
             stakedAmount: parseInt(amount) * 100, // NGN in Kobo

@@ -1,35 +1,52 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
+import { useMutation, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { 
   Users, 
-  Mail, 
-  Calendar, 
   Download, 
   TrendingUp, 
   ShieldCheck,
   Search,
-  MoreVertical
+  MoreVertical,
+  Wallet,
+  Activity,
+  ArrowLeft,
+  Settings
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export const Route = createFileRoute('/admin')({
   component: AdminDashboard,
 });
 
 function AdminDashboard() {
-  const { data: entries }: { data: any[] } = useSuspenseQuery(convexQuery(api.waitlist.list, {}));
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const navigate = useNavigate();
+  
+  const { data: stats } = useSuspenseQuery(convexQuery(api.admin.getSystemStats, {}));
+  const { data: waitlist } = useSuspenseQuery(convexQuery(api.waitlist.list, {}));
+  
+  const sweep = useMutation(api.admin.triggerMidnightSweep);
+  const distribute = useMutation(api.admin.triggerWeeklyDistribution);
+
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredEntries = (entries as any[]).filter(entry => 
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate({ to: '/login' });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
+  const filteredWaitlist = (waitlist as any[]).filter(entry => 
     entry.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const exportCSV = () => {
     const csv = [
       ['Email', 'Joined At'],
-      ...entries.map(e => [e.email, new Date(e._creationTime).toLocaleString()])
+      ...waitlist.map((e: any) => [e.email, new Date(e._creationTime).toLocaleString()])
     ].map(row => row.join(',')).join('\n');
     
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -42,147 +59,163 @@ function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500">
-      {/* Sidebar - Minimal */}
-      <aside className="fixed left-0 top-0 h-full w-20 border-r border-white/5 bg-[#0a0f1a] flex flex-col items-center py-8 gap-10">
-        <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold">L</div>
-        <div className="flex flex-col gap-6">
-          <div className="p-3 rounded-xl bg-white/5 text-blue-500"><TrendingUp size={20} /></div>
-          <div className="p-3 rounded-xl text-white/20 hover:text-white transition-colors cursor-pointer"><Users size={20} /></div>
-          <div className="p-3 rounded-xl text-white/20 hover:text-white transition-colors cursor-pointer"><Mail size={20} /></div>
+      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
+        <div className="flex items-center gap-4 text-left">
+          <Link to="/dashboard" className="relative h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90">
+            <ArrowLeft size={20} />
+          </Link>
+          <div className="flex flex-col text-left">
+            <span className="font-bold tracking-tight text-lg leading-none text-white uppercase italic">Command Center</span>
+            <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] mt-1 font-black">Administrative Protocol</span>
+          </div>
         </div>
-      </aside>
+        <div className="flex items-center gap-6">
+            <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-500 font-black uppercase tracking-widest text-[10px] italic">
+                <ShieldCheck size={14} /> Root Access Active
+            </div>
+            <button className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-white transition-all"><Settings size={20} /></button>
+        </div>
+      </nav>
 
-      <main className="pl-20">
-        {/* Header */}
-        <header className="border-b border-white/5 bg-[#050810]/50 backdrop-blur-xl px-8 py-6 sticky top-0 z-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Founders Dashboard</h1>
-            <p className="text-sm text-white/40 mt-1">Growth Overview & Waitlist Management</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={exportCSV}
-              className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm font-semibold hover:bg-white/10 transition-all"
-            >
-              <Download size={16} /> Export CSV
-            </button>
-            <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5">
-              <div className="h-full w-full rounded-full bg-[#0a0f1a] flex items-center justify-center text-[10px] font-black uppercase">F</div>
+      <main className="max-w-7xl mx-auto p-8 relative z-10">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-blue-500/20 transition-all">
+                <div className="flex items-center justify-between mb-6">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">Protocol Revenue</span>
+                    <TrendingUp size={18} className="text-blue-500" />
+                </div>
+                <p className="text-4xl font-black text-white italic tracking-tighter uppercase">₦{(stats.revenue / 100).toLocaleString()}</p>
+                <p className="mt-2 text-[10px] text-green-500 font-black uppercase tracking-widest italic">Captured Liquidity</p>
             </div>
-          </div>
-        </header>
 
-        <div className="p-8">
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-8">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold uppercase tracking-widest text-white/30">Total Signups</span>
-                <Users size={18} className="text-blue-500" />
-              </div>
-              <div className="flex items-end gap-3">
-                <span className="text-4xl font-bold">{entries.length}</span>
-                <span className="text-xs text-green-500 font-bold mb-1.5">+12% from yesterday</span>
-              </div>
+            <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-[#ff7a00]/20 transition-all">
+                <div className="flex items-center justify-between mb-6">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">Active Stakes</span>
+                    <Wallet size={18} className="text-[#ff7a00]" />
+                </div>
+                <p className="text-4xl font-black text-white italic tracking-tighter uppercase">₦{(stats.totalStaked / 100).toLocaleString()}</p>
+                <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">{stats.activeVaults} Active Mandates</p>
             </div>
-            <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-8">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold uppercase tracking-widest text-white/30">Conversion Rate</span>
-                <TrendingUp size={18} className="text-[#ff7a00]" />
-              </div>
-              <div className="flex items-end gap-3">
-                <span className="text-4xl font-bold">18.4%</span>
-                <span className="text-xs text-blue-400 font-bold mb-1.5">Top 5% of SaaS</span>
-              </div>
-            </div>
-            <div className="rounded-3xl border border-white/5 bg-white/[0.02] p-8">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold uppercase tracking-widest text-white/30">System Status</span>
-                <ShieldCheck size={18} className="text-green-500" />
-              </div>
-              <div className="flex items-end gap-3">
-                <span className="text-4xl font-bold">Stable</span>
-                <span className="text-xs text-white/40 font-bold mb-1.5">Locked & Loaded</span>
-              </div>
-            </div>
-          </div>
 
-          {/* Waitlist Table */}
-          <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a] overflow-hidden">
-            <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-              <h3 className="font-bold text-lg">Waitlist Entries</h3>
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
-                <input 
-                  type="text" 
-                  placeholder="Filter by email..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm outline-none focus:border-blue-500/50 transition-colors w-64"
-                />
-              </div>
+            <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-blue-500/20 transition-all">
+                <div className="flex items-center justify-between mb-6">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">Total Citizens</span>
+                    <Users size={18} className="text-blue-500" />
+                </div>
+                <p className="text-4xl font-black text-white italic tracking-tighter uppercase">{stats.totalUsers}</p>
+                <p className="mt-2 text-[10px] text-blue-500 font-black uppercase tracking-widest italic">Identity Anchored</p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="text-xs font-bold uppercase tracking-widest text-white/20">
-                    <th className="px-8 py-5 border-b border-white/5">Email Address</th>
-                    <th className="px-8 py-5 border-b border-white/5">Joined Date</th>
-                    <th className="px-8 py-5 border-b border-white/5 text-center">Status</th>
-                    <th className="px-8 py-5 border-b border-white/5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEntries.map((entry) => (
-                    <tr key={entry._id} className="group hover:bg-white/[0.02] transition-colors">
-                      <td className="px-8 py-5 border-b border-white/5">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-blue-600/10 flex items-center justify-center text-blue-500">
-                            <Mail size={14} />
-                          </div>
-                          <span className="font-medium">{entry.email}</span>
+
+            <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-green-500/20 transition-all">
+                <div className="flex items-center justify-between mb-6">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">System Health</span>
+                    <Activity size={18} className="text-green-500" />
+                </div>
+                <p className="text-4xl font-black text-white italic tracking-tighter uppercase">STABLE</p>
+                <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">Crons Executing</p>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Waitlist Section */}
+            <div className="lg:col-span-8 rounded-[2.5rem] border border-white/5 bg-[#0a0f1a] overflow-hidden shadow-2xl">
+                <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                    <div className="text-left font-black italic uppercase">
+                        <h3 className="text-lg text-white">Waitlist Protocol</h3>
+                        <p className="text-[10px] text-white/20 tracking-widest mt-1">Pending Citizens</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" />
+                            <input 
+                                type="text" 
+                                placeholder="Filter email..." 
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="bg-black/40 border border-white/10 rounded-2xl pl-12 pr-6 py-3 text-xs outline-none focus:border-blue-500 transition-all w-64 italic font-bold"
+                            />
                         </div>
-                      </td>
-                      <td className="px-8 py-5 border-b border-white/5 text-white/40 text-sm">
-                        <div className="flex items-center gap-2">
-                          <Calendar size={14} />
-                          {new Date(entry._creationTime).toLocaleDateString(undefined, { 
-                            month: 'short', 
-                            day: 'numeric', 
-                            year: 'numeric' 
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-8 py-5 border-b border-white/5 text-center">
-                        <span className="px-2 py-1 rounded-md bg-blue-600/10 text-blue-500 text-[10px] font-bold uppercase tracking-wider">
-                          Waitlisted
-                        </span>
-                      </td>
-                      <td className="px-8 py-5 border-b border-white/5 text-right">
-                        <button className="p-2 text-white/20 hover:text-white transition-colors">
-                          <MoreVertical size={16} />
+                        <button onClick={exportCSV} className="p-3 rounded-xl bg-white/5 text-white/40 hover:text-white transition-all active:scale-95 border border-white/5"><Download size={20} /></button>
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-white/10 border-b border-white/5">
+                                <th className="px-10 py-6">Identity</th>
+                                <th className="px-10 py-6">Anchored At</th>
+                                <th className="px-10 py-6 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filteredWaitlist.map((entry) => (
+                                <tr key={entry._id} className="group hover:bg-white/[0.01] transition-colors border-b border-white/[0.02]">
+                                    <td className="px-10 py-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-10 w-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-500 italic font-black border border-blue-500/10 shadow-xl">@</div>
+                                            <span className="font-bold italic text-white text-sm">{entry.email}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-10 py-6 text-white/30 text-xs font-black italic">
+                                        {new Date(entry._creationTime).toLocaleDateString()}
+                                    </td>
+                                    <td className="px-10 py-6 text-right">
+                                        <button className="p-2 text-white/5 hover:text-white transition-all"><MoreVertical size={18} /></button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Quick Actions Sidebar */}
+            <div className="lg:col-span-4 space-y-8">
+                 <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-8 italic">Manual Overrides</p>
+                    <div className="space-y-4 font-black uppercase italic tracking-widest text-[10px]">
+                        <button 
+                            onClick={async () => {
+                                try {
+                                    await sweep({});
+                                    alert("Midnight Sweep Protocol Initialized.");
+                                } catch (e) {
+                                    alert("Access Denied: You do not have root privileges.");
+                                }
+                            }}
+                            className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-blue-600/20 hover:border-blue-500/30 transition-all text-center active:scale-95"
+                        >
+                            Trigger Midnight Sweep
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredEntries.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-8 py-20 text-center text-white/20 italic">
-                        No entries found matching your search.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                        <button 
+                            onClick={async () => {
+                                try {
+                                    await distribute({});
+                                    alert("Weekly Distribution Protocol Initialized.");
+                                } catch (e) {
+                                    alert("Access Denied: You do not have root privileges.");
+                                }
+                            }}
+                            className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-orange-600/20 hover:border-orange-500/30 transition-all text-center active:scale-95"
+                        >
+                            Distribute Dividends
+                        </button>
+                        <button className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white transition-all text-center active:scale-95 border-dashed">System Maintenance Mode</button>
+                    </div>
+                </div>
+
+                <div className="p-10 rounded-[3rem] bg-[#ff7a00]/5 border border-[#ff7a00]/20 text-left shadow-2xl relative overflow-hidden">
+                    <div className="absolute -right-4 -top-4 text-[#ff7a00]/5">
+                        <TrendingUp size={120} strokeWidth={1} />
+                    </div>
+                    <div className="relative z-10">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#ff7a00] mb-6 italic">Protocol Tip</p>
+                        <p className="text-xs text-[#ff7a00]/60 leading-relaxed font-bold italic tracking-tight uppercase">High protocol breaches detected in 'Fitness' category. Consider adjusting pain tier defaults to increase revenue capture.</p>
+                    </div>
+                </div>
             </div>
-            <div className="px-8 py-4 bg-white/[0.02] flex items-center justify-between text-xs text-white/30 font-medium">
-              <span>Showing {filteredEntries.length} of {entries.length} members</span>
-              <div className="flex gap-2">
-                <button className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10">Prev</button>
-                <button className="px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10">Next</button>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
     </div>

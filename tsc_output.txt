@@ -1,0 +1,5 @@
+src/routes/index.tsx(278,15): error TS17002: Expected corresponding JSX closing tag for 'footer'.
+src/routes/index.tsx(279,11): error TS17002: Expected corresponding JSX closing tag for 'main'.
+src/routes/index.tsx(280,9): error TS17002: Expected corresponding JSX closing tag for 'div'.
+src/routes/index.tsx(281,5): error TS1005: ')' expected.
+src/routes/index.tsx(282,3): error TS1109: Expression expected.

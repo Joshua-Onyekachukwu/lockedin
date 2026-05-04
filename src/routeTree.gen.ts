@@ -12,13 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyBvnRouteImport } from './routes/verify-bvn'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VaultIdRouteImport } from './routes/vault.$id'
 import { Route as InviteGoalIdRouteImport } from './routes/invite.$goalId'
-import { Route as InviteRouteImport } from './routes/invite.'
 
 const VerifyBvnRoute = VerifyBvnRouteImport.update({
   id: '/verify-bvn',
@@ -33,6 +33,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -65,21 +70,16 @@ const InviteGoalIdRoute = InviteGoalIdRouteImport.update({
   path: '/invite/$goalId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const InviteRoute = InviteRouteImport.update({
-  id: '/invite/',
-  path: '/invite/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
-  '/invite/': typeof InviteRoute
   '/invite/$goalId': typeof InviteGoalIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
@@ -88,10 +88,10 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
-  '/invite': typeof InviteRoute
   '/invite/$goalId': typeof InviteGoalIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
@@ -101,10 +101,10 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
-  '/invite/': typeof InviteRoute
   '/invite/$goalId': typeof InviteGoalIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
@@ -115,10 +115,10 @@ export interface FileRouteTypes {
     | '/admin'
     | '/community'
     | '/dashboard'
+    | '/leaderboard'
     | '/login'
     | '/profile'
     | '/verify-bvn'
-    | '/invite/'
     | '/invite/$goalId'
     | '/vault/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -127,10 +127,10 @@ export interface FileRouteTypes {
     | '/admin'
     | '/community'
     | '/dashboard'
+    | '/leaderboard'
     | '/login'
     | '/profile'
     | '/verify-bvn'
-    | '/invite'
     | '/invite/$goalId'
     | '/vault/$id'
   id:
@@ -139,10 +139,10 @@ export interface FileRouteTypes {
     | '/admin'
     | '/community'
     | '/dashboard'
+    | '/leaderboard'
     | '/login'
     | '/profile'
     | '/verify-bvn'
-    | '/invite/'
     | '/invite/$goalId'
     | '/vault/$id'
   fileRoutesById: FileRoutesById
@@ -152,10 +152,10 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CommunityRoute: typeof CommunityRoute
   DashboardRoute: typeof DashboardRoute
+  LeaderboardRoute: typeof LeaderboardRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   VerifyBvnRoute: typeof VerifyBvnRoute
-  InviteRoute: typeof InviteRoute
   InviteGoalIdRoute: typeof InviteGoalIdRoute
   VaultIdRoute: typeof VaultIdRoute
 }
@@ -181,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -225,13 +232,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteGoalIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invite/': {
-      id: '/invite/'
-      path: '/invite'
-      fullPath: '/invite/'
-      preLoaderRoute: typeof InviteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -240,10 +240,10 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CommunityRoute: CommunityRoute,
   DashboardRoute: DashboardRoute,
+  LeaderboardRoute: LeaderboardRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   VerifyBvnRoute: VerifyBvnRoute,
-  InviteRoute: InviteRoute,
   InviteGoalIdRoute: InviteGoalIdRoute,
   VaultIdRoute: VaultIdRoute,
 }

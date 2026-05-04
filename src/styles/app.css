@@ -1,9 +1,13 @@
 @import 'tailwindcss';
 
 @layer base {
-  html,
+  html {
+    scroll-behavior: smooth;
+    @apply selection:bg-blue-500/30;
+  }
+  
   body {
-    @apply text-gray-900 bg-gray-50 dark:bg-gray-950 dark:text-gray-200;
+    @apply bg-[#020408] text-white font-sans antialiased;
   }
 
   .using-mouse * {

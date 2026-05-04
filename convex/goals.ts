@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { auth } from "./auth";
 
 /**
  * PROTOCOL EXECUTION ENGINE
@@ -23,7 +24,6 @@ export const calculateIntegrityScore = query({
 
 export const create = mutation({
   args: {
-    userId: v.id("users"),
     title: v.string(),
     description: v.string(),
     category: v.union(
@@ -44,16 +44,19 @@ export const create = mutation({
   },
   returns: v.id("vaults"),
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
+    const user = await ctx.db.get(userId);
     if (!user) throw new Error("Identity verification failed");
     if (user.balance < args.stakedAmount) throw new Error("Insufficient capital in wallet");
 
     // Deduct balance (Logical escrow)
-    await ctx.db.patch(args.userId, { balance: user.balance - args.stakedAmount });
+    await ctx.db.patch(userId, { balance: user.balance - args.stakedAmount });
 
     const now = Date.now();
     const vaultId = await ctx.db.insert("vaults", {
-      userId: args.userId,
+      userId,
       amount: args.stakedAmount,
       currency: "NGN",
       duration_weeks: args.duration_weeks,
@@ -66,7 +69,7 @@ export const create = mutation({
 
     await ctx.db.insert("goals", {
       vaultId,
-      userId: args.userId,
+      userId,
       category: args.category,
       title: args.title,
       description: args.description,
@@ -74,7 +77,7 @@ export const create = mutation({
     });
 
     await ctx.db.insert("transactions", {
-      userId: args.userId,
+      userId,
       amount: -args.stakedAmount,
       type: "stake",
       vaultId,
@@ -102,9 +105,17 @@ export const checkIn = mutation({
   },
   returns: v.object({ success: v.boolean(), message: v.string() }),
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
     const goal = await ctx.db.get(args.goalId);
     if (!goal) throw new Error("Goal not found");
     
+    // SECURITY: Ensure the user owns this goal
+    if (goal.userId !== userId) {
+        throw new Error("Authorization Breach: You cannot check-in for a protocol you do not own.");
+    }
+
     const vault = await ctx.db.get(goal.vaultId);
     if (!vault || vault.status !== "active") return { success: false, message: "Vault is not active" };
 
@@ -124,12 +135,15 @@ export const checkIn = mutation({
 });
 
 export const listByUser = query({
-  args: { userId: v.id("users") },
+  args: {},
   returns: v.array(v.any()),
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) return [];
+
     const vaults = await ctx.db
       .query("vaults")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
       .collect();
 
@@ -148,9 +162,12 @@ export const listByUser = query({
 });
 
 export const getFullContext = query({
-  args: { vaultId: v.id("vaults"), userId: v.id("users") },
+  args: { vaultId: v.id("vaults") },
   returns: v.any(),
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) return null;
+
     const vault = await ctx.db.get(args.vaultId);
     if (!vault) return null;
     
@@ -164,10 +181,10 @@ export const getFullContext = query({
     const partner = await ctx.db
       .query("accountability_partners")
       .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
-      .filter(q => q.eq(q.field("partnerId"), args.userId))
+      .filter(q => q.eq(q.field("partnerId"), userId))
       .unique();
 
-    if (vault.userId !== args.userId && !partner) {
+    if (vault.userId !== userId && !partner) {
        // Return limited data for invite preview if not authorized
        return { 
            amount: vault.amount, 
