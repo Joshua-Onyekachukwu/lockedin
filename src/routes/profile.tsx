@@ -82,8 +82,15 @@ function ProfileSettings() {
               </div>
             </div>
             <h2 className="mt-6 text-2xl font-black italic uppercase tracking-tight">{user?.name}</h2>
-            <div className="mt-2 flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600/10 border border-blue-500/20 text-[10px] font-black text-blue-500 uppercase tracking-widest italic">
-              <ShieldCheck size={14} /> Integrity Score: {user?.integrityScore}%
+            <div className="mt-2 flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600/10 border border-blue-500/20 text-[10px] font-black text-blue-500 uppercase tracking-widest italic shadow-xl">
+                <ShieldCheck size={14} /> Integrity Score: {user?.integrityScore}%
+              </div>
+              {user?.bvn_verified && (
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#ff7a00]/10 border border-[#ff7a00]/20 text-[10px] font-black text-[#ff7a00] uppercase tracking-widest italic shadow-xl">
+                   KYC Verified
+                </div>
+              )}
             </div>
           </div>
 

@@ -245,47 +245,86 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="group relative rounded-[3rem] border border-white/10 bg-[#0a0f1a]/50 p-10 hover:bg-[#0a0f1a] transition-all text-left shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden"
+      animate={{ 
+        opacity: 1, 
+        y: 0,
+        // High-intensity breach animation if failed
+        x: isFailed ? [0, -2, 2, -2, 2, 0] : 0,
+      }}
+      transition={{ 
+        duration: isFailed ? 0.4 : 0.5,
+        x: isFailed ? { repeat: Infinity, repeatType: "mirror", duration: 0.1 } : undefined
+      }}
+      className={`group relative rounded-[3rem] border transition-all text-left shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden ${
+        isFailed 
+          ? 'border-red-500/30 bg-red-950/10' 
+          : 'border-white/10 bg-[#0a0f1a]/50 hover:bg-[#0a0f1a]'
+      }`}
     >
+      {/* Glitch Overlay for Breach */}
+      {isFailed && (
+        <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: [0, 0.1, 0.05, 0.2, 0] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+            className="absolute inset-0 bg-red-600 pointer-events-none z-0"
+        />
+      )}
+
       <div className="absolute -right-4 -top-4 text-white/[0.01] transition-transform group-hover:scale-110">
         <Target size={160} strokeWidth={1} />
       </div>
 
-      <div className="relative z-10 text-left">
+      <div className="relative z-10 text-left p-10">
         <div className="flex items-center justify-between mb-10 text-left font-black">
-          <div className={`px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest italic shadow-xl ${isFailed ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-blue-500/10 border-blue-500/20 text-blue-500'}`}>
+          <div className={`px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest italic shadow-xl ${
+            isFailed 
+                ? 'bg-red-500 text-white border-red-400 animate-pulse' 
+                : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
+          }`}>
             {isFailed ? 'Protocol Breach' : 'Active Mandate'}
           </div>
-          <span className="text-white/10 text-[10px] font-black uppercase tracking-widest italic">Ref: {vault._id.slice(0,6)}</span>
+          <span className={`text-[10px] font-black uppercase tracking-widest italic ${isFailed ? 'text-red-500/40' : 'text-white/10'}`}>Ref: {vault._id.slice(0,6)}</span>
         </div>
 
-        <h3 className="text-2xl font-black text-white mb-3 italic tracking-tight uppercase leading-tight">{vault.goal.title}</h3>
-        <p className="text-sm text-white/30 mb-10 line-clamp-2 italic font-medium leading-relaxed uppercase tracking-tighter">{vault.goal.description}</p>
+        <h3 className={`text-2xl font-black mb-3 italic tracking-tight uppercase leading-tight ${isFailed ? 'text-red-500' : 'text-white'}`}>
+            {vault.goal.title}
+        </h3>
+        <p className={`text-sm mb-10 line-clamp-2 italic font-medium leading-relaxed uppercase tracking-tighter ${isFailed ? 'text-red-500/40' : 'text-white/30'}`}>
+            {vault.goal.description}
+        </p>
 
         <div className="grid grid-cols-2 gap-6 mb-10 text-left font-black italic">
-          <div className="p-5 rounded-[1.5rem] bg-white/[0.02] border border-white/5 text-left group-hover:border-blue-500/20 transition-colors shadow-inner">
+          <div className={`p-5 rounded-[1.5rem] border text-left transition-colors shadow-inner ${isFailed ? 'bg-red-500/5 border-red-500/20' : 'bg-white/[0.02] border-white/5 group-hover:border-blue-500/20'}`}>
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-2">Principal</p>
-            <p className="text-lg font-black text-white italic tracking-tighter uppercase leading-none">₦{(vault.amount / 100).toLocaleString()}</p>
+            <p className={`text-lg font-black italic tracking-tighter uppercase leading-none ${isFailed ? 'text-red-500 line-through' : 'text-white'}`}>
+                ₦{(vault.amount / 100).toLocaleString()}
+            </p>
           </div>
-          <div className="p-5 rounded-[1.5rem] bg-white/[0.02] border border-white/5 text-left group-hover:border-[#ff7a00]/20 transition-colors shadow-inner">
+          <div className={`p-5 rounded-[1.5rem] border text-left transition-colors shadow-inner ${isFailed ? 'bg-red-500/5 border-red-500/20' : 'bg-white/[0.02] border-white/5 group-hover:border-[#ff7a00]/20'}`}>
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-2">Pain Tier</p>
-            <p className="text-lg font-black text-[#ff7a00] italic tracking-tighter uppercase leading-none">{vault.painTier || 'Serious'}</p>
+            <p className={`text-lg font-black italic tracking-tighter uppercase leading-none ${isFailed ? 'text-red-500' : 'text-[#ff7a00]'}`}>
+                {vault.painTier || 'Serious'}
+            </p>
           </div>
         </div>
 
         <div className="flex flex-col gap-3 font-black uppercase tracking-widest text-[10px] italic">
-            <button 
-                onClick={onCheckIn}
-                disabled={isFailed}
-                className={`w-full py-5 rounded-2xl font-black transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-30 ${isFailed ? 'bg-white/5 text-white/10' : 'bg-white text-black hover:scale-[1.02] shadow-white/5'}`}
-            >
-                <Camera size={18} /> Execute Log
-            </button>
+            {isFailed ? (
+                <div className="w-full py-5 rounded-2xl bg-red-600/10 border border-red-500/20 text-red-500 flex items-center justify-center gap-3 shadow-xl font-black">
+                    <AlertCircle size={18} /> Forfeiture Processed
+                </div>
+            ) : (
+                <button 
+                    onClick={onCheckIn}
+                    className="w-full py-5 rounded-2xl font-black transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 bg-white text-black hover:scale-[1.02] shadow-white/5"
+                >
+                    <Camera size={18} /> Execute Log
+                </button>
+            )}
             <Link 
                 to="/vault/$id"
                 params={{ id: vault._id }}
-                className="w-full py-5 rounded-2xl border border-white/5 text-white/20 hover:text-white hover:bg-white/5 transition-all text-center"
+                className={`w-full py-5 rounded-2xl border transition-all text-center ${isFailed ? 'border-red-500/10 text-red-500/40 hover:text-red-500 hover:bg-red-500/5' : 'border-white/5 text-white/20 hover:text-white hover:bg-white/5'}`}
             >
                 Specification
             </Link>
