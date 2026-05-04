@@ -3,20 +3,28 @@ import { v } from "convex/values";
 import { auth } from "./auth";
 import { internal } from "./_generated/api";
 
-// SECURITY: Only allow the first user or a specific email to be admin
-const ADMIN_EMAIL = "onyekachukwujoshua1@gmail.com"; // User's email from the prompt context if available, or just use this as placeholder
+// SECURITY: Admin privileges are strictly limited to these authorized emails.
+const ADMIN_EMAILS = [
+  "onyekachukwujoshua1@gmail.com",
+  "admin@lockedin.io" // Backup admin
+];
+
+async function checkAdmin(ctx: any) {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("UNAUTHORIZED: ACCESS DENIED");
+    
+    const user = await ctx.db.get(userId);
+    if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
+        throw new Error("SECURITY ALERT: Administrative privileges required.");
+    }
+    return user;
+}
 
 export const getSystemStats = query({
   args: {},
   returns: v.any(),
   handler: async (ctx) => {
-    const userId = await auth.getUserId(ctx);
-    if (userId === null) throw new Error("Unauthenticated");
-    
-    const user = await ctx.db.get(userId);
-    if (!user || user.email !== ADMIN_EMAIL) {
-        throw new Error("Access Denied: Administrative privileges required.");
-    }
+    await checkAdmin(ctx);
 
     const stats = await ctx.db.query("system_stats").unique();
     const totalUsers = (await ctx.db.query("users").collect()).length;
@@ -37,14 +45,7 @@ export const triggerMidnightSweep = mutation({
     args: {},
     returns: v.null(),
     handler: async (ctx) => {
-        const userId = await auth.getUserId(ctx);
-        if (userId === null) throw new Error("Unauthenticated");
-        
-        const user = await ctx.db.get(userId);
-        if (!user || user.email !== ADMIN_EMAIL) {
-            throw new Error("Access Denied");
-        }
-
+        await checkAdmin(ctx);
         await ctx.scheduler.runAfter(0, internal.penalties.midnightSweep, {});
         return null;
     }
@@ -54,14 +55,7 @@ export const triggerWeeklyDistribution = mutation({
     args: {},
     returns: v.null(),
     handler: async (ctx) => {
-        const userId = await auth.getUserId(ctx);
-        if (userId === null) throw new Error("Unauthenticated");
-        
-        const user = await ctx.db.get(userId);
-        if (!user || user.email !== ADMIN_EMAIL) {
-            throw new Error("Access Denied");
-        }
-
+        await checkAdmin(ctx);
         await ctx.scheduler.runAfter(0, internal.rewards.distributeWeeklyRewards, {});
         return null;
     }

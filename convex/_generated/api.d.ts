@@ -13,6 +13,7 @@ import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as goals from "../goals.js";
 import type * as http from "../http.js";
+import type * as mono from "../mono.js";
 import type * as notifications from "../notifications.js";
 import type * as partners from "../partners.js";
 import type * as payments from "../payments.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   goals: typeof goals;
   http: typeof http;
+  mono: typeof mono;
   notifications: typeof notifications;
   partners: typeof partners;
   payments: typeof payments;

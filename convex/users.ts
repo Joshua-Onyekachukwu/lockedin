@@ -1,6 +1,20 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { auth } from "./auth";
+
+export const updateBvnStatus = internalMutation({
+  args: {
+    userId: v.id("users"),
+    name: v.optional(v.string()),
+    bvn: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      bvn_verified: true,
+      ...(args.name ? { name: args.name } : {}),
+    });
+  },
+});
 
 export const current = query({
   args: {},

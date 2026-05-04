@@ -49,10 +49,10 @@ function Dashboard() {
      return null;
   }
 
-  return <DashboardContent userId={(user as any)._id} user={user} />;
+  return <DashboardContent user={user} />;
 }
 
-function DashboardContent({ userId, user }: { userId: any, user: any }) {
+function DashboardContent({ user }: { user: any }) {
   const { data: vaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, {}) as any);
   const { data: pendingVerifications } = useSuspenseQuery(convexQuery(api.verifications.getPendingVerifications, {}) as any);
   const { data: notifications } = useSuspenseQuery(convexQuery((api as any).notifications.list, {}) as any);

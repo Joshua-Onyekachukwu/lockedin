@@ -59,7 +59,7 @@ To maximize retention without App Store friction:
 ## 5. Next Steps & Roadmap
 
 ### 🟥 Phase 1: Hardening (Current / Immediate)
-*   [ ] **Mono Identity:** Finalize API integration once keys are confirmed.
+*   [ ] **Mono Identity:** Finalize API integration (currently using Sandbox).
 *   [ ] **PWA Setup:** Deploy manifest and service workers.
 *   [ ] **Email Notifications:** Automated "Nudge" emails 2 hours before a log is due.
 

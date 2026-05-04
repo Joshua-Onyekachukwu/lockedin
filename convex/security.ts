@@ -3,31 +3,27 @@ import { v } from "convex/values";
 import { auth } from "./auth";
 
 /**
- * SECURITY PROTOCOL: OWNERSHIP VERIFICATION
- * All sensitive operations must verify that the requester is the legitimate owner.
+ * SECURITY PROTOCOL: AUTHENTICATED SESSION CHECK
+ * This ensures that a user can only perform actions within their own session.
  */
 
-export const secureAction = mutation({
+export const validateSession = mutation({
   args: {
-    vaultId: v.id("vaults"),
-    actionType: v.string(),
+    expectedUserId: v.id("users"),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await auth.getUserId(ctx);
-    if (userId === null) throw new Error("CRITICAL SECURITY BREACH: UNAUTHORIZED ACCESS ATTEMPTED");
-
-    const vault = await ctx.db.get(args.vaultId);
-    if (!vault) throw new Error("PROTOCOL ERROR: VAULT NOT FOUND");
-
-    // ENFORCE OWNERSHIP
-    if (vault.userId !== userId) {
-      console.error(`SECURITY ALERT: User ${userId} attempted unauthorized action '${args.actionType}' on Vault ${args.vaultId}`);
-      throw new Error("AUTHORIZATION FAILURE: YOU DO NOT OWN THIS PROTOCOL");
+    const sessionUserId = await auth.getUserId(ctx);
+    
+    if (sessionUserId === null) {
+      throw new Error("UNAUTHENTICATED: ACTIVE SESSION REQUIRED");
     }
 
-    // LOG SECURE ACCESS
-    console.log(`SECURE ACCESS: User ${userId} authorized for ${args.actionType} on Vault ${args.vaultId}`);
+    if (sessionUserId !== args.expectedUserId) {
+      console.error(`SECURITY ALERT: Session hijacking attempt. Session ${sessionUserId} tried to act as ${args.expectedUserId}`);
+      throw new Error("AUTHORIZATION BREACH: SESSION ID MISMATCH");
+    }
+
     return null;
   },
 });

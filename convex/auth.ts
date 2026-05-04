@@ -7,8 +7,8 @@ export const { auth, signIn, signOut, store } = convexAuth({
     Password({
       profile(params) {
         return {
-          email: params.email,
-          name: params.name,
+          email: params.email as string,
+          name: (params.name as string) ?? "",
           // Custom fields for Lockedin
           balance: 0,
           bvn_verified: false,
