@@ -13,7 +13,7 @@ import {
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-export const Route = createFileRoute('/invite/$goalId')({
+export const Route = createFileRoute('/invite/$vaultId')({
   component: PartnerInvite,
 });
 

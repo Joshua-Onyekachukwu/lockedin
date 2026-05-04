@@ -82,7 +82,13 @@ export const getPendingVerifications = query({
                 // If not yet confirmed by this partner
                 if (!log.confirmed_by) {
                     const goal = await ctx.db.get(log.goalId);
-                    pending.push({ ...log, goalTitle: goal?.title });
+                    const owner = goal ? await ctx.db.get(goal.userId) : null;
+                    pending.push({ 
+                        ...log, 
+                        goalTitle: goal?.title,
+                        userName: owner?.name,
+                        proofUrl: log.proofImageId ? await ctx.storage.getUrl(log.proofImageId) : null
+                    });
                 }
             }
         }

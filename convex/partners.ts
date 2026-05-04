@@ -132,3 +132,78 @@ export const listIncomingRequests = query({
         return results;
     }
 });
+
+export const joinByInvite = mutation({
+  args: {
+    vaultId: v.id("vaults"),
+  },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
+    const vault = await ctx.db.get(args.vaultId);
+    if (!vault) throw new Error("Vault not found");
+
+    if (vault.userId === userId) {
+        return { success: false, message: "Self-witnessing is not permitted in the protocol." };
+    }
+
+    const goal = await ctx.db
+        .query("goals")
+        .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+        .unique();
+    if (!goal) throw new Error("Goal not found");
+
+    // Check if already a partner
+    const existing = await ctx.db
+        .query("accountability_partners")
+        .withIndex("by_vault", q => q.eq("vaultId", args.vaultId))
+        .filter(q => q.eq(q.field("partnerId"), userId))
+        .unique();
+    
+    if (existing) {
+        return { success: true, message: "You are already a witness for this mandate." };
+    }
+
+    await ctx.db.insert("accountability_partners", {
+      vaultId: args.vaultId,
+      goalId: goal._id,
+      requesterId: vault.userId,
+      partnerId: userId,
+      status: "active",
+      requester_accepted: true,
+      partner_accepted: true,
+    });
+
+    const partner = await ctx.db.get(userId);
+
+    await ctx.db.insert("notifications", {
+        userId: vault.userId,
+        title: "Witness Anchored",
+        message: `${partner?.name || 'A partner'} has accepted your mandate oversight.`,
+        type: "partner_request",
+        read: false
+    });
+
+    return { success: true, message: "Witness protocol successfully anchored." };
+  },
+});
+
+export const getPartners = query({
+    args: { vaultId: v.id("vaults") },
+    returns: v.array(v.any()),
+    handler: async (ctx, args) => {
+        const partners = await ctx.db
+            .query("accountability_partners")
+            .withIndex("by_vault", q => q.eq("vaultId", args.vaultId))
+            .collect();
+        
+        const results = [];
+        for (const p of partners) {
+            const user = await ctx.db.get(p.partnerId);
+            results.push({ ...p, user });
+        }
+        return results;
+    }
+});

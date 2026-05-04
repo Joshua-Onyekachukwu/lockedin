@@ -11,9 +11,13 @@ import {
   Globe, 
   ArrowLeft,
   Save,
-  Loader2
+  Loader2,
+  Lock,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 
 export const Route = createFileRoute('/profile')({
   component: ProfileSettings,
@@ -30,6 +34,7 @@ function ProfileSettings() {
     city: user?.city || '',
     bio: user?.bio || '',
     is_discoverable: user?.is_discoverable ?? true,
+    witness_discoverable: user?.witness_discoverable ?? true,
   });
 
   const handleSave = async (e: React.FormEvent) => {
@@ -48,7 +53,8 @@ function ProfileSettings() {
 
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
-      {/* Premium Glow Background */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+      
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#ff7a00]/5 blur-[120px] rounded-full" />
@@ -56,12 +62,12 @@ function ProfileSettings() {
 
       <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
         <div className="flex items-center gap-4 text-left">
-          <button onClick={() => navigate({ to: '/dashboard' })} className="relative h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90">
+          <button onClick={() => navigate({ to: '/dashboard' })} className="relative h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90 shadow-xl">
             <ArrowLeft size={20} />
           </button>
           <div className="flex flex-col text-left">
-            <span className="font-bold tracking-tight text-lg leading-none text-white uppercase italic">Identity Protocol</span>
-            <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] mt-1 font-black">Configuration Session</span>
+            <span className="font-black tracking-tight text-lg leading-none text-white uppercase italic">Identity Protocol</span>
+            <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] mt-1 font-black italic">Configuration Session</span>
           </div>
         </div>
       </nav>
@@ -72,8 +78,8 @@ function ProfileSettings() {
           <div className="flex flex-col items-center text-center">
             <div className="relative group">
               <div className="absolute inset-0 bg-blue-600 blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
-              <div className="relative h-32 w-32 rounded-[2.5rem] bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5 shadow-2xl">
-                <div className="h-full w-full rounded-[2.5rem] bg-[#0a0f1a] flex items-center justify-center font-black text-4xl text-white uppercase italic">
+              <div className="relative h-32 w-32 rounded-[3rem] bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5 shadow-2xl">
+                <div className="h-full w-full rounded-[3rem] bg-[#0a0f1a] flex items-center justify-center font-black text-4xl text-white uppercase italic">
                   {user?.name?.[0] || <User size={40} />}
                 </div>
                 <button type="button" className="absolute -bottom-2 -right-2 h-10 w-10 rounded-xl bg-white text-black flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform border-4 border-[#050810]">
@@ -81,13 +87,13 @@ function ProfileSettings() {
                 </button>
               </div>
             </div>
-            <h2 className="mt-6 text-2xl font-black italic uppercase tracking-tight">{user?.name}</h2>
-            <div className="mt-2 flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-blue-600/10 border border-blue-500/20 text-[10px] font-black text-blue-500 uppercase tracking-widest italic shadow-xl">
+            <h2 className="mt-8 text-3xl font-black italic uppercase tracking-tight">{user?.name}</h2>
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600/10 border border-blue-500/20 text-[10px] font-black text-blue-500 uppercase tracking-widest italic shadow-xl">
                 <ShieldCheck size={14} /> Integrity Score: {user?.integrityScore}%
               </div>
               {user?.bvn_verified && (
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#ff7a00]/10 border border-[#ff7a00]/20 text-[10px] font-black text-[#ff7a00] uppercase tracking-widest italic shadow-xl">
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-green-600/10 border border-green-500/20 text-[10px] font-black text-green-500 uppercase tracking-widest italic shadow-xl">
                    KYC Verified
                 </div>
               )}
@@ -95,76 +101,98 @@ function ProfileSettings() {
           </div>
 
           {/* Form Fields */}
-          <div className="space-y-8">
+          <div className="space-y-10">
             <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 ml-4 font-black">Full Legal Name</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 ml-6 italic">Public Identity (Alias)</label>
               <div className="relative group">
                 <input 
                   type="text" 
+                  required
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-lg focus:border-blue-500/50 outline-none transition-all placeholder:text-white/5 font-medium"
+                  className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-8 py-5 text-lg focus:border-blue-500 transition-all placeholder:text-white/5 font-black uppercase italic tracking-widest text-white shadow-inner"
                 />
-                <User className="absolute right-6 top-1/2 -translate-y-1/2 text-white/5 group-focus-within:text-blue-500/50 transition-colors" size={20} />
+                <User className="absolute right-8 top-1/2 -translate-y-1/2 text-white/5 group-focus-within:text-blue-500 transition-colors" size={20} />
               </div>
+              <p className="text-[9px] text-white/10 ml-6 uppercase tracking-widest italic font-black">This name will be visible on the Leaderboard and Community Feed.</p>
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 ml-4 font-black">Operating City</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 ml-6 italic">Operational Sector (City)</label>
               <div className="relative group">
                 <input 
                   type="text" 
                   value={formData.city}
-                  placeholder="e.g. Lagos, Nigeria"
+                  placeholder="e.g. LAGOS, NIGERIA"
                   onChange={e => setFormData({...formData, city: e.target.value})}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-lg focus:border-blue-500/50 outline-none transition-all placeholder:text-white/10 font-medium italic"
+                  className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-8 py-5 text-lg focus:border-blue-500 transition-all placeholder:text-white/10 font-black uppercase italic tracking-widest text-white shadow-inner"
                 />
-                <MapPin className="absolute right-6 top-1/2 -translate-y-1/2 text-white/5 group-focus-within:text-blue-500/50 transition-colors" size={20} />
+                <MapPin className="absolute right-8 top-1/2 -translate-y-1/2 text-white/5 group-focus-within:text-blue-500 transition-colors" size={20} />
               </div>
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 ml-4 font-black">Bio / Protocol Briefing</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 ml-6 italic">Behavioral Mandate (Bio)</label>
               <textarea 
                 value={formData.bio}
-                placeholder="Briefly describe your high-performance focus..."
+                placeholder="Describe your commitment protocol..."
                 onChange={e => setFormData({...formData, bio: e.target.value})}
-                className="w-full bg-white/5 border border-white/10 rounded-[2rem] px-6 py-6 text-lg focus:border-blue-500/50 outline-none transition-all h-32 resize-none placeholder:text-white/10 font-medium"
+                className="w-full bg-white/[0.02] border border-white/10 rounded-[2.5rem] px-8 py-8 text-lg focus:border-blue-500 transition-all h-40 resize-none placeholder:text-white/10 font-medium italic text-white shadow-inner"
               />
             </div>
 
-            {/* Visibility Protocol */}
-            <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-xl bg-blue-600/10 text-blue-500 flex items-center justify-center">
-                    <Globe size={20} />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold tracking-tight text-white italic uppercase text-sm">Witness Discovery</p>
-                    <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mt-1">Allow others to find you as a verifier</p>
-                  </div>
+            {/* Visibility Protocols */}
+            <div className="space-y-4">
+                <label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 ml-6 italic">Privacy Protocols</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button 
+                        type="button"
+                        onClick={() => setFormData({...formData, is_discoverable: !formData.is_discoverable})}
+                        className={`p-8 rounded-[2.5rem] border transition-all text-left group relative overflow-hidden ${formData.is_discoverable ? 'bg-blue-600/5 border-blue-500/20' : 'bg-white/[0.02] border-white/5'}`}
+                    >
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center border ${formData.is_discoverable ? 'bg-blue-600 text-white border-blue-400 shadow-xl shadow-blue-900/40' : 'bg-white/5 text-white/20 border-white/5'}`}>
+                                {formData.is_discoverable ? <Eye size={18} /> : <EyeOff size={18} />}
+                            </div>
+                            <p className={`font-black italic uppercase text-xs tracking-tight ${formData.is_discoverable ? 'text-white' : 'text-white/20'}`}>Community Feed</p>
+                        </div>
+                        <p className="text-[10px] text-white/30 font-bold italic uppercase leading-relaxed font-black">
+                            {formData.is_discoverable ? 'Mandates are visible in the Community Hub.' : 'Mandates are private and hidden from public feeds.'}
+                        </p>
+                    </button>
+
+                    <button 
+                        type="button"
+                        onClick={() => setFormData({...formData, witness_discoverable: !formData.witness_discoverable})}
+                        className={`p-8 rounded-[2.5rem] border transition-all text-left group relative overflow-hidden ${formData.witness_discoverable ? 'bg-[#ff7a00]/5 border-[#ff7a00]/20' : 'bg-white/[0.02] border-white/5'}`}
+                    >
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center border ${formData.witness_discoverable ? 'bg-[#ff7a00] text-white border-[#ff9d47] shadow-xl shadow-orange-900/40' : 'bg-white/5 text-white/20 border-white/5'}`}>
+                                <Globe size={18} />
+                            </div>
+                            <p className={`font-black italic uppercase text-xs tracking-tight ${formData.witness_discoverable ? 'text-white' : 'text-white/20'}`}>Witness Directory</p>
+                        </div>
+                        <p className="text-[10px] text-white/30 font-bold italic uppercase leading-relaxed font-black">
+                            {formData.witness_discoverable ? 'Visible as an active verifier in the witness pool.' : 'Only people with your link can request your oversight.'}
+                        </p>
+                    </button>
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => setFormData({...formData, is_discoverable: !formData.is_discoverable})}
-                  className={`h-8 w-14 rounded-full transition-all relative ${formData.is_discoverable ? 'bg-blue-600' : 'bg-white/10'}`}
-                >
-                  <div className={`absolute top-1 h-6 w-6 rounded-full bg-white transition-all ${formData.is_discoverable ? 'left-7' : 'left-1'}`} />
-                </button>
-              </div>
             </div>
           </div>
 
           <button 
             type="submit"
             disabled={isSaving}
-            className="w-full flex items-center justify-center gap-3 rounded-2xl bg-white text-black p-5 font-black uppercase tracking-[0.2em] hover:bg-white/90 disabled:opacity-50 transition-all active:scale-[0.98] shadow-2xl shadow-white/5 text-sm italic"
+            className="w-full flex items-center justify-center gap-4 rounded-3xl bg-white text-black py-6 font-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all shadow-[0_20px_50px_rgba(255,255,255,0.05)] text-xs italic"
           >
-            {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Commit Changes</>}
+            {isSaving ? <Loader2 className="animate-spin" /> : <><Lock size={18} /> Synchronize Identity</>}
           </button>
         </form>
       </main>
+
+      <footer className="py-20 text-center opacity-10">
+        <p className="text-[10px] font-black uppercase tracking-[0.5em] italic font-black">Secure Identity Synchronization Module v2.0.4</p>
+      </footer>
     </div>
   );
 }

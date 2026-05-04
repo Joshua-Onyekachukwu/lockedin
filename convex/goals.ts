@@ -209,3 +209,38 @@ export const getFullContext = query({
     return { ...vault, goal, logs: logsWithUrls, isPartner: !!partner };
   }
 });
+
+export const listDiscoverable = query({
+    args: {},
+    returns: v.array(v.any()),
+    handler: async (ctx) => {
+        // Find discoverable users
+        const users = await ctx.db
+            .query("users")
+            .filter(q => q.eq(q.field("is_discoverable"), true))
+            .collect();
+        
+        const userIds = new Set(users.map(u => u._id));
+        const results = [];
+
+        // Get active vaults from these users
+        const activeVaults = await ctx.db
+            .query("vaults")
+            .withIndex("by_status", q => q.eq("status", "active"))
+            .collect();
+        
+        for (const vault of activeVaults) {
+            if (userIds.has(vault.userId)) {
+                const user = users.find(u => u._id === vault.userId);
+                const goal = await ctx.db
+                    .query("goals")
+                    .withIndex("by_vault", q => q.eq("vaultId", vault._id))
+                    .unique();
+                if (goal && user) {
+                    results.push({ ...vault, goal, user });
+                }
+            }
+        }
+        return results;
+    }
+});

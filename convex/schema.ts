@@ -19,7 +19,8 @@ export default defineSchema({
     tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
     balance: v.number(), // In Kobo/smallest unit
     witness_discoverable: v.optional(v.boolean()),
-  }).index("by_email", ["email"]),
+  }).index("by_email", ["email"])
+    .index("by_integrity", ["integrityScore"]),
 
   vaults: defineTable({
     userId: v.id("users"),
