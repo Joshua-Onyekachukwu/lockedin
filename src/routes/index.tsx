@@ -160,12 +160,18 @@ function LandingPage() {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-24">
-                <Link to="/login" className="group relative px-10 py-6 rounded-3xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-blue-900/40">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                    <span className="relative flex items-center gap-3">Initialize Protocol <ArrowRight size={16} /></span>
-                </Link>
+                {isAuthenticated ? (
+                    <Link to="/dashboard" className="group relative px-10 py-6 rounded-3xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-blue-900/40">
+                        <span className="relative flex items-center gap-3">Enter Terminal <ArrowRight size={16} /></span>
+                    </Link>
+                ) : (
+                    <Link to="/login" className="group relative px-10 py-6 rounded-3xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-blue-900/40">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                        <span className="relative flex items-center gap-3">Initialize Protocol <ArrowRight size={16} /></span>
+                    </Link>
+                )}
                 <a href="#protocol" className="px-10 py-6 rounded-3xl border border-white/10 bg-white/5 text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-white/10 transition-all">
-                    How it Works
+                    How it works
                 </a>
               </div>
             </motion.div>
@@ -371,6 +377,30 @@ function LandingPage() {
             </div>
         </section>
 
+        {/* FAQ Section */}
+        <section className="py-40 px-6 relative bg-white/[0.01] border-t border-white/5">
+            <div className="max-w-4xl mx-auto">
+                <div className="text-left mb-20">
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-8 italic">Protocol Intelligence</p>
+                    <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter text-white">Frequently Asked <br /> <span className="text-white/20">Protocol Details.</span></h2>
+                </div>
+
+                <div className="space-y-6">
+                    {[
+                        { q: "How is my capital secured?", a: "Your funds are escrowed in a protocol-controlled vault. We use institutional-grade security to ensure your stake is only touched in the event of a protocol breach." },
+                        { q: "What happens if I miss a check-in?", a: "Depending on your Pain Tier, a percentage of your principal (2-5%) is immediately forfeited and moved to the Sunday Dividend pool." },
+                        { q: "Can I withdraw my money anytime?", a: "Only liquid funds in your wallet can be extracted. Capital staked in an active mandate is locked until the protocol period ends or is breached." },
+                        { q: "What is a 'Witness'?", a: "A witness is a designated accountability partner who verifies your photographic evidence. They ensure you aren't gaming the system." }
+                    ].map((item, i) => (
+                        <div key={i} className="p-10 rounded-[2.5rem] bg-[#0a0f1a] border border-white/5 hover:border-white/10 transition-all group">
+                            <h4 className="text-xl font-black italic uppercase text-white mb-4 group-hover:text-blue-500 transition-colors">{item.q}</h4>
+                            <p className="text-white/40 text-sm font-medium italic uppercase leading-relaxed tracking-tight">{item.a}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
+
         {/* Waitlist / CTA Section */}
         <section id="identity" className="py-40 px-6 relative overflow-hidden border-t border-white/5">
             <div className="max-w-4xl mx-auto text-center relative z-10">
@@ -417,14 +447,60 @@ function LandingPage() {
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none -z-0" />
         </section>
 
-        {/* Philosophy - Big Type */}
-        <section className="py-60 px-6 border-y border-white/5 relative bg-white/[0.01]">
-            <div className="max-w-6xl mx-auto text-center text-balance">
-                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-16 italic font-black">The Operational Creed</p>
-                <h2 className="text-4xl md:text-7xl lg:text-8xl font-black italic uppercase tracking-[-0.05em] leading-[0.9] text-white leading-none">
-                    Willpower is a <span className="text-transparent bg-clip-text bg-gradient-to-b from-blue-500 to-blue-800">Resource.</span> <br />
-                    Systemic Risk is a <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20">Guarantee.</span>
-                </h2>
+        {/* Protocol Economics Section */}
+        <section id="economics" className="py-40 px-6 relative bg-[#020408]">
+            <div className="max-w-7xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+                    <div className="relative order-2 lg:order-1">
+                        <div className="absolute inset-0 bg-blue-600/10 blur-[100px] rounded-full" />
+                        <div className="relative p-12 rounded-[4rem] bg-[#0a0f1a] border border-white/5 shadow-2xl overflow-hidden">
+                            <div className="flex items-center gap-4 mb-12">
+                                <div className="h-12 w-12 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 border border-blue-500/20 shadow-xl">
+                                    <TrendingUp size={24} />
+                                </div>
+                                <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white">The Penalty Pool.</h3>
+                            </div>
+                            
+                            <div className="space-y-8">
+                                <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5">
+                                    <p className="text-4xl font-black text-white italic mb-2">80%</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-blue-500 font-black italic">Distributed to High-Performers</p>
+                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Every Sunday, the capital forfeited by protocol breaches is distributed to citizens with 100% integrity scores.</p>
+                                </div>
+                                
+                                <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5">
+                                    <p className="text-4xl font-black text-white italic mb-2">20%</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-white/40 font-black italic">Protocol Maintenance Fee</p>
+                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Used to secure the network, verify identities via BVN, and ensure institutional-grade escrow security.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="text-left space-y-10 order-1 lg:order-2">
+                        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 italic">Financial Governance</p>
+                        <h2 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter leading-[0.9] text-white leading-none">
+                            Discipline is <br /> <span className="text-blue-500">Profitable.</span>
+                        </h2>
+                        <p className="text-xl text-white/40 leading-relaxed font-medium italic uppercase tracking-tight max-w-lg">
+                            We've engineered a zero-sum behavioral game. Those who fail their mandates fund the rewards of those who remain Locked In.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-3 text-white font-black italic uppercase text-xs tracking-widest">
+                                    <CheckCircle2 size={16} className="text-green-500" /> Automated Payouts
+                                </div>
+                                <p className="text-[10px] text-white/20 italic font-black uppercase ml-7">Direct to your wallet</p>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-3 text-white font-black italic uppercase text-xs tracking-widest">
+                                    <CheckCircle2 size={16} className="text-green-500" /> Real-time Escrow
+                                 </div>
+                                <p className="text-[10px] text-white/20 italic font-black uppercase ml-7">Non-custodial protocol</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
