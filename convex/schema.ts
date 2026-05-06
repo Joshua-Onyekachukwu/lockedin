@@ -19,6 +19,8 @@ export default defineSchema({
     tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
     balance: v.number(), // In Kobo/smallest unit
     witness_discoverable: v.optional(v.boolean()),
+    shields: v.number(), // Protection against breaches
+    credits: v.number(), // Non-monetary protocol currency
   }).index("by_email", ["email"])
     .index("by_integrity", ["integrityScore"]),
 
@@ -30,9 +32,9 @@ export default defineSchema({
     startDate: v.number(),
     endDate: v.number(),
     painTier: v.union(
-      v.literal("chill"),   // Tier 1
-      v.literal("serious"), // Tier 2
-      v.literal("lockedin") // Tier 3
+      v.literal("deterrence"),   // Tier 1: 2%
+      v.literal("enforcement"), // Tier 2: 5%
+      v.literal("liquidation")  // Tier 3: 10%
     ),
     status: v.union(v.literal("active"), v.literal("completed"), v.literal("failed")),
     paystack_reference: v.optional(v.string()),

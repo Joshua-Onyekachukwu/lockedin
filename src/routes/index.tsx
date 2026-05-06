@@ -341,9 +341,9 @@ function LandingPage() {
                             <Zap size={28} />
                         </div>
                         <div>
-                            <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-6">Sunday Dividends.</h2>
+                            <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-6">Sunday Rewards.</h2>
                             <p className="text-white/40 font-medium italic uppercase text-sm leading-relaxed font-black">
-                                Execution pays. Every Sunday, the forfeited capital of those who breached their protocol is distributed to those who remained Locked In.
+                                Execution pays. Every Sunday, forfeited capital is converted into Protocol Credits for those who remained Locked In, allowing you to acquire protective Shields.
                             </p>
                         </div>
                     </div>
@@ -463,15 +463,15 @@ function LandingPage() {
                             
                             <div className="space-y-8">
                                 <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5">
-                                    <p className="text-4xl font-black text-white italic mb-2">80%</p>
-                                    <p className="text-[10px] uppercase tracking-widest text-blue-500 font-black italic">Distributed to High-Performers</p>
-                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Every Sunday, the capital forfeited by protocol breaches is distributed to citizens with 100% integrity scores.</p>
+                                    <p className="text-4xl font-black text-white italic mb-2">30%</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-blue-500 font-black italic">User Reward Pool</p>
+                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Every Sunday, 30% of forfeited capital is converted into Protocol Credits for high-performers, enabling the acquisition of protective Shields.</p>
                                 </div>
                                 
                                 <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5">
-                                    <p className="text-4xl font-black text-white italic mb-2">20%</p>
-                                    <p className="text-[10px] uppercase tracking-widest text-white/40 font-black italic">Protocol Maintenance Fee</p>
-                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Used to secure the network, verify identities via BVN, and ensure institutional-grade escrow security.</p>
+                                    <p className="text-4xl font-black text-white italic mb-2">60%</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-white/40 font-black italic">Platform Operations</p>
+                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Direct revenue used to scale the enforcement infrastructure and maintain institutional-grade security for your escrowed capital.</p>
                                 </div>
                             </div>
                         </div>

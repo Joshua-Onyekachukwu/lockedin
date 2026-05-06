@@ -31,8 +31,22 @@ export const midnightSweep = internalMutation({
             .collect();
 
           if (logs.length === 0) {
-            // APPLY PAIN
-            await applyPain(ctx, vault, goal);
+            // Check if user has a shield to deploy
+            const user = await ctx.db.get(vault.userId);
+            if (user && user.shields > 0) {
+                // AUTO-DEPLOY SHIELD
+                await ctx.db.patch(user._id, { shields: user.shields - 1 });
+                await ctx.db.insert("notifications", {
+                    userId: user._id,
+                    title: "Protocol Shield Deployed",
+                    message: `A shield was used to protect your stake for ${goal.title} after a missed log. Integrity preserved.`,
+                    type: "streak_alert",
+                    read: false
+                });
+            } else {
+                // APPLY PAIN
+                await applyPain(ctx, vault, goal);
+            }
           }
         }
       }
@@ -44,59 +58,56 @@ export const midnightSweep = internalMutation({
 async function applyPain(ctx: any, vault: any, goal: any) {
     const user = await ctx.db.get(vault.userId);
     
-    if (vault.painTier === "serious") {
-        // 2% Principal Loss
-        const penaltyAmount = Math.floor(vault.amount * 0.02);
-        
+    // Exact Tier Mapping
+    const tierMap = {
+        "deterrence": 0.02,
+        "enforcement": 0.05,
+        "liquidation": 0.10
+    };
+    
+    const penaltyPercent = tierMap[vault.painTier as keyof typeof tierMap] || 0.02;
+    const penaltyAmount = Math.floor(vault.amount * penaltyPercent);
+    
+    if (penaltyAmount > 0) {
         await ctx.db.insert("transactions", {
             userId: vault.userId,
             vaultId: vault._id,
-            amount: penaltyAmount,
+            amount: -penaltyAmount,
             type: "penalty",
             status: "completed",
-            description: `Protocol Breach: ${goal.title}`
+            description: `Protocol Breach Forfeiture: ${goal.title}`
         });
 
-        // REVISED BUSINESS MODEL:
-        // 60% Platform Revenue (Operations & Growth)
-        // 30% Reward Pool (Dividends for High-Integrity Users)
-        // 10% Liquidity Reserve (System Security)
-        const platformFee = Math.floor(penaltyAmount * 0.60);
-        const rewardPoolContribution = Math.floor(penaltyAmount * 0.30);
-        const reserveContribution = penaltyAmount - platformFee - rewardPoolContribution;
+        // BUSINESS MODEL: 
+        // All money goes to Admin (Platform Revenue) 
+        // No distribution to other users to avoid CBN issues.
+        const platformRevenue = penaltyAmount;
 
-        await (ctx.db as any).insert("reward_pool", {
-            week_number: Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000)),
-            amount: rewardPoolContribution,
-            source_vault_id: vault._id,
-            type: "penalty"
-        });
-
-        // Track platform revenue
+        // Track platform revenue & stats
         const stats = await ctx.db.query("system_stats").unique();
         if (stats) {
             await ctx.db.patch(stats._id, {
-                total_revenue: (stats.total_revenue || 0) + platformFee + reserveContribution
+                total_revenue: (stats.total_revenue || 0) + platformRevenue
             });
         }
 
+        // Deduct from vault principal
         await ctx.db.patch(vault._id, {
             amount: vault.amount - penaltyAmount
         });
 
         await ctx.db.insert("notifications", {
             userId: vault.userId,
-            title: "Protocol Breach Detected",
-            message: `Execution missed for ${goal.title}. ₦${(penaltyAmount/100).toLocaleString()} forfeited.`,
+            title: "Stake Forfeited",
+            message: `Breach detected for ${goal.title}. ₦${(penaltyAmount/100).toLocaleString()} removed from vault.`,
             type: "streak_alert",
             read: false
         });
     }
 
-    // Always reset streak count
+    // Integrity penalty
     await ctx.db.patch(vault.userId, { 
         streak_count: 0,
-        // Integrity penalty: -10 points for a violation
         integrityScore: Math.max(0, (user?.integrityScore ?? 100) - 10)
     });
 }

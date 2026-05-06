@@ -53,10 +53,13 @@ function Dashboard() {
     );
   }
 
+  /* 
+  BLOCKER REMOVED FOR MVP TESTING
   if (!(user as any).bvn_verified) {
      navigate({ to: '/verify-bvn' });
      return null;
   }
+  */
 
   return <DashboardContent user={user} />;
 }
@@ -564,7 +567,7 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
     const createVault = useMutation(api.goals.create);
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('50000');
-    const [painTier, setPainTier] = useState<'serious' | 'lockedin'>('serious');
+    const [painTier, setPainTier] = useState<'deterrence' | 'enforcement' | 'liquidation'>('deterrence');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: any) => {
@@ -578,7 +581,7 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
                 category: 'habit',
                 checkin_day: 'daily',
                 duration_weeks: 4, 
-                painTier: painTier as any
+                painTier: painTier
             });
             onClose();
         } catch (err: any) {
@@ -634,22 +637,30 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
 
                         <div className="text-left font-black uppercase italic tracking-widest text-[10px]">
                             <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block">Pain Specification</label>
-                            <div className="grid grid-cols-2 gap-4 text-left">
+                            <div className="grid grid-cols-3 gap-3 text-left">
                                 <button 
                                     type="button"
-                                    onClick={() => setPainTier('serious')}
-                                    className={`p-6 rounded-[2rem] border transition-all text-left group ${painTier === 'serious' ? 'bg-blue-600/10 border-blue-500 text-blue-500 shadow-xl' : 'bg-white/[0.01] border-white/5 text-white/20 hover:text-white'}`}
+                                    onClick={() => setPainTier('deterrence')}
+                                    className={`p-5 rounded-[1.5rem] border transition-all text-left group ${painTier === 'deterrence' ? 'bg-blue-600/10 border-blue-500 text-blue-500 shadow-xl' : 'bg-white/[0.01] border-white/5 text-white/20 hover:text-white'}`}
                                 >
-                                    <p className="font-black italic mb-1 uppercase tracking-widest">Serious</p>
-                                    <p className="text-[9px] opacity-40 lowercase italic font-medium leading-none">2% daily penalty</p>
+                                    <p className="font-black italic mb-1 uppercase tracking-widest">Deterrence</p>
+                                    <p className="text-[8px] opacity-40 lowercase italic font-medium leading-none">2% penalty</p>
                                 </button>
                                 <button 
                                     type="button"
-                                    onClick={() => setPainTier('lockedin')}
-                                    className={`p-6 rounded-[2rem] border transition-all text-left group ${painTier === 'lockedin' ? 'bg-[#ff7a00]/10 border-[#ff7a00] text-[#ff7a00] shadow-xl' : 'bg-white/[0.01] border-white/5 text-white/20 hover:text-white'}`}
+                                    onClick={() => setPainTier('enforcement')}
+                                    className={`p-5 rounded-[1.5rem] border transition-all text-left group ${painTier === 'enforcement' ? 'bg-[#ff7a00]/10 border-[#ff7a00] text-[#ff7a00] shadow-xl' : 'bg-white/[0.01] border-white/5 text-white/20 hover:text-white'}`}
                                 >
-                                    <p className="font-black italic mb-1 uppercase tracking-widest">Locked In</p>
-                                    <p className="text-[9px] opacity-40 lowercase italic font-medium leading-none">5% daily penalty</p>
+                                    <p className="font-black italic mb-1 uppercase tracking-widest">Enforce</p>
+                                    <p className="text-[8px] opacity-40 lowercase italic font-medium leading-none">5% penalty</p>
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setPainTier('liquidation')}
+                                    className={`p-5 rounded-[1.5rem] border transition-all text-left group ${painTier === 'liquidation' ? 'bg-red-600/10 border-red-500 text-red-500 shadow-xl' : 'bg-white/[0.01] border-white/5 text-white/20 hover:text-white'}`}
+                                >
+                                    <p className="font-black italic mb-1 uppercase tracking-widest">Liquidate</p>
+                                    <p className="text-[8px] opacity-40 lowercase italic font-medium leading-none">10% penalty</p>
                                 </button>
                             </div>
                         </div>

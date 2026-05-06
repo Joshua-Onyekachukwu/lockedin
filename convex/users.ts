@@ -34,6 +34,8 @@ export const current = query({
     integrityScore: v.number(),
     tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
     balance: v.number(),
+    shields: v.number(),
+    credits: v.number(),
   })),
   handler: async (ctx) => {
     const userId = await auth.getUserId(ctx);
@@ -89,6 +91,32 @@ export const updateProfile = mutation({
     await ctx.db.patch(userId, args);
     return null;
   },
+});
+
+export const exchangeCreditsForShield = mutation({
+  args: { amount: v.number() },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Unauthenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("User not found");
+
+    // Cost: 5,000 credits per Shield (configurable)
+    const cost = 5000 * args.amount;
+
+    if ((user.credits || 0) < cost) {
+      return { success: false, message: "Insufficient Protocol Credits." };
+    }
+
+    await ctx.db.patch(userId, {
+      credits: user.credits - cost,
+      shields: (user.shields || 0) + args.amount
+    });
+
+    return { success: true, message: `Identity protection increased. ${args.amount} Shield(s) acquired.` };
+  }
 });
 
 export const listDiscoverable = query({

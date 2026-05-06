@@ -18,6 +18,8 @@ export const { auth, signIn, signOut, store } = convexAuth({
           witness_discoverable: true,
           tier: "bronze",
           is_discoverable: true,
+          shields: 0,
+          credits: 0,
         };
       },
     }),
@@ -37,6 +39,8 @@ export const { auth, signIn, signOut, store } = convexAuth({
           witness_discoverable: true,
           tier: "bronze",
           is_discoverable: true,
+          shields: 0,
+          credits: 0,
         };
       },
     }),
