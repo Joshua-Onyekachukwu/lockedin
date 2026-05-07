@@ -39,7 +39,11 @@ Every user is anchored via **BVN Hash** to prevent sybil attacks and ensure beha
 2. **Frontend Hosting (Vercel):**
    - Link your GitHub repository to Vercel.
    - Add `VITE_CONVEX_URL` to Vercel Environment Variables (obtained from Convex Dashboard).
-   - Set the build command to `npm run build` and output directory to `.output`.
+   - In Vercel Project Settings:
+     - **Framework Preset:** Other
+     - **Build Command:** `npm run build`
+     - **Output Directory:** `.vercel/output` (The `NITRO_PRESET=vercel` build script will generate this automatically).
+   - Redeploy the application.
 
 3. **Domain Configuration:**
    - Map your custom domain (e.g., lockedin.io) to your Vercel deployment.
