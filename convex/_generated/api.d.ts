@@ -20,6 +20,7 @@ import type * as payments from "../payments.js";
 import type * as penalties from "../penalties.js";
 import type * as rewards from "../rewards.js";
 import type * as security from "../security.js";
+import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 import type * as verifications from "../verifications.js";
 import type * as waitlist from "../waitlist.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   penalties: typeof penalties;
   rewards: typeof rewards;
   security: typeof security;
+  seed: typeof seed;
   users: typeof users;
   verifications: typeof verifications;
   waitlist: typeof waitlist;
