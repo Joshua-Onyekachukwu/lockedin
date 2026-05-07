@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { useAuthActions } from "@convex-dev/auth/react";
-import { Lock, LogIn, Mail, Key, User, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Lock, LogIn, Mail, Key, User, ArrowRight, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 
@@ -72,6 +72,15 @@ function LoginPage() {
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[120px] rounded-full" />
       </div>
+
+      {/* Back to Landing */}
+      <Link 
+        to="/" 
+        className="absolute top-10 left-10 p-3 rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90 z-50 flex items-center gap-2 group"
+      >
+        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] pr-2 italic">Back</span>
+      </Link>
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}

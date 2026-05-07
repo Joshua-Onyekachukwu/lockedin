@@ -1,27 +1,25 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { 
+  Shield, 
+  Target, 
+  Zap, 
+  Users, 
+  ArrowRight, 
+  CheckCircle2, 
   Lock, 
-  ArrowRight,
-  Zap,
-  Shield,
-  Target,
-  BarChart3,
-  Layers,
-  CircleDot,
-  CheckCircle2,
-  Users,
-  TrendingUp,
+  TrendingUp, 
+  Clock, 
+  ChevronRight,
   Menu,
   X,
-  CreditCard,
-  History,
-  Trophy,
-  Wallet,
-  Camera
+  UserCheck,
+  ShieldCheck,
+  Activity,
+  ArrowLeft
 } from 'lucide-react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { useRef, useState } from 'react';
-import { useConvexAuth, useMutation } from 'convex/react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { useMutation, useQuery, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 
 export const Route = createFileRoute('/')({
@@ -29,310 +27,202 @@ export const Route = createFileRoute('/')({
 });
 
 function LandingPage() {
-  const { isAuthenticated, isLoading } = useConvexAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [email, setEmail] = useState('');
-  const [isSubmitting, setIsWithSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  
-  const joinWaitlist = useMutation(api.waitlist.add);
+  const [scrolled, setScrolled] = useState(false);
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showModal, setShowModal] = useState<{ title: string; content: string } | null>(null);
 
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
-  });
+  const joinWaitlist = useMutation(api.waitlist.join);
+  const { isAuthenticated } = useConvexAuth();
+  const navigate = useNavigate();
 
-  const opacity = useTransform(scrollYProgress, [0, 0.1], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 0.1], [1, 0.95]);
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
-    setIsWithSubmitting(true);
+    if (!waitlistEmail) return;
+    setIsSubmitting(true);
     try {
-        await joinWaitlist({ email });
-        setIsSuccess(true);
-        setEmail('');
+      await joinWaitlist({ email: waitlistEmail });
+      setShowSuccess(true);
+      setWaitlistEmail('');
+      setTimeout(() => setShowSuccess(false), 5000);
     } catch (err) {
-        console.error(err);
+      console.error(err);
     } finally {
-        setIsWithSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  return (
-    <div ref={containerRef} className="min-h-screen bg-[#020408] text-white selection:bg-blue-500 selection:text-white font-sans overflow-x-hidden">
-      {/* Noise Texture Overlay */}
-      <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
-      
-      {/* Navigation */}
-      <nav className="fixed top-0 z-[100] w-full border-b border-white/5 bg-[#020408]/60 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link to="/" className="flex items-center gap-2 group cursor-pointer">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-transform group-hover:scale-110 group-active:scale-95">
-                <Lock size={16} strokeWidth={2.5} className="text-white" />
+  const navLinks = [
+    { name: 'Protocol', href: '#protocol' },
+    { name: 'Governance', href: '#governance' },
+    { name: 'Community', href: '#community' },
+  ];
+
+  const Modal = ({ title, content, onClose }: { title: string; content: string; onClose: () => void }) => (
+    <motion.div 
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-[#020408]/90 backdrop-blur-2xl p-6"
+    >
+        <motion.div 
+            initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+            className="w-full max-w-2xl bg-[#0a0f1a] border border-white/10 rounded-[3rem] p-12 relative overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)]"
+        >
+            <button onClick={onClose} className="absolute right-10 top-10 p-3 rounded-full bg-white/5 text-white/20 hover:text-white transition-all"><X size={20} /></button>
+            <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-8">{title}</h3>
+            <div className="text-white/40 font-medium italic uppercase text-sm leading-relaxed space-y-4 text-left">
+                {content.split('\n').map((para, i) => <p key={i}>{para}</p>)}
             </div>
-            <span className="text-xl font-black tracking-tighter uppercase italic text-white">
-              Lock<span className="text-blue-500">edin</span>
-            </span>
-          </Link>
-          
-          <div className="hidden items-center gap-10 md:flex">
-            {['Protocol', 'Economics', 'Identity', 'Governance'].map((item) => (
-              <a key={item} href={`#${item.toLowerCase()}`} className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 transition-all hover:text-white hover:tracking-[0.4em]">
-                {item}
+        </motion.div>
+    </motion.div>
+  );
+
+  return (
+    <div className="min-h-screen bg-[#050810] text-white selection:bg-blue-500 selection:text-white font-sans overflow-x-hidden">
+      <AnimatePresence>
+        {showModal && (
+            <Modal title={showModal.title} content={showModal.content} onClose={() => setShowModal(null)} />
+        )}
+      </AnimatePresence>
+
+      <nav className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 px-6 py-6 ${scrolled ? 'bg-[#050810]/80 backdrop-blur-2xl border-b border-white/5 py-4' : ''}`}>
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-xl italic text-lg shadow-blue-900/40">L</div>
+            <span className="text-2xl font-black tracking-tighter uppercase italic">Lockedin</span>
+          </div>
+
+          <div className="hidden md:flex items-center gap-12">
+            {navLinks.map((link) => (
+              <a 
+                key={link.name} 
+                href={link.href} 
+                className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 hover:text-white transition-all italic"
+              >
+                {link.name}
               </a>
             ))}
           </div>
 
-          <div className="flex items-center gap-4">
-            {!isLoading && (
-                isAuthenticated ? (
-                <Link to="/dashboard" className="hidden sm:block px-6 py-2.5 rounded-full bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/5">
-                    Terminal
-                </Link>
-                ) : (
-                <Link to="/login" className="hidden sm:block px-6 py-2.5 rounded-full border border-white/10 bg-white/5 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
-                    Initiate Session
-                </Link>
-                )
-            )}
-            <button 
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="md:hidden h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white"
+          <div className="flex items-center gap-6">
+            <Link 
+              to={isAuthenticated ? "/dashboard" : "/login"} 
+              className="px-8 py-3 rounded-2xl bg-white text-black font-black text-[10px] uppercase tracking-widest shadow-xl shadow-white/5 hover:scale-105 active:scale-95 transition-all italic"
             >
-                {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
+              {isAuthenticated ? "Terminal" : "Initialize Identity"}
+            </Link>
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-3 rounded-xl bg-white/5 text-white"><Menu size={20} /></button>
           </div>
         </div>
       </nav>
 
       {/* Mobile Menu */}
       <AnimatePresence>
-          {isMenuOpen && (
-              <motion.div 
-                initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                className="fixed inset-0 z-[90] bg-[#020408] p-6 pt-24 flex flex-col gap-8 md:hidden"
-              >
-                  {['Protocol', 'Economics', 'Identity', 'Governance'].map((item) => (
-                    <a key={item} href={`#${item.toLowerCase()}`} onClick={() => setIsMenuOpen(false)} className="text-4xl font-black italic uppercase tracking-tighter text-white/40 hover:text-white transition-colors">
-                        {item}
-                    </a>
-                  ))}
-                  <div className="mt-auto pb-10 flex flex-col gap-4">
-                    {isAuthenticated ? (
-                        <Link to="/dashboard" className="w-full py-5 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-center italic">Dashboard</Link>
-                    ) : (
-                        <Link to="/login" className="w-full py-5 rounded-2xl bg-blue-600 text-white font-black uppercase tracking-widest text-center italic">Login</Link>
-                    )}
-                  </div>
-              </motion.div>
-          )}
+        {isMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0, x: '100%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '100%' }}
+            className="fixed inset-0 z-50 bg-[#050810] p-12 md:hidden"
+          >
+            <button onClick={() => setIsMenuOpen(false)} className="absolute top-10 right-10 p-3 rounded-full bg-white/5 text-white"><X size={24} /></button>
+            <div className="flex flex-col gap-12 mt-20">
+              {navLinks.map((link) => (
+                <a key={link.name} href={link.href} onClick={() => setIsMenuOpen(false)} className="text-4xl font-black uppercase italic tracking-tighter text-white/40 hover:text-white">{link.name}</a>
+              ))}
+              <Link to="/login" className="text-4xl font-black uppercase italic tracking-tighter text-blue-500">Access Protocol</Link>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
-      <main className="relative">
+      <main>
         {/* Hero Section */}
-        <section className="relative min-h-[90vh] flex flex-col items-center justify-center px-6 pt-20 overflow-hidden">
-          <motion.div style={{ opacity, scale }} className="absolute inset-0 z-0">
-             <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-blue-600/10 blur-[160px] rounded-full pointer-events-none" />
-             <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-blue-500/5 blur-[120px] rounded-full pointer-events-none" />
-          </motion.div>
-
-          <div className="max-w-6xl mx-auto relative z-10 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/5 px-4 py-1.5 text-[10px] font-black tracking-[0.2em] text-blue-400 uppercase mb-12 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
-                <CircleDot size={12} className="animate-pulse" /> Protocol v1.1 Live in Nigeria
+        <section className="relative pt-60 pb-40 px-6 overflow-hidden">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[600px] bg-blue-600/10 blur-[150px] rounded-full pointer-events-none -z-10" />
+          <div className="max-w-7xl mx-auto text-center relative z-10">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+              <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full bg-blue-600/10 border border-blue-500/20 text-blue-500 text-[10px] font-black uppercase tracking-[0.4em] mb-12 italic shadow-2xl">
+                <Shield size={14} /> Zero-Trust Behavioral Escrow
               </div>
-              
-              <h1 className="text-6xl md:text-8xl lg:text-[10rem] font-black tracking-[-0.05em] text-white leading-[0.85] uppercase italic mb-12 text-balance leading-none">
-                Commit <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20">Money where your mouth is.</span>
+              <h1 className="text-7xl md:text-9xl font-black italic uppercase tracking-tighter mb-10 leading-[0.85] text-white">
+                Don't Trust <br /> <span className="text-blue-500">Your Willpower.</span>
               </h1>
-              
-              <p className="mx-auto max-w-2xl text-lg md:text-xl text-white/40 leading-relaxed text-center font-medium italic mb-16">
-                The world's first behavioral enforcement engine. <br />
-                Stop negotiating with your weakness. Anchor your mandates with cold, hard capital. Do the work, or pay the price.
+              <p className="text-xl md:text-2xl text-white/40 max-w-2xl mx-auto font-medium italic uppercase tracking-tight mb-16 leading-tight font-black">
+                Escrow your capital. Define your mandate. Face the pain if you fail. Lockedin is the institutional-grade enforcer of your highest ambitions.
               </p>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-24">
-                {isAuthenticated ? (
-                    <Link to="/dashboard" className="group relative px-10 py-6 rounded-3xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-blue-900/40">
-                        <span className="relative flex items-center gap-3">Enter Terminal <ArrowRight size={16} /></span>
-                    </Link>
-                ) : (
-                    <Link to="/login" className="group relative px-10 py-6 rounded-3xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-blue-900/40">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                        <span className="relative flex items-center gap-3">Initialize Protocol <ArrowRight size={16} /></span>
-                    </Link>
-                )}
-                <a href="#protocol" className="px-10 py-6 rounded-3xl border border-white/10 bg-white/5 text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-white/10 transition-all">
-                    How it works
+              
+              <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+                <Link to="/login" className="px-12 py-6 rounded-[2rem] bg-white text-black font-black text-xs uppercase tracking-[0.3em] shadow-2xl shadow-white/10 hover:scale-105 active:scale-95 transition-all italic">
+                   Initiate Mandate
+                </Link>
+                <a href="#protocol" className="px-12 py-6 rounded-[2rem] bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-white/10 transition-all italic">
+                   Review Architecture
                 </a>
-              </div>
-            </motion.div>
-
-            {/* Kinetic Dashboard Preview */}
-            <motion.div 
-              style={{ perspective: 1000 }}
-              initial={{ opacity: 0, y: 100, rotateX: 20 }}
-              animate={{ opacity: 1, y: 0, rotateX: 0 }}
-              transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="relative mx-auto max-w-5xl"
-            >
-              <div className="absolute inset-0 bg-blue-600/20 blur-[120px] -z-10 rounded-[4rem] scale-90" />
-              <div className="overflow-hidden rounded-[3rem] border border-white/10 bg-[#0a0f1a]/80 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.8)] text-left">
-                <div className="border-b border-white/5 px-8 py-5 flex items-center justify-between">
-                    <div className="flex gap-2">
-                        <div className="h-2 w-2 rounded-full bg-red-500/20" />
-                        <div className="h-2 w-2 rounded-full bg-yellow-500/20" />
-                        <div className="h-2 w-2 rounded-full bg-green-500/20" />
-                    </div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Behavioral Command Center</div>
-                    <div className="w-10" />
-                </div>
-                <div className="p-12 grid grid-cols-12 gap-10">
-                    <div className="col-span-12 lg:col-span-7 space-y-10">
-                        <div className="space-y-2">
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-500">Protocol Participant</p>
-                            <h3 className="text-4xl font-black italic uppercase tracking-tighter">Citizen Joshua</h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 shadow-inner">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">Staked Position</p>
-                                <p className="text-2xl font-black italic text-white">₦250,000</p>
-                            </div>
-                            <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 shadow-inner">
-                                <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">Integrity Factor</p>
-                                <p className="text-2xl font-black italic text-blue-500">98.4%</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="col-span-12 lg:col-span-5 flex flex-col justify-center">
-                        <div className="p-8 rounded-[2.5rem] bg-blue-600/5 border border-blue-500/20 relative overflow-hidden">
-                            <Zap className="absolute -right-4 -top-4 text-blue-500/10" size={100} />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-6">Current Streak</p>
-                            <p className="text-3xl font-black italic mb-2">24 DAYS</p>
-                            <p className="text-[10px] text-white/40 font-bold uppercase italic tracking-tighter">Consistency Level: Elite</p>
-                        </div>
-                    </div>
-                </div>
               </div>
             </motion.div>
           </div>
         </section>
 
-        {/* Value Prop: Why Lockedin? */}
-        <section className="py-40 px-6 relative bg-white/[0.01]">
-            <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
-                    <div className="text-left space-y-10">
-                        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 italic">The Problem</p>
-                        <h2 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter leading-[0.9]">
-                            Willpower is a <br /> <span className="text-white/20">Finite Resource.</span>
-                        </h2>
-                        <p className="text-xl text-white/40 leading-relaxed font-medium italic uppercase tracking-tight max-w-lg">
-                            Most goals fail because humans are hardwired to seek comfort. We negotiate with ourselves. We make excuses. 
-                        </p>
-                        <div className="space-y-6">
-                            {[
-                                "Inspiration fades in 48 hours.",
-                                "Discipline is expensive to maintain.",
-                                "Loss aversion is the only biological constant."
-                            ].map((text, i) => (
-                                <div key={i} className="flex items-center gap-4 text-white/60 font-black italic uppercase text-sm italic tracking-widest">
-                                    <X className="text-red-500" size={16} /> {text}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="relative group">
-                        <div className="absolute inset-0 bg-blue-600/10 blur-[80px] rounded-full group-hover:bg-blue-600/20 transition-all" />
-                        <div className="relative p-12 rounded-[4rem] bg-[#0a0f1a] border border-white/5 shadow-2xl overflow-hidden">
-                            <div className="absolute top-0 right-0 p-8 text-white/5">
-                                <Shield size={120} strokeWidth={1} />
-                            </div>
-                            <h3 className="text-3xl font-black italic uppercase tracking-tighter mb-8 text-blue-500">The Lockedin Solution.</h3>
-                            <p className="text-white/60 mb-10 leading-relaxed">We remove the option to quit by making it economically painful. When you stake capital, you aren't just making a promise—you're signing a behavioral contract with the protocol.</p>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-5 rounded-3xl bg-white/[0.02] border border-white/5">
-                                    <p className="text-2xl font-black italic mb-1">₦0</p>
-                                    <p className="text-[9px] uppercase tracking-widest text-white/20 font-black">Negotiation Room</p>
-                                </div>
-                                <div className="p-5 rounded-3xl bg-blue-600/10 border border-blue-500/20">
-                                    <p className="text-2xl font-black italic text-blue-500">100%</p>
-                                    <p className="text-[9px] uppercase tracking-widest text-blue-400 font-black">Execution Rate</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        {/* Waitlist Section */}
+        <section className="py-20 px-6 relative bg-[#020408]">
+            <div className="max-w-4xl mx-auto rounded-[4rem] border border-white/5 bg-[#0a0f1a] p-12 md:p-24 relative overflow-hidden shadow-2xl group">
+                <div className="absolute -right-20 -top-20 h-80 w-80 bg-blue-600/10 blur-[100px] rounded-full group-hover:bg-blue-600/20 transition-all duration-1000" />
+                <div className="relative z-10 text-center">
+                    <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter mb-8 leading-none">The Waitlist.</h2>
+                    <p className="text-white/40 font-bold italic uppercase text-sm leading-relaxed max-w-lg mx-auto mb-12">
+                        Institutional access is limited. Join the waitlist to receive your activation protocol and enter the behavioral enclave.
+                    </p>
+                    
+                    <form onSubmit={handleWaitlist} className="flex flex-col md:flex-row gap-4">
+                        <input 
+                            required
+                            type="email" 
+                            placeholder="OPERATIONAL_EMAIL@PROTOCOL.IO" 
+                            value={waitlistEmail}
+                            onChange={(e) => setWaitlistEmail(e.target.value)}
+                            className="flex-1 bg-white/[0.02] border border-white/10 rounded-3xl px-8 py-6 outline-none focus:border-blue-500 transition-all font-bold italic text-white placeholder:text-white/10"
+                        />
+                        <button 
+                            disabled={isSubmitting}
+                            className="px-10 py-6 rounded-3xl bg-blue-600 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-500 transition-all shadow-xl shadow-blue-900/20 italic disabled:opacity-50"
+                        >
+                            {isSubmitting ? 'PROCESSING...' : 'ANCHOR IDENTITY'}
+                        </button>
+                    </form>
+
+                    <AnimatePresence>
+                        {showSuccess && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-8 text-green-500 font-black uppercase text-[10px] tracking-[0.4em] italic">
+                                IDENTITY ANCHORED. WE WILL REACH OUT VIA YOUR SECURE EMAIL SOON.
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
             </div>
         </section>
 
-        {/* Process Section */}
-        <section id="protocol" className="py-40 px-6 relative border-y border-white/5">
-            <div className="max-w-7xl mx-auto">
-                <div className="text-center mb-24">
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-8 italic">Operating Manual</p>
-                    <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter text-white">Three Steps to <br /> <span className="text-white/20">Absolute Discipline.</span></h2>
+        {/* Feature Grid */}
+        <section id="protocol" className="py-40 px-6 relative">
+          <div className="max-w-7xl mx-auto">
+                <div className="text-left mb-24">
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-6 italic">Enforcement Mechanisms</p>
+                    <h2 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter text-white leading-none">The Architecture.</h2>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                    {[
-                        { 
-                            step: "01", 
-                            title: "Anchor Identity", 
-                            desc: "Verify your BVN to link your legal identity to the protocol. No bot accounts. No shadows.",
-                            icon: <Shield className="text-blue-500" />
-                        },
-                        { 
-                            step: "02", 
-                            title: "Stake Capital", 
-                            desc: "Define your mandate and lock NGN into the Vault. Select your Pain Tier—from Serious to Locked In.",
-                            icon: <Wallet className="text-[#ff7a00]" />
-                        },
-                        { 
-                            step: "03", 
-                            title: "Execute & Log", 
-                            desc: "Perform your daily mandates and provide photographic evidence. Fail, and the protocol forfeits your stake.",
-                            icon: <Camera className="text-green-500" />
-                        }
-                    ].map((item, i) => (
-                        <div key={i} className="group relative p-12 rounded-[3.5rem] bg-white/[0.01] border border-white/5 hover:bg-white/[0.03] hover:border-white/10 transition-all text-left">
-                            <span className="text-6xl font-black italic text-white/5 absolute top-8 right-10 group-hover:text-white/10 transition-colors">{item.step}</span>
-                            <div className="h-14 w-14 rounded-2xl bg-white/5 flex items-center justify-center mb-10 shadow-xl border border-white/5">
-                                {item.icon}
-                            </div>
-                            <h3 className="text-2xl font-black italic uppercase tracking-tighter mb-4 text-white">{item.title}</h3>
-                            <p className="text-white/30 text-sm font-medium italic uppercase leading-relaxed tracking-tight">
-                                {item.desc}
-                            </p>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                    <div className="lg:col-span-8 relative overflow-hidden rounded-[3.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-12 flex flex-col justify-between group shadow-2xl">
+                        <div className="h-14 w-14 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 mb-10 border border-blue-500/20 shadow-xl">
+                            <Lock size={28} />
                         </div>
-                    ))}
-                </div>
-            </div>
-        </section>
-
-        {/* Features Bento */}
-        <section id="economics" className="py-40 px-6 relative overflow-hidden">
-            <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left">
-                    <div className="lg:col-span-8 group relative overflow-hidden rounded-[3.5rem] border border-white/5 bg-white/[0.02] p-16 hover:border-blue-500/20 transition-all">
-                        <div className="absolute top-0 right-0 p-12 text-blue-600/5 transition-transform group-hover:scale-110">
-                            <Shield size={240} strokeWidth={1} />
-                        </div>
-                        <div className="relative z-10 max-w-lg">
-                            <div className="h-14 w-14 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 mb-10 border border-blue-500/20 shadow-xl">
-                                <Lock size={28} />
-                            </div>
-                            <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-8 leading-none">The Capital <br /> Escrow.</h2>
-                            <p className="text-xl text-white/40 leading-relaxed font-medium italic uppercase tracking-tight font-black">
-                                Commitment without risk is just a wish. We lock your capital in a protocol-controlled vault. Adhere to your mandate or forfeit the principal. Total loss aversion as a service.
+                        <div>
+                            <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-6">Escrowed Stakes.</h2>
+                            <p className="text-white/40 font-medium italic uppercase text-sm leading-relaxed font-black">
+                                Your capital is locked in a non-custodial behavioral vault. Access is restricted until the mandate is either fulfilled or breached. Zero human intervention.
                             </p>
                         </div>
                     </div>
@@ -341,9 +231,9 @@ function LandingPage() {
                             <Zap size={28} />
                         </div>
                         <div>
-                            <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-6">Sunday Rewards.</h2>
+                            <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-6">The Protocol Store.</h2>
                             <p className="text-white/40 font-medium italic uppercase text-sm leading-relaxed font-black">
-                                Execution pays. Every Sunday, forfeited capital is converted into Protocol Credits for those who remained Locked In, allowing you to acquire protective Shields.
+                                Maintain your integrity. Earn Protocol Credits for every successful log, and spend them in the store to acquire Shields that protect your stake from accidental breaches.
                             </p>
                         </div>
                     </div>
@@ -352,103 +242,31 @@ function LandingPage() {
                         <div className="h-14 w-14 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 mb-10 border border-green-500/20 shadow-xl">
                             <Users size={28} />
                         </div>
-                        <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-6">Witness Protocol.</h2>
-                        <p className="text-white/40 font-medium italic uppercase text-sm leading-relaxed font-black">
-                            Don't just trust yourself. Assign an Accountability Partner to verify your logs. No log is final without witness authorization.
-                        </p>
-                    </div>
-
-                    <div className="lg:col-span-8 relative overflow-hidden rounded-[3.5rem] border border-white/5 bg-white/[0.02] p-12 flex items-center gap-10 group">
-                        <div className="flex-1">
-                            <div className="h-14 w-14 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 mb-10 border border-blue-500/20 shadow-xl">
-                                <BarChart3 size={28} />
-                            </div>
-                            <h2 className="text-4xl font-black italic uppercase tracking-tighter mb-6">Integrity Ledger.</h2>
-                            <p className="text-xl text-white/40 leading-relaxed font-medium italic uppercase tracking-tight max-w-md font-black text-left">
-                                Your discipline is now a public metric. Build your integrity score and climb the Hall of Fame. 
+                        <div>
+                            <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-6">P2P Oversight.</h2>
+                            <p className="text-white/40 font-medium italic uppercase text-sm leading-relaxed font-black">
+                                Select accountability witnesses to verify your execution. If they detect a breach, the forfeiture protocol initializes instantly.
                             </p>
                         </div>
-                        <div className="hidden md:block w-64 space-y-4">
-                            <div className="p-5 rounded-2xl bg-green-500/10 border border-green-500/20 text-[10px] font-black uppercase text-green-500 italic font-black tracking-widest text-center">Protocol Success: 100%</div>
-                            <div className="p-5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-[10px] font-black uppercase text-blue-500 italic font-black tracking-widest text-center">Integrity Boost: +1.2%</div>
+                    </div>
+                    <div className="lg:col-span-8 relative overflow-hidden rounded-[3.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-12 flex flex-col justify-between group shadow-2xl">
+                        <div className="h-14 w-14 rounded-2xl bg-purple-600/10 flex items-center justify-center text-purple-500 mb-10 border border-purple-500/20 shadow-xl">
+                            <Activity size={28} />
+                        </div>
+                        <div>
+                            <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-6">Integrity Scoring.</h2>
+                            <p className="text-white/40 font-medium italic uppercase text-sm leading-relaxed font-black">
+                                Your behavioral credit score is live. Every completed mandate increases your integrity; every breach liquidates it. Your identity is your collateral.
+                            </p>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
-
-        {/* FAQ Section */}
-        <section className="py-40 px-6 relative bg-white/[0.01] border-t border-white/5">
-            <div className="max-w-4xl mx-auto">
-                <div className="text-left mb-20">
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-8 italic">Protocol Intelligence</p>
-                    <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter text-white">Frequently Asked <br /> <span className="text-white/20">Protocol Details.</span></h2>
-                </div>
-
-                <div className="space-y-6">
-                    {[
-                        { q: "How is my capital secured?", a: "Your funds are escrowed in a protocol-controlled vault. We use institutional-grade security to ensure your stake is only touched in the event of a protocol breach." },
-                        { q: "What happens if I miss a check-in?", a: "Depending on your Pain Tier, a percentage of your principal (2-5%) is immediately forfeited and moved to the Sunday Dividend pool." },
-                        { q: "Can I withdraw my money anytime?", a: "Only liquid funds in your wallet can be extracted. Capital staked in an active mandate is locked until the protocol period ends or is breached." },
-                        { q: "What is a 'Witness'?", a: "A witness is a designated accountability partner who verifies your photographic evidence. They ensure you aren't gaming the system." }
-                    ].map((item, i) => (
-                        <div key={i} className="p-10 rounded-[2.5rem] bg-[#0a0f1a] border border-white/5 hover:border-white/10 transition-all group">
-                            <h4 className="text-xl font-black italic uppercase text-white mb-4 group-hover:text-blue-500 transition-colors">{item.q}</h4>
-                            <p className="text-white/40 text-sm font-medium italic uppercase leading-relaxed tracking-tight">{item.a}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </section>
-
-        {/* Waitlist / CTA Section */}
-        <section id="identity" className="py-40 px-6 relative overflow-hidden border-t border-white/5">
-            <div className="max-w-4xl mx-auto text-center relative z-10">
-                <div className="h-20 w-20 rounded-[2rem] bg-blue-600 flex items-center justify-center mx-auto mb-10 shadow-2xl shadow-blue-900/40">
-                    <History size={32} />
-                </div>
-                <h2 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter mb-10 text-white">Stop making <br /> <span className="text-white/20">Empty Promises.</span></h2>
-                <p className="text-xl text-white/40 font-medium italic uppercase tracking-tight mb-16">
-                    Join the protocol today. Anchor your discipline with capital and start winning the war against mediocrity.
-                </p>
-
-                {isSuccess ? (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                        className="p-10 rounded-[3rem] bg-green-500/10 border border-green-500/20 flex flex-col items-center gap-4"
-                    >
-                        <CheckCircle2 size={40} className="text-green-500" />
-                        <p className="text-xl font-black italic uppercase text-green-500">Citizenship Request Logged.</p>
-                        <p className="text-white/40 text-sm uppercase tracking-widest font-black">Check your email for the activation protocol.</p>
-                    </motion.div>
-                ) : (
-                    <form onSubmit={handleWaitlist} className="flex flex-col md:flex-row gap-4 max-w-2xl mx-auto group">
-                        <input 
-                            type="email" 
-                            required
-                            placeholder="OPERATIONAL EMAIL ADDRESS"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="flex-1 bg-white/[0.02] border border-white/10 rounded-3xl px-8 py-6 text-sm font-black italic uppercase outline-none focus:border-blue-500 focus:bg-white/[0.04] transition-all"
-                        />
-                        <button 
-                            disabled={isSubmitting}
-                            className="px-10 py-6 rounded-3xl bg-white text-black font-black uppercase tracking-widest text-xs italic shadow-2xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                        >
-                            {isSubmitting ? 'LOGGING...' : 'Join Waitlist'}
-                        </button>
-                    </form>
-                )}
-                
-                <p className="mt-10 text-[10px] text-white/20 font-black uppercase tracking-[0.4em] italic">Secure Identity Synchronization via Mono Bridge</p>
-            </div>
-            
-            {/* Background Gradients for CTA */}
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none -z-0" />
         </section>
 
         {/* Protocol Economics Section */}
-        <section id="economics" className="py-40 px-6 relative bg-[#020408]">
+        <section id="governance" className="py-40 px-6 relative bg-[#020408]">
             <div className="max-w-7xl mx-auto">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
                     <div className="relative order-2 lg:order-1">
@@ -463,15 +281,15 @@ function LandingPage() {
                             
                             <div className="space-y-8">
                                 <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5">
-                                    <p className="text-4xl font-black text-white italic mb-2">30%</p>
-                                    <p className="text-[10px] uppercase tracking-widest text-blue-500 font-black italic">User Reward Pool</p>
-                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Every Sunday, 30% of forfeited capital is converted into Protocol Credits for high-performers, enabling the acquisition of protective Shields.</p>
+                                    <p className="text-4xl font-black text-white italic mb-2">Admin Fee</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-blue-500 font-black italic">Platform Revenue</p>
+                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Protocol maintenance is funded by forfeited capital. We take the cost of enforcement from those who break the mandate.</p>
                                 </div>
                                 
                                 <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5">
-                                    <p className="text-4xl font-black text-white italic mb-2">60%</p>
-                                    <p className="text-[10px] uppercase tracking-widest text-white/40 font-black italic">Platform Operations</p>
-                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Direct revenue used to scale the enforcement infrastructure and maintain institutional-grade security for your escrowed capital.</p>
+                                    <p className="text-4xl font-black text-white italic mb-2">Rewards</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-white/40 font-black italic">Protocol Credits</p>
+                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Maintain your integrity. Earn non-monetary Protocol Credits for every successful log to unlock protective Shields.</p>
                                 </div>
                             </div>
                         </div>
@@ -480,23 +298,23 @@ function LandingPage() {
                     <div className="text-left space-y-10 order-1 lg:order-2">
                         <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 italic">Financial Governance</p>
                         <h2 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter leading-[0.9] text-white leading-none">
-                            Discipline is <br /> <span className="text-blue-500">Profitable.</span>
+                            Discipline is <br /> <span className="text-blue-500">Non-Negotiable.</span>
                         </h2>
                         <p className="text-xl text-white/40 leading-relaxed font-medium italic uppercase tracking-tight max-w-lg">
-                            We've engineered a zero-sum behavioral game. Those who fail their mandates fund the rewards of those who remain Locked In.
+                            We remove the option to quit by making it economically painful. When you stake capital, you aren't just making a promise—you're signing a behavioral contract with the protocol.
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <div className="flex items-center gap-3 text-white font-black italic uppercase text-xs tracking-widest">
-                                    <CheckCircle2 size={16} className="text-green-500" /> Automated Payouts
+                                    <CheckCircle2 size={16} className="text-green-500" /> Automated Enforcement
                                 </div>
-                                <p className="text-[10px] text-white/20 italic font-black uppercase ml-7">Direct to your wallet</p>
+                                <p className="text-[10px] text-white/20 italic font-black uppercase ml-7">Zero-human intervention</p>
                             </div>
                             <div className="space-y-2">
                                 <div className="flex items-center gap-3 text-white font-black italic uppercase text-xs tracking-widest">
-                                    <CheckCircle2 size={16} className="text-green-500" /> Real-time Escrow
-                                 </div>
-                                <p className="text-[10px] text-white/20 italic font-black uppercase ml-7">Non-custodial protocol</p>
+                                    <CheckCircle2 size={16} className="text-green-500" /> Protocol Protection
+                                </div>
+                                <p className="text-[10px] text-white/20 italic font-black uppercase ml-7">Shields against breaches</p>
                             </div>
                         </div>
                     </div>
@@ -525,17 +343,17 @@ function LandingPage() {
                         <div className="space-y-8">
                             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic font-black">Protocol</h4>
                             <ul className="space-y-4 text-[10px] font-black uppercase tracking-widest text-white/60 font-black">
-                                <li className="hover:text-blue-500 cursor-pointer transition-colors">Architecture</li>
-                                <li className="hover:text-blue-500 cursor-pointer transition-colors">Security</li>
-                                <li className="hover:text-blue-500 cursor-pointer transition-colors">API Docs</li>
+                                <li onClick={() => setShowModal({ title: 'Architecture', content: 'Our architecture is built on top of a non-custodial behavioral engine.\nAll capital is escrowed using institutional-grade security protocols.\nZero human intervention ensures that enforcement is absolute.' })} className="hover:text-blue-500 cursor-pointer transition-colors">Architecture</li>
+                                <li onClick={() => setShowModal({ title: 'Security', content: 'Security is anchored at the identity level.\nBVN verification ensures a 1:1 ratio between citizen and account.\nMulti-sig escrow patterns protect your principal from unauthorized extraction.' })} className="hover:text-blue-500 cursor-pointer transition-colors">Security</li>
+                                <li onClick={() => setShowModal({ title: 'API Docs', content: 'The Lockedin API allows for automated mandate creation and logging.\nDevelopers can build third-party verification tools on top of the protocol.\nDocumentation is currently restricted to active citizens.' })} className="hover:text-blue-500 cursor-pointer transition-colors">API Docs</li>
                             </ul>
                         </div>
                         <div className="space-y-8">
                             <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic font-black">Legal</h4>
                             <ul className="space-y-4 text-[10px] font-black uppercase tracking-widest text-white/60 font-black">
-                                <li className="hover:text-blue-500 cursor-pointer transition-colors">Terms</li>
-                                <li className="hover:text-blue-500 cursor-pointer transition-colors">Privacy</li>
-                                <li className="hover:text-blue-500 cursor-pointer transition-colors">BVN Data</li>
+                                <li onClick={() => setShowModal({ title: 'Terms', content: 'By initiating a mandate, you agree to the behavioral contract.\nForfeiture of capital in the event of a breach is non-negotiable.\nProtocol Credits have no monetary value.' })} className="hover:text-blue-500 cursor-pointer transition-colors">Terms</li>
+                                <li onClick={() => setShowModal({ title: 'Privacy', content: 'Your data is anchored to your identity but shielded from the public.\nOnly mandated witnesses can review your execution logs.\nZero data is sold to third parties.' })} className="hover:text-blue-500 cursor-pointer transition-colors">Privacy</li>
+                                <li onClick={() => setShowModal({ title: 'BVN Data', content: 'BVN data is used exclusively for identity anchoring.\nIt prevents sybil attacks and ensures behavioral integrity.\nWe never store your full BVN; only a secure identity hash.' })} className="hover:text-blue-500 cursor-pointer transition-colors">BVN Data</li>
                             </ul>
                         </div>
                     </div>
