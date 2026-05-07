@@ -61,9 +61,9 @@ function LandingPage() {
   };
 
   const navLinks = [
-    { name: 'Protocol', href: '#protocol' },
+    { name: 'Architecture', href: '#protocol' },
+    { name: 'Workflow', href: '#workflow' },
     { name: 'Governance', href: '#governance' },
-    { name: 'Community', href: '#community' },
   ];
 
   const Modal = ({ title, content, onClose }: { title: string; content: string; onClose: () => void }) => (
@@ -265,6 +265,43 @@ function LandingPage() {
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none -z-0" />
         </section>
 
+        {/* Execution Workflow Section */}
+        <section id="workflow" className="py-40 px-6 relative border-t border-white/5 bg-[#050810]">
+            <div className="max-w-7xl mx-auto">
+                <div className="text-center mb-24">
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-6 italic">Operational Workflow</p>
+                    <h2 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter text-white leading-none">Execute & Log.</h2>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="p-12 rounded-[3.5rem] bg-white/[0.02] border border-white/5 text-left">
+                        <div className="text-blue-500 font-black italic text-4xl mb-8">01</div>
+                        <h4 className="text-xl font-black italic uppercase text-white mb-6">Anchor Identity</h4>
+                        <p className="text-white/30 text-sm font-medium italic uppercase leading-relaxed font-black">
+                            Initialize your behavioral contract. Stake capital and define your specific mandate. Your principal is now locked in escrow.
+                        </p>
+                    </div>
+                    
+                    <div className="p-12 rounded-[3.5rem] bg-white/[0.02] border border-white/5 text-left relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="text-blue-500 font-black italic text-4xl mb-8">02</div>
+                        <h4 className="text-xl font-black italic uppercase text-white mb-6">Log Evidence</h4>
+                        <p className="text-white/30 text-sm font-medium italic uppercase leading-relaxed font-black">
+                            Daily adherence is mandatory. Upload photo or video proof directly to your dashboard. This becomes your behavioral ledger.
+                        </p>
+                    </div>
+                    
+                    <div className="p-12 rounded-[3.5rem] bg-white/[0.02] border border-white/5 text-left">
+                        <div className="text-blue-500 font-black italic text-4xl mb-8">03</div>
+                        <h4 className="text-xl font-black italic uppercase text-white mb-6">Verify & Protect</h4>
+                        <p className="text-white/30 text-sm font-medium italic uppercase leading-relaxed font-black">
+                            Your witnesses review the evidence. Successfully completed mandates earn credits and shields to protect your future capital.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         {/* Protocol Economics Section */}
         <section id="governance" className="py-40 px-6 relative bg-[#020408]">
             <div className="max-w-7xl mx-auto">
@@ -281,15 +318,15 @@ function LandingPage() {
                             
                             <div className="space-y-8">
                                 <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5">
-                                    <p className="text-4xl font-black text-white italic mb-2">Admin Fee</p>
-                                    <p className="text-[10px] uppercase tracking-widest text-blue-500 font-black italic">Platform Revenue</p>
-                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Protocol maintenance is funded by forfeited capital. We take the cost of enforcement from those who break the mandate.</p>
+                                    <p className="text-4xl font-black text-white italic mb-2">Protocol</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-blue-500 font-black italic">Network Stability</p>
+                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Forfeited capital is utilized to ensure the long-term stability and security of the behavioral enclave. This ensures the protocol remains absolute and unyielding.</p>
                                 </div>
                                 
                                 <div className="p-8 rounded-3xl bg-white/[0.02] border border-white/5">
                                     <p className="text-4xl font-black text-white italic mb-2">Rewards</p>
-                                    <p className="text-[10px] uppercase tracking-widest text-white/40 font-black italic">Protocol Credits</p>
-                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Maintain your integrity. Earn non-monetary Protocol Credits for every successful log to unlock protective Shields.</p>
+                                    <p className="text-[10px] uppercase tracking-widest text-white/40 font-black italic">Behavioral Credits</p>
+                                    <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Maintain your streak. Earn non-monetary Protocol Credits for every successful log to unlock protective Shields and elite status.</p>
                                 </div>
                             </div>
                         </div>
@@ -301,7 +338,7 @@ function LandingPage() {
                             Discipline is <br /> <span className="text-blue-500">Non-Negotiable.</span>
                         </h2>
                         <p className="text-xl text-white/40 leading-relaxed font-medium italic uppercase tracking-tight max-w-lg">
-                            We remove the option to quit by making it economically painful. When you stake capital, you aren't just making a promise—you're signing a behavioral contract with the protocol.
+                            We remove the option to quit by making it economically painful. When you stake capital, you aren't just making a promise, you're signing a behavioral contract with the protocol.
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
