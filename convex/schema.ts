@@ -54,7 +54,8 @@ export default defineSchema({
     ),
     title: v.string(),
     description: v.string(),
-    checkin_day: v.string(), // "monday", "tuesday", etc. or "daily"
+    frequency_type: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+    target_count: v.number(), // e.g., 3 (times per week)
   }).index("by_vault", ["vaultId"]).index("by_user", ["userId"]),
 
   goal_logs: defineTable({
@@ -111,6 +112,12 @@ export default defineSchema({
     vaultId: v.optional(v.id("vaults")),
     status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
     description: v.optional(v.string()),
+    metadata: v.optional(v.object({
+      pool_size: v.optional(v.number()),
+      eligible_citizens: v.optional(v.number()),
+      multiplier: v.optional(v.number()),
+      reward_type: v.optional(v.string()),
+    })),
   }).index("by_user", ["userId"]),
 
   system_stats: defineTable({

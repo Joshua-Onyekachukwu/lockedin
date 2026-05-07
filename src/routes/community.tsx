@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useMutation, useConvexAuth } from 'convex/react';
@@ -10,13 +10,9 @@ import {
   X,
   Target,
   Wallet,
-  TrendingUp,
   History,
-  Zap,
   ArrowRight,
-  ChevronRight,
-  Eye,
-  Users
+  ChevronRight
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

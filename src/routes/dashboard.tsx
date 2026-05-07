@@ -21,7 +21,6 @@ import {
   User,
   Users,
   Eye,
-  CheckCircle,
   Clock
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -66,6 +65,7 @@ function Dashboard() {
 
 function DashboardContent({ user }: { user: any }) {
   const { data: vaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, {}) as any);
+  const { data: discoverableVaults } = useSuspenseQuery(convexQuery(api.goals.listDiscoverable, {}) as any);
   const { data: pendingVerifications } = useSuspenseQuery(convexQuery(api.verifications.getPendingVerifications, {}) as any);
   const { data: incomingRequests } = useSuspenseQuery(convexQuery(api.partners.listIncomingRequests, {}) as any);
   const { data: notifications } = useSuspenseQuery(convexQuery((api as any).notifications.list, {}) as any);
@@ -81,9 +81,19 @@ function DashboardContent({ user }: { user: any }) {
   const verifyLog = useMutation(api.verifications.verifyLog);
   const acceptPartnerRequest = useMutation(api.partners.acceptRequest);
   const markRead = useMutation((api as any).notifications.markRead);
+  const requestPartnership = useMutation(api.partners.request);
 
   const handleVerify = async (logId: any, status: 'approved' | 'rejected') => {
       await verifyLog({ logId, status });
+  };
+
+  const handleRequestWitness = async (vaultId: any, partnerId: any) => {
+      try {
+          await requestPartnership({ vaultId, partnerId });
+          alert("Witness Request Transmitted.");
+      } catch (err: any) {
+          alert(err.message || "Failed to transmit request.");
+      }
   };
 
   const unreadCount = (notifications as any[])?.filter?.((n: any) => !n.read).length || 0;
@@ -246,7 +256,7 @@ function DashboardContent({ user }: { user: any }) {
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                     className="space-y-16"
                 >
-                    {incomingRequests && (incomingRequests as any[]).length > 0 && (
+                    {((incomingRequests as any[])?.length || 0) > 0 && (
                         <section className="text-left">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
                                 Incoming Witness Requests
@@ -329,6 +339,59 @@ function DashboardContent({ user }: { user: any }) {
                                 ))}
                             </div>
                         )}
+                    </section>
+
+                    <section className="text-left">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
+                            Explore Protocols & Offer Witnessing
+                            <div className="h-px flex-1 bg-white/5 text-left" />
+                        </h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
+                            {(discoverableVaults as any[])
+                                .filter((v: any) => v.userId !== user._id)
+                                .map((v: any) => (
+                                <div key={v._id} className="p-10 rounded-[3.5rem] border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all text-left shadow-2xl relative overflow-hidden group">
+                                    <div className="absolute top-0 right-0 p-8 text-white/[0.02] group-hover:scale-110 transition-transform">
+                                        <Users size={120} />
+                                    </div>
+                                    <div className="relative z-10">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-orange-500 p-0.5">
+                                                <div className="h-full w-full rounded-full bg-[#0a0f1a] flex items-center justify-center text-[8px] font-black uppercase italic">
+                                                    {v.user?.name?.[0]}
+                                                </div>
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-[9px] font-black text-white italic uppercase tracking-widest">{v.user?.name}</p>
+                                                <p className="text-[8px] text-white/20 uppercase font-black italic">Integrity: {v.user?.integrityScore}%</p>
+                                            </div>
+                                        </div>
+
+                                        <h4 className="text-xl font-black italic uppercase text-white mb-2">{v.goal?.title}</h4>
+                                        <p className="text-[10px] text-white/20 mb-8 italic font-medium uppercase tracking-tighter line-clamp-2">{v.goal?.description}</p>
+                                        
+                                        <div className="flex items-center justify-between mb-8">
+                                            <div className="text-left">
+                                                <p className="text-[8px] font-black uppercase text-white/10 italic">Stake</p>
+                                                <p className="text-sm font-black italic text-blue-500">₦{(v.amount / 100).toLocaleString()}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-[8px] font-black uppercase text-white/10 italic">Frequency</p>
+                                                <p className="text-sm font-black italic text-white uppercase">{v.goal?.frequency_type}</p>
+                                            </div>
+                                        </div>
+
+                                        <button 
+                                            onClick={() => handleRequestWitness(v._id, user._id)}
+                                            className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white hover:text-black transition-all font-black text-[9px] uppercase tracking-widest italic"
+                                        >
+                                            Apply as Witness
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </section>
                 </motion.div>
             ) : (
@@ -568,6 +631,8 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
     const [title, setTitle] = useState('');
     const [amount, setAmount] = useState('50000');
     const [painTier, setPainTier] = useState<'deterrence' | 'enforcement' | 'liquidation'>('deterrence');
+    const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+    const [targetCount, setTargetCount] = useState('1');
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: any) => {
@@ -579,7 +644,8 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
                 description: `Automatic protocol for ${title}. Adherence is strictly monitored.`,
                 stakedAmount: parseInt(amount) * 100, // NGN in Kobo
                 category: 'habit',
-                checkin_day: 'daily',
+                frequency_type: frequency,
+                target_count: parseInt(targetCount),
                 duration_weeks: 4, 
                 painTier: painTier
             });
@@ -598,7 +664,7 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
         >
             <motion.div 
                 initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-                className="w-full max-w-xl bg-[#0a0f1a] border border-white/10 rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+                className="w-full max-w-2xl bg-[#0a0f1a] border border-white/10 rounded-[3.5rem] overflow-y-auto max-h-[90vh] shadow-[0_0_100px_rgba(0,0,0,0.8)]"
             >
                 <form onSubmit={handleSubmit} className="p-12 text-left">
                     <div className="flex items-center justify-between mb-12 text-left">
@@ -621,19 +687,48 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
                             />
                         </div>
 
-                        <div className="text-left">
-                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Staked Principal (NGN)</label>
-                            <div className="relative text-left">
-                                <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-white/20 italic">₦</span>
-                                <input 
-                                    type="number"
-                                    required
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-12 pr-6 py-5 outline-none focus:border-blue-500 transition-all font-bold italic text-white text-xl"
-                                />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="text-left">
+                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Staked Principal (NGN)</label>
+                                <div className="relative text-left">
+                                    <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-white/20 italic">₦</span>
+                                    <input 
+                                        type="number"
+                                        required
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-12 pr-6 py-5 outline-none focus:border-blue-500 transition-all font-bold italic text-white text-xl"
+                                    />
+                                </div>
+                            </div>
+                            <div className="text-left">
+                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Frequency</label>
+                                <select 
+                                    value={frequency}
+                                    onChange={(e: any) => setFrequency(e.target.value)}
+                                    className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-6 py-5 outline-none focus:border-blue-500 transition-all font-bold italic uppercase tracking-widest text-sm text-white appearance-none cursor-pointer"
+                                >
+                                    <option value="daily" className="bg-[#0a0f1a]">Daily Log</option>
+                                    <option value="weekly" className="bg-[#0a0f1a]">Weekly Target</option>
+                                    <option value="monthly" className="bg-[#0a0f1a]">Monthly Target</option>
+                                </select>
                             </div>
                         </div>
+
+                        {frequency !== 'daily' && (
+                            <div className="text-left">
+                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Target Count ({frequency === 'weekly' ? 'per week' : 'per month'})</label>
+                                <input 
+                                    type="number"
+                                    min="1"
+                                    max={frequency === 'weekly' ? "7" : "31"}
+                                    required
+                                    value={targetCount}
+                                    onChange={(e) => setTargetCount(e.target.value)}
+                                    className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-6 py-5 outline-none focus:border-blue-500 transition-all font-bold italic text-white text-xl"
+                                />
+                            </div>
+                        )}
 
                         <div className="text-left font-black uppercase italic tracking-widest text-[10px]">
                             <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block">Pain Specification</label>

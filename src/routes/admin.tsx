@@ -8,17 +8,11 @@ import {
   Download, 
   TrendingUp, 
   ShieldCheck,
-  Search,
   MoreVertical,
   Wallet,
   Activity,
   ArrowLeft,
-  Settings,
-  ArrowUpRight,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  History
+  Settings
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,7 +35,6 @@ function AdminDashboard() {
   const approveWithdrawal = useMutation(api.admin.approveWithdrawal);
   const enforceBreach = useMutation(api.admin.enforceProtocolBreach);
 
-  const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'waitlist' | 'withdrawals' | 'breaches'>('withdrawals');
 
   useEffect(() => {

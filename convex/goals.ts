@@ -33,7 +33,8 @@ export const create = mutation({
       v.literal("habit"),
       v.literal("professional")
     ),
-    checkin_day: v.string(),
+    frequency_type: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+    target_count: v.number(),
     duration_weeks: v.number(), 
     stakedAmount: v.number(),
     painTier: v.union(
@@ -73,7 +74,8 @@ export const create = mutation({
       category: args.category,
       title: args.title,
       description: args.description,
-      checkin_day: args.checkin_day,
+      frequency_type: args.frequency_type,
+      target_count: args.target_count,
     });
 
     await ctx.db.insert("transactions", {

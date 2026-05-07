@@ -10,14 +10,12 @@ import {
   ShieldCheck, 
   Globe, 
   ArrowLeft,
-  Save,
   Loader2,
   Lock,
   Eye,
   EyeOff
 } from 'lucide-react';
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 
 export const Route = createFileRoute('/profile')({
   component: ProfileSettings,

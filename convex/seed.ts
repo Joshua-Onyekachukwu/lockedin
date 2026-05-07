@@ -77,7 +77,8 @@ export const createSeedUser = internalMutation({
             category: "habit",
             title: args.goalTitle,
             description: `Mandatory adherence for ${args.name}. Failure results in economic liquidation.`,
-            checkin_day: "daily"
+            frequency_type: "daily",
+            target_count: 1
         });
 
         await ctx.db.insert("transactions", {

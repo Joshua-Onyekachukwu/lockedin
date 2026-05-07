@@ -19,8 +19,6 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as VaultIdRouteImport } from './routes/vault.$id'
 import { Route as InviteVaultIdRouteImport } from './routes/invite.$vaultId'
-import { Route as VaultRouteImport } from './routes/vault.'
-import { Route as InviteRouteImport } from './routes/invite.'
 
 const VerifyBvnRoute = VerifyBvnRouteImport.update({
   id: '/verify-bvn',
@@ -72,16 +70,6 @@ const InviteVaultIdRoute = InviteVaultIdRouteImport.update({
   path: '/invite/$vaultId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const VaultRoute = VaultRouteImport.update({
-  id: '/vault/',
-  path: '/vault/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InviteRoute = InviteRouteImport.update({
-  id: '/invite/',
-  path: '/invite/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -92,8 +80,6 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
-  '/invite/': typeof InviteRoute
-  '/vault/': typeof VaultRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
@@ -106,8 +92,6 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
-  '/invite': typeof InviteRoute
-  '/vault': typeof VaultRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
@@ -121,8 +105,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
-  '/invite/': typeof InviteRoute
-  '/vault/': typeof VaultRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
@@ -137,8 +119,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
-    | '/invite/'
-    | '/vault/'
     | '/invite/$vaultId'
     | '/vault/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -151,8 +131,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
-    | '/invite'
-    | '/vault'
     | '/invite/$vaultId'
     | '/vault/$id'
   id:
@@ -165,8 +143,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
-    | '/invite/'
-    | '/vault/'
     | '/invite/$vaultId'
     | '/vault/$id'
   fileRoutesById: FileRoutesById
@@ -180,8 +156,6 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   VerifyBvnRoute: typeof VerifyBvnRoute
-  InviteRoute: typeof InviteRoute
-  VaultRoute: typeof VaultRoute
   InviteVaultIdRoute: typeof InviteVaultIdRoute
   VaultIdRoute: typeof VaultIdRoute
 }
@@ -258,20 +232,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteVaultIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/vault/': {
-      id: '/vault/'
-      path: '/vault'
-      fullPath: '/vault/'
-      preLoaderRoute: typeof VaultRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invite/': {
-      id: '/invite/'
-      path: '/invite'
-      fullPath: '/invite/'
-      preLoaderRoute: typeof InviteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -284,8 +244,6 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   VerifyBvnRoute: VerifyBvnRoute,
-  InviteRoute: InviteRoute,
-  VaultRoute: VaultRoute,
   InviteVaultIdRoute: InviteVaultIdRoute,
   VaultIdRoute: VaultIdRoute,
 }

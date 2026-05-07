@@ -5,10 +5,10 @@ Lockedin is a zero-trust behavioral bank built to solve the human willpower prob
 ## 🏗️ The Stack
 - **Frontend:** TanStack Start (React + Vite + File-based Routing)
 - **Backend:** [Convex](https://convex.dev) (Real-time DB, Server Functions, Crons)
-- **Styling:** Tailwind CSS v4 (Brutalist Aesthetic)
+- **Styling:** Tailwind CSS v4 (Industrial Aesthetic)
 - **Auth:** Convex Auth (@convex-dev/auth)
 - **Payments:** Paystack (Naira Escrow)
-- **AI:** OpenRouter (Behavioral Verification)
+- **KYC:** Mono/Smile ID (Identity Anchoring)
 
 ## ⚖️ The Protocol Mechanics
 
@@ -20,41 +20,30 @@ When a citizen anchors a mandate, they select their level of economic pain:
 
 ### 2. Protocol Credits & Shields
 Success is rewarded with **Protocol Credits** (Non-monetary).
-- **Credits:** Earned via successful daily logs.
+- **Credits:** Earned via successful adherence logs.
 - **Shields:** Acquired in the Protocol Store using credits. A Shield protects your principal stake by "canceling" a breach log once.
 
 ### 3. Identity Anchoring
-Every user is anchored via **BVN Hash** to prevent sybil attacks and ensure behavioral accountability.
+Every user is anchored via **BVN Hash** to prevent sybil attacks and ensure behavioral accountability. Identity verification is required for capital extraction.
 
-## 🚀 Deployment & Seeding
+## 🚀 Live Deployment Protocol
 
-### Local Development
-1. Clone the repo and install dependencies:
-   ```bash
-   npm install
-   ```
-2. Initialize the Convex backend:
-   ```bash
-   npx convex dev
-   ```
-3. Run the frontend:
-   ```bash
-   npm run dev
-   ```
+### Production (Vercel + Convex Cloud)
+1. **Convex Configuration:**
+   - Link your local project to Convex Cloud: `npx convex dev` (select your production project).
+   - In your **Convex Dashboard**, configure the following Environment Variables:
+     - `PAYSTACK_SECRET_KEY` (Live Key)
+     - `AUTH_RESEND_KEY` (For magic link emails)
+     - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` (For Google SSO)
 
-### Mass Seeding (Bulk Users)
-To populate the protocol with 1,000+ active citizens for a bustling community feed:
-```bash
-npx convex run seed:runMassSeed '{"count": 1000}'
-```
+2. **Frontend Hosting (Vercel):**
+   - Link your GitHub repository to Vercel.
+   - Add `VITE_CONVEX_URL` to Vercel Environment Variables (obtained from Convex Dashboard).
+   - Set the build command to `npm run build` and output directory to `.output`.
 
-### Production (Vercel)
-1. Set up a new project on Vercel and link this GitHub repo.
-2. Add `VITE_CONVEX_URL` to your Vercel Environment Variables.
-3. In your **Convex Dashboard**, add these keys:
-   - `PAYSTACK_SECRET_KEY`
-   - `OPENROUTER_API_KEY`
-   - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`
+3. **Domain Configuration:**
+   - Map your custom domain (e.g., lockedin.io) to your Vercel deployment.
+   - Configure your Paystack Webhook URL to point to your Convex production HTTP endpoint.
 
 ## 🛡️ Security Architecture
 - **Non-Custodial Logic:** All funds are tracked via atomic ledger entries in the `transactions` table.

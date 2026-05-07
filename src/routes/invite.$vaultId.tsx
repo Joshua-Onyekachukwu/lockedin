@@ -18,7 +18,7 @@ export const Route = createFileRoute('/invite/$vaultId')({
 });
 
 function PartnerInvite() {
-  const { goalId } = Route.useParams();
+  const { vaultId } = Route.useParams();
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const { data: user } = useSuspenseQuery(convexQuery(api.users.current, {}));
@@ -26,7 +26,7 @@ function PartnerInvite() {
   const joinAsPartner = useMutation(api.partners.join);
   
   const { data: vault }: { data: any } = useSuspenseQuery(convexQuery(api.goals.getFullContext, { 
-    vaultId: goalId as any
+    vaultId: vaultId as any
   }));
 
   useEffect(() => {
@@ -38,7 +38,7 @@ function PartnerInvite() {
   const handleAccept = async () => {
     if (!user?._id) return;
     await joinAsPartner({
-        vaultId: goalId as any,
+        vaultId: vaultId as any,
         role: 'verifier'
     });
     navigate({ to: '/dashboard' });
