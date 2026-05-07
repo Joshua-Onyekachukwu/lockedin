@@ -54,7 +54,8 @@ export const createSeedUser = internalMutation({
             tier: args.stake > 200000 ? "gold" : args.stake > 50000 ? "silver" : "bronze",
             shields: Math.floor(Math.random() * 5),
             credits: Math.floor(Math.random() * 5000),
-            witness_discoverable: Math.random() > 0.3
+            witness_discoverable: Math.random() > 0.3,
+            is_discoverable: true,
         });
 
         const vaultId = await ctx.db.insert("vaults", {

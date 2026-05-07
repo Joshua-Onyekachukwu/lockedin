@@ -37,9 +37,9 @@ export const create = mutation({
     duration_weeks: v.number(), 
     stakedAmount: v.number(),
     painTier: v.union(
-      v.literal("chill"),
-      v.literal("serious"),
-      v.literal("lockedin")
+      v.literal("deterrence"),
+      v.literal("enforcement"),
+      v.literal("liquidation")
     ),
   },
   returns: v.id("vaults"),
