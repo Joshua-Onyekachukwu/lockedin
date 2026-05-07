@@ -40,9 +40,9 @@ Every user is anchored via **BVN Hash** to prevent sybil attacks and ensure beha
    - Link your GitHub repository to Vercel.
    - Add `VITE_CONVEX_URL` to Vercel Environment Variables (obtained from Convex Dashboard).
    - In Vercel Project Settings:
-     - **Framework Preset:** Other
+     - **Framework Preset:** Select **TanStack Start**.
      - **Build Command:** `npm run build`
-     - **Output Directory:** `.vercel/output` (The `NITRO_PRESET=vercel` build script will generate this automatically).
+     - **Output Directory:** (Keep default/Empty - Vercel will handle it).
    - Redeploy the application.
 
 3. **Domain Configuration:**
