@@ -14,7 +14,7 @@ async function checkAdmin(ctx: any) {
     if (userId === null) throw new Error("UNAUTHORIZED: ACCESS DENIED");
     
     const user = await ctx.db.get(userId);
-    if (!user || !user.email || !ADMIN_EMAILS.includes(user.email)) {
+    if (!user || !user.email || !ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase())) {
         throw new Error("SECURITY ALERT: Administrative privileges required.");
     }
     return user;

@@ -211,9 +211,15 @@ function LandingPage() {
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mb-16 sm:mb-24 text-center px-4">
-                <Link to="/login" className="w-full sm:w-auto group relative px-10 sm:px-12 py-5 sm:py-6 rounded-2xl sm:rounded-[2rem] bg-blue-600 text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-blue-900/40 italic">
-                    <span className="relative flex items-center justify-center gap-3 text-center">Enlist in Protocol <ArrowRight size={18} /></span>
-                </Link>
+                {isAuthenticated ? (
+                    <Link to="/dashboard" className="w-full sm:w-auto group relative px-10 sm:px-12 py-5 sm:py-6 rounded-2xl sm:rounded-[2rem] bg-blue-600 text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-blue-900/40 italic">
+                        <span className="relative flex items-center justify-center gap-3 text-center">Return to Terminal <ArrowRight size={18} /></span>
+                    </Link>
+                ) : (
+                    <Link to="/login" className="w-full sm:w-auto group relative px-10 sm:px-12 py-5 sm:py-6 rounded-2xl sm:rounded-[2rem] bg-blue-600 text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-blue-900/40 italic">
+                        <span className="relative flex items-center justify-center gap-3 text-center">Enlist in Protocol <ArrowRight size={18} /></span>
+                    </Link>
+                )}
                 <a href="#protocol" className="w-full sm:w-auto px-10 sm:px-12 py-5 sm:py-6 rounded-2xl sm:rounded-[2rem] border border-white/10 bg-white/5 text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.3em] hover:bg-white/10 transition-all italic text-center">
                     Operational Manual
                 </a>

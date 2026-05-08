@@ -50,14 +50,22 @@ function LoginPage() {
         });
       } else {
         await signIn("password", { 
-            email: formData.email, 
-            password: formData.password, 
-            flow: "signIn" 
-        });
-      }
+        email: formData.email, 
+        password: formData.password, 
+        flow: "signIn" 
+      });
       navigate({ to: '/dashboard' });
     } catch (err: any) {
-      setError(err.message || "An error occurred during authentication.");
+      let friendlyError = err.message || "An error occurred during authentication.";
+      
+      // Specifically handle the Convex Auth "InvalidAccountId" error which means user doesn't exist during sign-in
+      if (err.message?.includes("InvalidAccountId")) {
+        friendlyError = "Identity not found. This email is not registered with the protocol. Please switch to 'Initiate Identity' to sign up.";
+      } else if (err.message?.includes("InvalidPassword")) {
+        friendlyError = "Security Key mismatch. Authorization denied.";
+      }
+      
+      setError(friendlyError);
       setIsPending(false);
     }
   };
