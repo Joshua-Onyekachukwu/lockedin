@@ -113,7 +113,7 @@ function LandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2 group cursor-pointer text-left">
             <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-transform group-hover:scale-110 group-active:scale-95">
-                <Lock size={14} sm:size={16} strokeWidth={2.5} className="text-white" />
+                <Lock strokeWidth={2.5} className="text-white w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
             <span className="text-lg sm:text-xl font-black tracking-tighter uppercase italic text-white text-left leading-none">
               Lock<span className="text-blue-500">edin</span>
@@ -197,7 +197,7 @@ function LandingPage() {
               transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
             >
               <div className="inline-flex items-center gap-2 sm:gap-3 rounded-full border border-blue-500/20 bg-blue-500/5 px-4 sm:px-6 py-1.5 sm:py-2 text-[8px] sm:text-[10px] font-black tracking-[0.2em] sm:tracking-[0.4em] text-blue-400 uppercase mb-8 sm:mb-12 shadow-[0_0_40px_rgba(59,130,246,0.1)] italic text-center">
-                <CircleDot size={10} sm:size={12} className="animate-pulse" /> Protocol v1.1 Live in Nigeria
+                <CircleDot className="animate-pulse w-2.5 h-2.5 sm:w-3 sm:h-3" /> Protocol v1.1 Live in Nigeria
               </div>
               
               <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-[-0.05em] text-white leading-[0.9] sm:leading-[0.85] uppercase italic mb-8 sm:mb-12 text-balance text-center px-2">
@@ -205,7 +205,7 @@ function LandingPage() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20 text-center">Money where your mouth is.</span>
               </h1>
               
-              <p className="mx-auto max-w-2xl text-base sm:text-lg md:text-xl text-white/40 leading-relaxed font-black italic mb-10 sm:mb-16 uppercase tracking-tight text-center px-4">
+              <p className="mx-auto max-w-2xl text-xs sm:text-sm md:text-base text-white/40 leading-relaxed font-black italic mb-10 sm:mb-16 uppercase tracking-tight text-center px-4">
                 THE BEHAVIORAL ENFORCEMENT MANDATE. <br className="hidden sm:block" />
                 ANCHOR YOUR GOALS WITH CAPITAL. DO WHAT YOU SAID YOU WOULD DO, OR LOSE THE STAKE. NO EXCUSES.
               </p>
@@ -253,7 +253,7 @@ function LandingPage() {
                         <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-[0.9] sm:leading-[0.85] text-white">
                             The Integrity <br /> <span className="text-blue-500">Economy.</span>
                         </h2>
-                        <p className="text-base sm:text-xl text-white/40 leading-relaxed font-black italic uppercase tracking-tight max-w-lg">
+                        <p className="text-sm sm:text-base text-white/40 leading-relaxed font-black italic uppercase tracking-tight max-w-lg">
                             IN A WORLD OF CONSTANT DISTRACTION, DISCIPLINE IS THE RAREST COMMODITY. LOCKEDIN CONVERTS YOUR CONSISTENCY INTO A HARD ASSET, BACKED BY CAPITAL AND SOCIAL PROOF.
                         </p>
                     </div>
@@ -300,7 +300,7 @@ function LandingPage() {
                     Willpower is a <br className="sm:hidden" /> <span className="text-transparent bg-clip-text bg-gradient-to-b from-blue-500 to-blue-800 text-center">Finite Resource.</span> <br />
                     Systemic Risk is a <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20 text-center">Guarantee.</span>
                 </h2>
-                <p className="mt-12 sm:mt-24 text-base sm:text-xl text-white/40 font-black italic uppercase tracking-tight max-w-2xl mx-auto leading-relaxed text-center">
+                <p className="mt-12 sm:mt-24 text-sm sm:text-base text-white/40 font-black italic uppercase tracking-tight max-w-2xl mx-auto leading-relaxed text-center">
                     MOST GOALS FAIL BECAUSE HUMANS ARE HARDWIRED TO SEEK COMFORT. WE NEGOTIATE WITH OUR WEAKNESS. LOCKEDIN REMOVES THE OPTION TO QUIT.
                 </p>
             </div>
@@ -312,7 +312,7 @@ function LandingPage() {
                 <div className="mb-16 sm:mb-24">
                     <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ff7a00] mb-6 sm:mb-8 italic">Enforcement Tiers</p>
                     <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter text-white leading-none text-balance">Choose your <br /> <span className="text-white/20">Behavioral Threshold.</span></h2>
-                    <p className="mt-6 sm:mt-8 text-white/40 text-base sm:text-lg font-black italic uppercase tracking-tight max-w-2xl">
+                    <p className="mt-6 sm:mt-8 text-white/40 text-[10px] sm:text-xs font-black italic uppercase tracking-tight max-w-2xl">
                         YOU DEFINE THE COST OF YOUR FAILURE. LOCKEDIN ALLOWS YOU TO CALIBRATE THE PAIN PROTOCOL BASED ON THE SEVERITY OF YOUR MANDATE.
                     </p>
                 </div>
@@ -350,7 +350,7 @@ function LandingPage() {
                                 <span className="text-3xl sm:text-4xl font-black italic text-white tracking-tighter">{item.penalty}</span>
                             </div>
                             <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter mb-4 sm:mb-6 text-white leading-tight">Daily <br /> Forfeiture.</h3>
-                            <p className="text-white/40 text-xs sm:text-sm font-black italic uppercase leading-relaxed tracking-tight mb-8">
+                            <p className="text-white/40 text-[10px] sm:text-xs font-black italic uppercase leading-relaxed tracking-tight mb-8">
                                 {item.desc}
                             </p>
                             <div className={`h-1 w-full bg-white/5 rounded-full overflow-hidden`}>
@@ -400,7 +400,7 @@ function LandingPage() {
                                 {item.icon}
                             </div>
                             <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter mb-4 sm:mb-6 text-white leading-tight">{item.title}</h3>
-                            <p className="text-white/30 text-xs sm:text-sm font-black italic uppercase leading-relaxed tracking-tight">
+                            <p className="text-white/30 text-[10px] sm:text-xs font-black italic uppercase leading-relaxed tracking-tight">
                                 {item.desc}
                             </p>
                         </div>
@@ -418,7 +418,7 @@ function LandingPage() {
                         <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-[0.9] sm:leading-[0.85] text-white">
                             Sunday <br /> <span className="text-blue-500">Liquidation.</span>
                         </h2>
-                        <p className="text-base sm:text-xl text-white/40 leading-relaxed font-black italic uppercase tracking-tight max-w-lg">
+                        <p className="text-xs sm:text-sm md:text-base text-white/40 leading-relaxed font-black italic uppercase tracking-tight max-w-lg">
                             PROTOCOL BREACHES FUND THE ENCLAVE. EVERY SUNDAY, THE PENALTY POOL IS REDISTRIBUTED TO CITIZENS WITH PERFECT INTEGRITY SCORES. WE DON'T JUST PUNISH FAILURE WE SUBSIDIZE ELITE PERFORMANCE.
                         </p>
                     </div>
@@ -435,13 +435,13 @@ function LandingPage() {
                                 <div className="p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-inner group hover:bg-white/[0.04] transition-colors">
                                     <p className="text-2xl sm:text-4xl font-black text-white italic mb-3 sm:mb-4">CAPITAL POOL</p>
                                     <p className="text-[8px] sm:text-[10px] uppercase tracking-widest text-blue-500 font-black italic mb-4 sm:mb-6">DISTRIBUTION PROTOCOL</p>
-                                    <p className="text-[10px] sm:text-xs text-white/30 leading-relaxed font-black italic uppercase text-balance">FORFEITED PRINCIPAL FROM MANDATE BREACHES IS POOLED AND SYNCHRONIZED. PERFECT ADHERENCE CITIZENS RECEIVE THESE REWARDS AS NON-MONETARY PROTOCOL CREDITS AND STATUS MULTIPLIERS.</p>
+                                    <p className="text-[9px] sm:text-[10px] text-white/30 leading-relaxed font-black italic uppercase text-balance">FORFEITED PRINCIPAL FROM MANDATE BREACHES IS POOLED AND SYNCHRONIZED. PERFECT ADHERENCE CITIZENS RECEIVE THESE REWARDS AS NON-MONETARY PROTOCOL CREDITS AND STATUS MULTIPLIERS.</p>
                                 </div>
                                 
                                 <div className="p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-inner group hover:bg-white/[0.04] transition-colors">
                                     <p className="text-2xl sm:text-4xl font-black text-white italic mb-3 sm:mb-4">INTEGRITY</p>
                                     <p className="text-[8px] sm:text-[10px] uppercase tracking-widest text-white/40 font-black italic mb-4 sm:mb-6">THE HIGH PERFORMERS</p>
-                                    <p className="text-[10px] sm:text-xs text-white/30 leading-relaxed font-black italic uppercase text-balance">CITIZENS WITH 100% ADHERENCE ARE SHIELDED FROM FUTURE POOL SWEEPS. YOUR DISCIPLINE EARNS YOU IMMUNITY FROM THE PROTOCOL'S HARSHEST ENFORCEMENTS.</p>
+                                    <p className="text-[9px] sm:text-[10px] text-white/30 leading-relaxed font-black italic uppercase text-balance">CITIZENS WITH 100% ADHERENCE ARE SHIELDED FROM FUTURE POOL SWEEPS. YOUR DISCIPLINE EARNS YOU IMMUNITY FROM THE PROTOCOL'S HARSHEST ENFORCEMENTS.</p>
                                 </div>
                             </div>
                         </div>
@@ -467,7 +467,7 @@ function LandingPage() {
                     ].map((item, i) => (
                         <div key={i} className="p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[3rem] bg-[#0a0f1a] border border-white/5 hover:border-white/10 transition-all group">
                             <h4 className="text-lg sm:text-2xl font-black italic uppercase text-white mb-4 sm:mb-6 group-hover:text-blue-500 transition-colors font-black leading-tight">{item.q}</h4>
-                            <p className="text-[10px] sm:text-sm text-white/30 font-black italic uppercase leading-relaxed tracking-tight">{item.a}</p>
+                            <p className="text-[10px] sm:text-xs text-white/30 font-black italic uppercase leading-relaxed tracking-tight">{item.a}</p>
                         </div>
                     ))}
                 </div>
@@ -477,10 +477,10 @@ function LandingPage() {
         <section id="identity" className="py-24 sm:py-32 md:py-48 px-4 sm:px-6 relative overflow-hidden border-t border-white/5 text-center">
             <div className="max-w-4xl mx-auto relative z-10 w-full">
                 <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-2xl sm:rounded-[2.5rem] bg-blue-600 flex items-center justify-center mx-auto mb-8 sm:mb-12 shadow-[0_0_50px_rgba(37,99,235,0.4)]">
-                    <History size={30} sm:size={40} className="text-white" />
+                    <History className="text-white w-7 h-7 sm:w-10 sm:h-10" />
                 </div>
                 <h2 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-black italic uppercase tracking-tighter mb-8 sm:mb-10 text-white leading-none">Stop making <br /> <span className="text-white/20">Empty Promises.</span></h2>
-                <p className="text-base sm:text-xl text-white/40 font-black italic uppercase tracking-tight mb-12 sm:mb-20 leading-relaxed text-center px-4">
+                <p className="text-xs sm:text-sm md:text-base text-white/40 font-black italic uppercase tracking-tight mb-12 sm:mb-20 leading-relaxed text-center px-4">
                     JOIN THE PROTOCOL TODAY. ANCHOR YOUR DISCIPLINE WITH CAPITAL AND START WINNING THE WAR AGAINST MEDIOCRITY.
                 </p>
 
@@ -489,7 +489,7 @@ function LandingPage() {
                         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                         className="p-10 sm:p-16 rounded-[2rem] sm:rounded-[4rem] bg-green-500/10 border border-green-500/20 flex flex-col items-center gap-6 shadow-2xl mx-4"
                     >
-                        <CheckCircle2 size={40} sm:size={60} className="text-green-500" />
+                        <CheckCircle2 className="text-green-500 w-10 h-10 sm:w-14 sm:h-14" />
                         <div className="space-y-2">
                             <p className="text-2xl sm:text-3xl font-black italic uppercase text-green-500">Identity Anchored.</p>
                             <p className="text-[10px] sm:text-sm uppercase tracking-widest font-black italic text-white/40">We will reach out via your secure email soon.</p>
@@ -528,7 +528,7 @@ function LandingPage() {
                             <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-2xl italic text-xl shadow-blue-900/40">L</div>
                             <span className="text-2xl sm:text-3xl font-black tracking-tighter uppercase italic text-white leading-none">Lockedin</span>
                         </div>
-                        <p className="text-lg sm:text-xl text-white/30 font-black italic uppercase tracking-tight mb-8 sm:mb-12 leading-relaxed text-balance">
+                        <p className="text-xs sm:text-sm md:text-base text-white/30 font-black italic uppercase tracking-tight mb-8 sm:mb-12 leading-relaxed text-balance">
                             LOCKEDIN IS A BEHAVIORAL ENFORCEMENT MANDATE FOR THOSE WHO REFUSE TO LIVE MEDIOCRE LIVES.
                         </p>
                         <div className="flex gap-4">

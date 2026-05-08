@@ -13,10 +13,9 @@ import {
   Activity,
   ArrowLeft,
   Settings,
-  AlertCircle,
   Lock
 } from 'lucide-react';
-import { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const Route = createFileRoute('/admin')({
@@ -34,8 +33,6 @@ function AdminWrapper() {
 }
 
 // Simple Error Boundary Component for Admin
-import React from 'react';
-
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
     constructor(props: any) {
         super(props);
