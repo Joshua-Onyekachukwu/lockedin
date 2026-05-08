@@ -15,6 +15,8 @@ function LoginPage() {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [isNameFocused, setIsNameFocused] = useState(false);
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -138,17 +140,28 @@ function LoginPage() {
                             type="text"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            onFocus={() => setIsNameFocused(true)}
+                            onBlur={() => setIsNameFocused(false)}
                             placeholder="John Doe"
                             className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-16 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-sm text-white"
                         />
                     </div>
                 </div>
                 
-                <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 mb-2">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-blue-400 italic leading-relaxed">
-                        IDENTITY VERIFICATION: ENSURE YOUR NAME MATCHES YOUR BVN RECORD. MISMATCHES WILL TRIGGER A FRAUD ALERT DURING WITHDRAWAL.
-                    </p>
-                </div>
+                <AnimatePresence>
+                    {isNameFocused && (
+                        <motion.div 
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 mb-2 overflow-hidden"
+                        >
+                            <p className="text-[9px] font-black uppercase tracking-widest text-blue-400 italic leading-relaxed">
+                                IDENTITY VERIFICATION: ENSURE YOUR NAME MATCHES YOUR BVN RECORD. MISMATCHES WILL TRIGGER A FRAUD ALERT DURING WITHDRAWAL.
+                            </p>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
               </div>
             )}
 

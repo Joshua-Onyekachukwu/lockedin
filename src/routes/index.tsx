@@ -207,7 +207,7 @@ function LandingPage() {
               
               <p className="mx-auto max-w-2xl text-xs sm:text-sm md:text-base text-white/40 leading-relaxed font-black italic mb-10 sm:mb-16 uppercase tracking-tight text-center px-4">
                 STOP MAKING EMPTY PROMISES. STAKE CAPITAL ON YOUR DAILY HABITS, UPLOAD PROOF OF PROGRESS, AND EARN BACK YOUR COMMITMENT. <br className="hidden sm:block" />
-                IF YOU FAIL, YOU LOSE THE STAKE. IT'S THAT SIMPLE.
+                FAILURE TRIGGERS AUTOMATIC PENALTIES. CONSISTENCY EARNS REWARDS.
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mb-16 sm:mb-24 text-center px-4">
