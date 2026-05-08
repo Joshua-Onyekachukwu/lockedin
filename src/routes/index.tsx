@@ -58,7 +58,7 @@ function LandingPage() {
 
   const navLinks = [
     { name: 'Protocol', href: '#protocol' },
-    { name: 'Architecture', href: '#architecture' },
+    { name: 'How it Works', href: '#architecture' },
     { name: 'Sunday Liquidation', href: '#governance' },
   ];
 
@@ -202,12 +202,12 @@ function LandingPage() {
               
               <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-[-0.05em] text-white leading-[0.9] sm:leading-[0.85] uppercase italic mb-8 sm:mb-12 text-balance text-center px-2">
                 Commit <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20 text-center">Money where your mouth is.</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20 text-center">Capital behind your Goals.</span>
               </h1>
               
               <p className="mx-auto max-w-2xl text-xs sm:text-sm md:text-base text-white/40 leading-relaxed font-black italic mb-10 sm:mb-16 uppercase tracking-tight text-center px-4">
-                THE BEHAVIORAL ENFORCEMENT MANDATE. <br className="hidden sm:block" />
-                ANCHOR YOUR GOALS WITH CAPITAL. DO WHAT YOU SAID YOU WOULD DO, OR LOSE THE STAKE. NO EXCUSES.
+                STOP MAKING EMPTY PROMISES. STAKE CAPITAL ON YOUR DAILY HABITS, UPLOAD PROOF OF PROGRESS, AND EARN BACK YOUR COMMITMENT. <br className="hidden sm:block" />
+                IF YOU FAIL, YOU LOSE THE STAKE. IT'S THAT SIMPLE.
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mb-16 sm:mb-24 text-center px-4">
@@ -235,16 +235,16 @@ function LandingPage() {
                                 <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> CITIZEN JOSHUA STAKED ₦250K
                             </span>
                             <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-red-500 tracking-widest text-left">
-                                <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> MANDATE BREACH: ₦25K FORFEITED
+                                <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> GOAL BREACH: ₦25K FORFEITED
                             </span>
                             <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-white/40 tracking-widest text-left">
-                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> NEW MANDATE INITIALIZED: ₦50K
+                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> NEW GOAL INITIALIZED: ₦50K
                             </span>
                             <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-blue-500 tracking-widest text-glow-blue text-left">
                                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)]" /> SYSTEM INTEGRITY: 99.1%
                             </span>
                             <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-white/40 tracking-widest text-left">
-                                <span className="h-1.5 w-1.5 rounded-full bg-purple-500" /> CITIZEN SARAH COMPLETED WEEKLY MANDATE
+                                <span className="h-1.5 w-1.5 rounded-full bg-purple-500" /> CITIZEN SARAH COMPLETED WEEKLY GOAL
                             </span>
                             <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-green-500 tracking-widest text-left">
                                 <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> REWARD POOL PAYOUT: ₦12.5K CREDITED
@@ -328,7 +328,7 @@ function LandingPage() {
                     <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ff7a00] mb-6 sm:mb-8 italic">Enforcement Tiers</p>
                     <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter text-white leading-none text-balance">Choose your <br /> <span className="text-white/20">Behavioral Threshold.</span></h2>
                     <p className="mt-6 sm:mt-8 text-white/40 text-[10px] sm:text-xs font-black italic uppercase tracking-tight max-w-2xl">
-                        YOU DEFINE THE COST OF YOUR FAILURE. LOCKEDIN ALLOWS YOU TO CALIBRATE THE PAIN PROTOCOL BASED ON THE SEVERITY OF YOUR MANDATE.
+                        YOU DEFINE THE COST OF YOUR FAILURE. LOCKEDIN ALLOWS YOU TO CALIBRATE THE PAIN PROTOCOL BASED ON THE SEVERITY OF YOUR GOAL.
                     </p>
                 </div>
 
@@ -392,20 +392,20 @@ function LandingPage() {
                     {[
                         { 
                             step: "01", 
-                            title: "Anchor Identity", 
-                            desc: "INITIALIZE YOUR BEHAVIORAL CONTRACT. STAKE CAPITAL AND DEFINE YOUR SPECIFIC MANDATE. YOUR PRINCIPAL IS NOW LOCKED IN ESCROW.",
+                            title: "Lock your Stake", 
+                            desc: "DEFINE YOUR TARGET GOAL AND LOCK YOUR CAPITAL IN THE SECURE PROTOCOL VAULT. YOUR STAKE IS NOW BINDING.",
                             icon: <Shield className="text-blue-500" />
                         },
                         { 
                             step: "02", 
-                            title: "Log Evidence", 
-                            desc: "DAILY ADHERENCE IS MANDATORY. UPLOAD PHOTO PROOF DIRECTLY TO YOUR DASHBOARD TERMINAL. THIS BECOMES YOUR BEHAVIORAL LEDGER.",
+                            title: "Prove the Work", 
+                            desc: "CONSISTENCY IS THE ONLY WAY. UPLOAD PHOTO PROOF OF YOUR PROGRESS EVERY 24 HOURS TO YOUR PRIVATE DASHBOARD.",
                             icon: <Camera className="text-[#ff7a00]" />
                         },
                         { 
                             step: "03", 
-                            title: "Verify & Protect", 
-                            desc: "YOUR WITNESSES REVIEW THE EVIDENCE. SUCCESSFULLY COMPLETED MANDATES EARN CREDITS AND SHIELDS TO PROTECT YOUR FUTURE CAPITAL.",
+                            title: "Extract or Forfeit", 
+                            desc: "COMMUNITY WITNESSES VERIFY YOUR PROGRESS. COMPLETED GOALS UNLOCK YOUR CAPITAL AND EARN YOU SYSTEM REWARDS.",
                             icon: <ShieldCheck className="text-green-500" />
                         }
                     ].map((item, i) => (
@@ -448,7 +448,7 @@ function LandingPage() {
                                 <div className="p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-inner group hover:bg-white/[0.04] transition-colors">
                                     <p className="text-2xl sm:text-4xl font-black text-white italic mb-3 sm:mb-4">CAPITAL POOL</p>
                                     <p className="text-[8px] sm:text-[10px] uppercase tracking-widest text-blue-500 font-black italic mb-4 sm:mb-6">DISTRIBUTION PROTOCOL</p>
-                                    <p className="text-[9px] sm:text-[10px] text-white/30 leading-relaxed font-black italic uppercase text-balance">FORFEITED PRINCIPAL FROM MANDATE BREACHES IS POOLED AND SYNCHRONIZED. PERFECT ADHERENCE CITIZENS RECEIVE THESE REWARDS AS NON-MONETARY PROTOCOL CREDITS AND STATUS MULTIPLIERS.</p>
+                                    <p className="text-[9px] sm:text-[10px] text-white/30 leading-relaxed font-black italic uppercase text-balance">FORFEITED PRINCIPAL FROM GOAL BREACHES IS POOLED AND SYNCHRONIZED. PERFECT ADHERENCE CITIZENS RECEIVE THESE REWARDS AS NON-MONETARY PROTOCOL CREDITS AND STATUS MULTIPLIERS.</p>
                                 </div>
                                 
                                 <div className="p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-inner group hover:bg-white/[0.04] transition-colors">
@@ -475,7 +475,7 @@ function LandingPage() {
                     {[
                         { q: "How is my capital secured?", a: "YOUR FUNDS ARE ESCROWED IN A PROTOCOL-CONTROLLED VAULT. WE USE INSTITUTIONAL-GRADE SECURITY TO ENSURE YOUR STAKE IS ONLY TOUCHED IN THE EVENT OF A PROTOCOL BREACH." },
                         { q: "What happens if I miss a check-in?", a: "DEPENDING ON YOUR PAIN TIER, A PERCENTAGE OF YOUR PRINCIPAL (2%, 5%, OR 10%) IS IMMEDIATELY FORFEITED TO ENSURE PROTOCOL STABILITY." },
-                        { q: "Can I withdraw my money?", a: "ONLY LIQUID FUNDS IN YOUR WALLET CAN BE EXTRACTED. CAPITAL STAKED IN AN ACTIVE MANDATE IS LOCKED UNTIL THE PROTOCOL PERIOD ENDS OR IS BREACHED." },
+                        { q: "Can I withdraw my money?", a: "ONLY LIQUID FUNDS IN YOUR WALLET CAN BE EXTRACTED. CAPITAL STAKED IN AN ACTIVE GOAL IS LOCKED UNTIL THE PROTOCOL PERIOD ENDS OR IS BREACHED." },
                         { q: "What is a 'Witness'?", a: "A WITNESS IS A DESIGNATED ACCOUNTABILITY PARTNER WHO VERIFIES YOUR PHOTOGRAPHIC EVIDENCE. THEY ENSURE YOU AREN'T GAMING THE SYSTEM." }
                     ].map((item, i) => (
                         <div key={i} className="p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[3rem] bg-[#0a0f1a] border border-white/5 hover:border-white/10 transition-all group">
@@ -542,7 +542,7 @@ function LandingPage() {
                             <span className="text-2xl sm:text-3xl font-black tracking-tighter uppercase italic text-white leading-none">Lockedin</span>
                         </div>
                         <p className="text-xs sm:text-sm md:text-base text-white/30 font-black italic uppercase tracking-tight mb-8 sm:mb-12 leading-relaxed text-balance">
-                            LOCKEDIN IS A BEHAVIORAL ENFORCEMENT MANDATE FOR THOSE WHO REFUSE TO LIVE MEDIOCRE LIVES.
+                            LOCKEDIN IS A BEHAVIORAL ENFORCEMENT GOAL FOR THOSE WHO REFUSE TO LIVE MEDIOCRE LIVES.
                         </p>
                         <div className="flex gap-4">
                              <a href="#" className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white shadow-xl italic font-black text-lg">𝕏</a>
@@ -556,7 +556,7 @@ function LandingPage() {
                             <ul className="space-y-4 sm:space-y-6 text-[10px] font-black uppercase tracking-widest text-white/60">
                                 <li onClick={() => setShowModal({ 
                                     title: 'Architecture', 
-                                    content: 'I. THE BEHAVIORAL ENGINE\nOur core engine is built on a non-custodial enforcement layer. Once a mandate is initialized, capital escrow is governed by algorithmic logic.\n\nII. ESCROW HIERARCHY\nFunds are distributed across smart-contract vaults synchronized with the behavioral ledger. No human has direct access to staked principal.\n\nIII. EVIDENCE PIPELINE\nEvidence logs undergo a 3-stage validation: initial cryptographic hashing, witness review, and final integrity scoring.\n\nIV. SYSTEM LATENCY\nThe protocol operates with millisecond latency for logging, ensuring real-time feedback on behavioral adherence.\n\nV. MULTI-SIG AUTH\nAdministrative changes require multi-signature authorization to prevent unauthorized protocol modifications.\n\nVI. ASYNC AUDITING\nThe system runs background audits every 6 hours to detect any anomalies in the integrity ledger.\n\nVII. LOAD BALANCING\nArchitecture scales horizontally to support thousands of concurrent mandates without performance degradation.\n\nVIII. DATA REDUNDANCY\nAll behavioral data is replicated across three secure regions to ensure 99.9% protocol availability.' 
+                                    content: 'I. THE BEHAVIORAL ENGINE\nOur core engine is built on a non-custodial enforcement layer. Once a goal is initialized, capital escrow is governed by algorithmic logic.\n\nII. ESCROW HIERARCHY\nFunds are distributed across smart-contract vaults synchronized with the behavioral ledger. No human has direct access to staked principal.\n\nIII. EVIDENCE PIPELINE\nEvidence logs undergo a 3-stage validation: initial cryptographic hashing, witness review, and final integrity scoring.\n\nIV. SYSTEM LATENCY\nThe protocol operates with millisecond latency for logging, ensuring real-time feedback on behavioral adherence.\n\nV. MULTI-SIG AUTH\nAdministrative changes require multi-signature authorization to prevent unauthorized protocol modifications.\n\nVI. ASYNC AUDITING\nThe system runs background audits every 6 hours to detect any anomalies in the integrity ledger.\n\nVII. LOAD BALANCING\nArchitecture scales horizontally to support thousands of concurrent goals without performance degradation.\n\nVIII. DATA REDUNDANCY\nAll behavioral data is replicated across three secure regions to ensure 99.9% protocol availability.' 
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">Architecture</li>
                                 
                                 <li onClick={() => setShowModal({ 
@@ -566,7 +566,7 @@ function LandingPage() {
                                 
                                 <li onClick={() => setShowModal({ 
                                     title: 'API Docs', 
-                                    content: 'I. PUBLIC ENDPOINTS\nAccess real-time protocol stats and system integrity scores via GET /v1/public/stats.\n\nII. CITIZEN COMMANDS\nInitialize mandates programmatically via POST /v1/mandates/initialize with JWT authorization.\n\nIII. EVIDENCE WEBHOOKS\nRegister webhooks to receive notifications when your witnesses approve or flag an evidence log.\n\nIV. RATE LIMITING\nAPI access is governed by integrity score multipliers; high-integrity citizens receive higher request ceilings.\n\nV. SANDBOX ENVIRONMENT\nTest your behavioral integrations in our secure sandbox before deploying to the live protocol.\n\nVI. SDK AVAILABILITY\nOfficial client libraries are available for React, Node.js, and Python.\n\nVII. AUTHENTICATION\nAll private endpoints require Bearer Token authentication via our secure OAuth2 bridge.\n\nVIII. DOCUMENTATION PORTAL\nDetailed endpoint specifications and schemas are available to all anchored citizens in the developer terminal.' 
+                                    content: 'I. PUBLIC ENDPOINTS\nAccess real-time protocol stats and system integrity scores via GET /v1/public/stats.\n\nII. CITIZEN COMMANDS\nInitialize goals programmatically via POST /v1/goals/initialize with JWT authorization.\n\nIII. EVIDENCE WEBHOOKS\nRegister webhooks to receive notifications when your witnesses approve or flag an evidence log.\n\nIV. RATE LIMITING\nAPI access is governed by integrity score multipliers; high-integrity citizens receive higher request ceilings.\n\nV. SANDBOX ENVIRONMENT\nTest your behavioral integrations in our secure sandbox before deploying to the live protocol.\n\nVI. SDK AVAILABILITY\nOfficial client libraries are available for React, Node.js, and Python.\n\nVII. AUTHENTICATION\nAll private endpoints require Bearer Token authentication via our secure OAuth2 bridge.\n\nVIII. DOCUMENTATION PORTAL\nDetailed endpoint specifications and schemas are available to all anchored citizens in the developer terminal.' 
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">API Docs</li>
                             </ul>
                         </div>
@@ -575,12 +575,12 @@ function LandingPage() {
                             <ul className="space-y-4 sm:space-y-6 text-[10px] font-black uppercase tracking-widest text-white/60">
                                 <li onClick={() => setShowModal({ 
                                     title: 'Terms of Enlistment', 
-                                    content: 'I. THE BINDING CONTRACT\nBy staking capital, you enter into a non-negotiable behavioral agreement. You are the sole party responsible for execution.\n\nII. FORFEITURE CONSENT\nYou explicitly authorize the protocol to seize a percentage of your stake in the event of a mandate breach.\n\nIII. NO REFUND POLICY\nAll forfeitures are final. The protocol does not offer reversals or appeals for missed check-ins.\n\nIV. WITNESS JURISDICTION\nYou agree that the collective decision of your designated witnesses is final and legally binding.\n\nV. SYSTEMIC RISK\nYou acknowledge that while we use high-grade security, all digital systems carry inherent risk. Stake only what you can afford to lose.\n\nVI. PROHIBITED CONDUCT\nAny attempt to game the system via fake evidence results in immediate identity termination and total stake forfeiture.\n\nVII. PROTOCOL MODIFICATIONS\nTerms are subject to update via protocol governance; active citizens will be notified 48 hours before changes take effect.\n\nVIII. DISPUTE RESOLUTION\nAny legal disputes shall be resolved via binding arbitration under the laws of the Federal Republic of Nigeria.' 
+                                    content: 'I. THE BINDING CONTRACT\nBy staking capital, you enter into a non-negotiable behavioral agreement. You are the sole party responsible for execution.\n\nII. FORFEITURE CONSENT\nYou explicitly authorize the protocol to seize a percentage of your stake in the event of a goal breach.\n\nIII. NO REFUND POLICY\nAll forfeitures are final. The protocol does not offer reversals or appeals for missed check-ins.\n\nIV. WITNESS JURISDICTION\nYou agree that the collective decision of your designated witnesses is final and legally binding.\n\nV. SYSTEMIC RISK\nYou acknowledge that while we use high-grade security, all digital systems carry inherent risk. Stake only what you can afford to lose.\n\nVI. PROHIBITED CONDUCT\nAny attempt to game the system via fake evidence results in immediate identity termination and total stake forfeiture.\n\nVII. PROTOCOL MODIFICATIONS\nTerms are subject to update via protocol governance; active citizens will be notified 48 hours before changes take effect.\n\nVIII. DISPUTE RESOLUTION\nAny legal disputes shall be resolved via binding arbitration under the laws of the Federal Republic of Nigeria.' 
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">Terms</li>
                                 
                                 <li onClick={() => setShowModal({ 
                                     title: 'Privacy Protocol', 
-                                    content: 'I. DATA MINIMIZATION\nWe only collect data that is strictly necessary for identity anchoring and mandate verification.\n\nII. EVIDENCE VISIBILITY\nYour photos and notes are only visible to you and your designated witnesses. We do not use them for training models.\n\nIII. THIRD-PARTY DISCLOSURE\nWe never sell citizen data. We only share hashes with licensed identity providers for KYC purposes.\n\nIV. COOKIE USAGE\nWe use zero tracking cookies. Our system only uses functional session tokens to keep you authenticated.\n\nV. RIGHT TO ERASURE\nYou can request total identity erasure once all active mandates are closed and capital is extracted.\n\nVI. DATA RETENTION\nForfeiture logs are kept for 2 years for auditing purposes before being scrubbed from the active ledger.\n\nVII. CROSS-BORDER TRANSFERS\nData is stored on encrypted servers that may reside outside your home jurisdiction, complying with global standards.\n\nVIII. BREACH NOTIFICATION\nIn the event of a data incident, all citizens will be notified via secure channels within 4 hours of discovery.' 
+                                    content: 'I. DATA MINIMIZATION\nWe only collect data that is strictly necessary for identity anchoring and goal verification.\n\nII. EVIDENCE VISIBILITY\nYour photos and notes are only visible to you and your designated witnesses. We do not use them for training models.\n\nIII. THIRD-PARTY DISCLOSURE\nWe never sell citizen data. We only share hashes with licensed identity providers for KYC purposes.\n\nIV. COOKIE USAGE\nWe use zero tracking cookies. Our system only uses functional session tokens to keep you authenticated.\n\nV. RIGHT TO ERASURE\nYou can request total identity erasure once all active goals are closed and capital is extracted.\n\nVI. DATA RETENTION\nForfeiture logs are kept for 2 years for auditing purposes before being scrubbed from the active ledger.\n\nVII. CROSS-BORDER TRANSFERS\nData is stored on encrypted servers that may reside outside your home jurisdiction, complying with global standards.\n\nVIII. BREACH NOTIFICATION\nIn the event of a data incident, all citizens will be notified via secure channels within 4 hours of discovery.' 
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">Privacy</li>
                                 
                                 <li onClick={() => setShowModal({ 

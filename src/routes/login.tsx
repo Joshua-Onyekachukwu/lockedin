@@ -128,18 +128,26 @@ function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {step === 'signup' && (
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 ml-4 italic">Legal Name</label>
-                <div className="relative group">
-                    <User className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-blue-500 transition-colors" size={18} />
-                    <input 
-                        required
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="John Doe"
-                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-16 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-sm text-white"
-                    />
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-4">
+                <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 ml-4 italic">Legal Name</label>
+                    <div className="relative group">
+                        <User className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-blue-500 transition-colors" size={18} />
+                        <input 
+                            required
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="John Doe"
+                            className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-16 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-sm text-white"
+                        />
+                    </div>
+                </div>
+                
+                <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 mb-2">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-blue-400 italic leading-relaxed">
+                        IDENTITY VERIFICATION: ENSURE YOUR NAME MATCHES YOUR BVN RECORD. MISMATCHES WILL TRIGGER A FRAUD ALERT DURING WITHDRAWAL.
+                    </p>
                 </div>
               </div>
             )}
@@ -160,7 +168,14 @@ function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 ml-4 italic">Security Key</label>
+              <div className="flex justify-between items-center px-4">
+                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">Security Key</label>
+                {step === 'signup' && (
+                    <span className={`text-[8px] font-black uppercase italic ${formData.password.length >= 8 ? 'text-green-500' : 'text-white/20'}`}>
+                        MIN 8 CHARS
+                    </span>
+                )}
+              </div>
               <div className="relative group">
                   <Key className="absolute left-6 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-blue-500 transition-colors" size={18} />
                   <input 
