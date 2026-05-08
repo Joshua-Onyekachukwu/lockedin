@@ -28,31 +28,40 @@ Every user is anchored via **BVN Hash** to prevent sybil attacks and ensure beha
 
 ## 🚀 Live Deployment Protocol
 
-### Production (Vercel + Convex Cloud)
-1. **Convex Configuration:**
-   - Link your local project to Convex Cloud: `npx convex dev` (select your production project).
-   - In your **Convex Dashboard**, configure the following Environment Variables:
-     - `PAYSTACK_SECRET_KEY` (Live Key)
-     - `AUTH_RESEND_KEY` (For magic link emails)
-     - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` (For Google SSO)
+### 1. Convex Backend (Critical Auth Setup)
+Before users can sign up, you **MUST** generate a JWT key:
+1.  Run this command in your local terminal:
+    ```bash
+    npm run auth:generate-key
+    ```
+2.  Copy the entire output (including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`).
+3.  Go to your **Convex Dashboard** > **Settings** > **Environment Variables**.
+4.  Add a new variable:
+    - **Name:** `JWT_PRIVATE_KEY`
+    - **Value:** (Paste the key you copied)
+5.  Also ensure these keys are present:
+    - `PAYSTACK_SECRET_KEY` (Live Key)
+    - `AUTH_RESEND_KEY` (For magic link emails)
+    - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`
 
-2. **Frontend Hosting (Vercel):**
-   - Link your GitHub repository to Vercel.
-   - Add `VITE_CONVEX_URL` to Vercel Environment Variables (obtained from Convex Dashboard).
-   - In Vercel Project Settings:
-     - **Framework Preset:** Select **TanStack Start**.
-     - **Build Command:** `npm run build`
-     - **Output Directory:** (Keep default/Empty - Vercel will handle it).
-   - Redeploy the application.
+### 2. Frontend Hosting (Vercel)
+1.  Link your GitHub repository to Vercel.
+2.  Add `VITE_CONVEX_URL` to Vercel Environment Variables.
+3.  In Vercel Project Settings:
+    - **Framework Preset:** Select **TanStack Start**.
+    - **Build Command:** `npm run build`
+    - **Output Directory:** (Keep empty / Default).
+4.  If you get a 404, ensure the **Framework Preset** is correctly set to **TanStack Start**.
 
-3. **Domain Configuration:**
-   - Map your custom domain (e.g., lockedin.io) to your Vercel deployment.
-   - Configure your Paystack Webhook URL to point to your Convex production HTTP endpoint.
+### 3. Domain & Paystack
+1.  Map your custom domain (e.g., lockedin.io) to your Vercel deployment.
+2.  Configure your **Paystack Webhook URL** in the Paystack Dashboard:
+    - `https://ardent-dinosaur-415.convex.site/paystack-webhook`
 
 ## 🛡️ Security Architecture
-- **Non-Custodial Logic:** All funds are tracked via atomic ledger entries in the `transactions` table.
-- **Midnight Sweep:** A Convex Cron job runs every night to scan for missed logs and initialize the Forfeiture Protocol automatically.
-- **Identity Isolation:** Users only have read/write access to their own vaults via Convex Row-Level Security.
+- **Non-Custodial Logic:** All funds are tracked via atomic ledger entries.
+- **Root Admin:** Authorized access only for `onyekachukwujoshua1@gmail.com`.
+- **Identity Isolation:** Users only have access to their own vaults via Convex Row-Level Security.
 
 ---
 *Lockedin Operating Protocol v1.1 — Discipline is Non-Negotiable.*

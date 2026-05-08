@@ -10,6 +10,7 @@
     "dev:convex": "npx convex dev",
     "build": "vite build && tsc --noEmit",
     "start": "node .output/server/index.mjs",
+    "auth:generate-key": "node -e \"console.log(require('crypto').generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } }).privateKey)\"",
     "format": "prettier --write .",
     "lint": "tsc && eslint .  --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },

@@ -12,14 +12,71 @@ import {
   Wallet,
   Activity,
   ArrowLeft,
-  Settings
+  Settings,
+  AlertCircle,
+  Lock
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const Route = createFileRoute('/admin')({
-  component: AdminDashboard,
+  component: AdminWrapper,
 });
+
+function AdminWrapper() {
+    return (
+        <ErrorBoundary>
+            <Suspense fallback={<AdminLoading />}>
+                <AdminDashboard />
+            </Suspense>
+        </ErrorBoundary>
+    );
+}
+
+// Simple Error Boundary Component for Admin
+import React from 'react';
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
+    constructor(props: any) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error: any) {
+        return { hasError: true, error };
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center p-6 text-center">
+                    <div className="h-20 w-20 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 mb-8">
+                        <Lock size={40} />
+                    </div>
+                    <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-4">Access Denied</h1>
+                    <p className="text-white/40 font-black italic uppercase text-sm max-w-md leading-relaxed mb-10">
+                        {this.state.error?.message?.includes("Administrative") 
+                            ? "Security Alert: This terminal is restricted to authorized protocol administrators only."
+                            : "System Error: The Administrative interface failed to initialize."}
+                    </p>
+                    <Link to="/dashboard" className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all">
+                        Return to Dashboard
+                    </Link>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+function AdminLoading() {
+    return (
+        <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center text-white/20 italic font-black uppercase tracking-[0.5em]">
+            <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full mb-8" />
+            Initializing Command Center...
+        </div>
+    );
+}
 
 function AdminDashboard() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -42,6 +99,8 @@ function AdminDashboard() {
       navigate({ to: '/login' });
     }
   }, [isAuthenticated, authLoading, navigate]);
+
+  if (!stats) return <AdminLoading />;
 
   const exportCSV = () => {
     const csv = [
@@ -122,7 +181,7 @@ function AdminDashboard() {
                 onClick={() => setActiveTab('withdrawals')}
                 className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'withdrawals' ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
             >
-                Extractions ({pendingWithdrawals.length})
+                Extractions ({pendingWithdrawals?.length || 0})
             </button>
             <button 
                 onClick={() => setActiveTab('breaches')}
@@ -162,7 +221,7 @@ function AdminDashboard() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {pendingWithdrawals.length === 0 ? (
+                                        {!pendingWithdrawals || pendingWithdrawals.length === 0 ? (
                                             <tr><td colSpan={4} className="px-10 py-20 text-center text-white/20 font-black italic uppercase tracking-widest">No pending extractions</td></tr>
                                         ) : (
                                             pendingWithdrawals.map((w: any) => (

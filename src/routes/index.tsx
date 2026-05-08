@@ -65,24 +65,24 @@ function LandingPage() {
   const Modal = ({ title, content, onClose }: { title: string; content: string; onClose: () => void }) => (
     <motion.div 
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-[#020408]/95 backdrop-blur-3xl p-6"
+        className="fixed inset-0 z-[200] flex items-center justify-center bg-[#020408]/95 backdrop-blur-3xl p-4 sm:p-6"
     >
         <motion.div 
             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-3xl bg-[#0a0f1a] border border-white/10 rounded-[3rem] p-12 relative overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+            className="w-full max-w-3xl bg-[#0a0f1a] border border-white/10 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-12 relative overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
         >
-            <button onClick={onClose} className="absolute right-10 top-10 p-3 rounded-full bg-white/5 text-white/20 hover:text-white transition-all z-20"><X size={20} /></button>
+            <button onClick={onClose} className="absolute right-4 top-4 sm:right-10 sm:top-10 p-2 sm:p-3 rounded-full bg-white/5 text-white/20 hover:text-white transition-all z-20"><X size={20} /></button>
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600" />
             
             <div className="relative z-10">
-                <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-10 flex items-center gap-4 text-left">
+                <h3 className="text-xl sm:text-3xl font-black italic uppercase tracking-tighter text-white mb-6 sm:mb-10 flex items-center gap-4 text-left">
                     <span className="text-blue-500">/</span> {title}
                 </h3>
-                <div className="text-white/50 font-medium italic uppercase text-xs leading-loose space-y-6 text-left max-h-[60vh] overflow-y-auto pr-6 custom-scrollbar">
+                <div className="text-white/50 font-medium italic uppercase text-[10px] sm:text-xs leading-loose space-y-4 sm:space-y-6 text-left max-h-[50vh] sm:max-h-[60vh] overflow-y-auto pr-4 sm:pr-6 custom-scrollbar">
                     {content.split('\n\n').map((section, i) => (
                         <div key={section.slice(0, 10) + i}>
                             {section.split('\n').map((para, j) => (
-                                <p key={para.slice(0, 10) + j} className={j === 0 ? "text-white font-black mb-2" : "mb-4 ml-4 border-l border-white/10 pl-4"}>
+                                <p key={para.slice(0, 10) + j} className={j === 0 ? "text-white font-black mb-2" : "mb-3 sm:mb-4 ml-4 border-l border-white/10 pl-4"}>
                                     {para}
                                 </p>
                             ))}
@@ -91,9 +91,9 @@ function LandingPage() {
                 </div>
             </div>
             
-            <div className="mt-12 pt-8 border-t border-white/5 flex justify-between items-center">
-                <p className="text-[10px] font-black text-white/20 uppercase tracking-widest italic">Protocol Security Standard v2.4</p>
-                <button onClick={onClose} className="px-8 py-3 rounded-xl bg-white text-black font-black uppercase text-[10px] italic tracking-widest hover:scale-105 active:scale-95 transition-all">Acknowledge</button>
+            <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <p className="text-[8px] sm:text-[10px] font-black text-white/20 uppercase tracking-widest italic">Protocol Security Standard v2.4</p>
+                <button onClick={onClose} className="w-full sm:w-auto px-8 py-3 rounded-xl bg-white text-black font-black uppercase text-[10px] italic tracking-widest hover:scale-105 active:scale-95 transition-all">Acknowledge</button>
             </div>
         </motion.div>
     </motion.div>
@@ -109,18 +109,18 @@ function LandingPage() {
 
       <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
       
-      <nav className={`fixed top-0 z-[100] w-full transition-all duration-500 border-b border-white/5 ${scrolled ? 'bg-[#020408]/80 backdrop-blur-2xl py-4' : 'bg-transparent py-6'}`}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6">
+      <nav className={`fixed top-0 z-[100] w-full transition-all duration-500 border-b border-white/5 ${scrolled ? 'bg-[#020408]/80 backdrop-blur-2xl py-3 sm:py-4' : 'bg-transparent py-5 sm:py-6'}`}>
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2 group cursor-pointer text-left">
-            <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-transform group-hover:scale-110 group-active:scale-95">
-                <Lock size={16} strokeWidth={2.5} className="text-white" />
+            <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-transform group-hover:scale-110 group-active:scale-95">
+                <Lock size={14} sm:size={16} strokeWidth={2.5} className="text-white" />
             </div>
-            <span className="text-xl font-black tracking-tighter uppercase italic text-white text-left">
+            <span className="text-lg sm:text-xl font-black tracking-tighter uppercase italic text-white text-left leading-none">
               Lock<span className="text-blue-500">edin</span>
             </span>
           </Link>
           
-          <div className="hidden items-center gap-10 md:flex">
+          <div className="hidden items-center gap-8 lg:gap-10 md:flex">
             {navLinks.map((item) => (
               <a key={item.name} href={item.href} className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 transition-all hover:text-white hover:tracking-[0.4em]">
                 {item.name}
@@ -128,21 +128,21 @@ function LandingPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-4 text-left">
+          <div className="flex items-center gap-3 sm:gap-4 text-left">
             {!isLoading && (
                 isAuthenticated ? (
-                <Link to="/dashboard" className="hidden sm:block px-8 py-3 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/5 italic text-center">
+                <Link to="/dashboard" className="hidden sm:block px-6 lg:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/5 italic text-center">
                     Terminal
                 </Link>
                 ) : (
-                <Link to="/login" className="hidden sm:block px-8 py-3 rounded-2xl border border-white/10 bg-white/5 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all italic text-center">
+                <Link to="/login" className="hidden sm:block px-6 lg:px-8 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all italic text-center">
                     Enlist
                 </Link>
                 )
             )}
             <button 
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="md:hidden h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white"
+                className="md:hidden h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-white active:scale-95 transition-transform"
             >
                 {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -155,21 +155,30 @@ function LandingPage() {
           {isMenuOpen && (
               <motion.div 
                 initial={{ opacity: 0, x: '100%' }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: '100%' }}
-                className="fixed inset-0 z-[120] bg-[#020408] p-12 flex flex-col gap-8 md:hidden"
+                className="fixed inset-0 z-[120] bg-[#020408] p-6 sm:p-12 flex flex-col gap-8 md:hidden overflow-y-auto"
               >
-                  <button onClick={() => setIsMenuOpen(false)} className="absolute top-10 right-10 p-3 rounded-full bg-white/5 text-white"><X size={24} /></button>
-                  <div className="flex flex-col gap-12 mt-20 text-left">
+                  <div className="flex items-center justify-between mb-8">
+                    <Link to="/" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 group cursor-pointer text-left">
+                      <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                          <Lock size={16} strokeWidth={2.5} className="text-white" />
+                      </div>
+                      <span className="text-xl font-black tracking-tighter uppercase italic text-white text-left">Lock<span className="text-blue-500">edin</span></span>
+                    </Link>
+                    <button onClick={() => setIsMenuOpen(false)} className="h-12 w-12 flex items-center justify-center rounded-full bg-white/5 text-white"><X size={24} /></button>
+                  </div>
+
+                  <div className="flex flex-col gap-8 sm:gap-12 mt-10 text-left">
                       {navLinks.map((item) => (
-                        <a key={item.name} href={item.href} onClick={() => setIsMenuOpen(false)} className="text-4xl font-black italic uppercase tracking-tighter text-white/40 hover:text-white transition-colors">
+                        <a key={item.name} href={item.href} onClick={() => setIsMenuOpen(false)} className="text-3xl sm:text-4xl font-black italic uppercase tracking-tighter text-white/40 hover:text-white transition-colors">
                             {item.name}
                         </a>
                       ))}
                   </div>
                   <div className="mt-auto pb-10 flex flex-col gap-4">
                     {isAuthenticated ? (
-                        <Link to="/dashboard" className="w-full py-6 rounded-3xl bg-white text-black font-black uppercase tracking-widest text-center italic text-xl">Access Terminal</Link>
+                        <Link to="/dashboard" onClick={() => setIsMenuOpen(false)} className="w-full py-5 sm:py-6 rounded-2xl sm:rounded-3xl bg-white text-black font-black uppercase tracking-widest text-center italic text-lg sm:text-xl">Access Terminal</Link>
                     ) : (
-                        <Link to="/login" className="w-full py-6 rounded-3xl bg-blue-600 text-white font-black uppercase tracking-widest text-center italic text-xl">Login Protocol</Link>
+                        <Link to="/login" onClick={() => setIsMenuOpen(false)} className="w-full py-5 sm:py-6 rounded-2xl sm:rounded-3xl bg-blue-600 text-white font-black uppercase tracking-widest text-center italic text-lg sm:text-xl">Login Protocol</Link>
                     )}
                   </div>
               </motion.div>
@@ -178,54 +187,54 @@ function LandingPage() {
 
       <main className="relative text-left">
         {/* Hero Section */}
-        <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-48 md:pt-64 overflow-hidden text-center">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[800px] bg-blue-600/10 blur-[180px] rounded-full pointer-events-none -z-10" />
+        <section className="relative min-h-[90vh] sm:min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 pt-32 sm:pt-48 md:pt-64 overflow-hidden text-center">
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[1200px] h-[400px] sm:h-[800px] bg-blue-600/10 blur-[100px] sm:blur-[180px] rounded-full pointer-events-none -z-10" />
           
-          <div className="max-w-7xl mx-auto relative z-10 text-center">
+          <div className="max-w-7xl mx-auto relative z-10 text-center w-full">
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="inline-flex items-center gap-3 rounded-full border border-blue-500/20 bg-blue-500/5 px-6 py-2 text-[10px] font-black tracking-[0.4em] text-blue-400 uppercase mb-12 shadow-[0_0_40px_rgba(59,130,246,0.1)] italic text-center">
-                <CircleDot size={12} className="animate-pulse" /> Protocol v1.1 Live in Nigeria
+              <div className="inline-flex items-center gap-2 sm:gap-3 rounded-full border border-blue-500/20 bg-blue-500/5 px-4 sm:px-6 py-1.5 sm:py-2 text-[8px] sm:text-[10px] font-black tracking-[0.2em] sm:tracking-[0.4em] text-blue-400 uppercase mb-8 sm:mb-12 shadow-[0_0_40px_rgba(59,130,246,0.1)] italic text-center">
+                <CircleDot size={10} sm:size={12} className="animate-pulse" /> Protocol v1.1 Live in Nigeria
               </div>
               
-              <h1 className="text-6xl md:text-8xl lg:text-9xl font-black tracking-[-0.05em] text-white leading-[0.85] uppercase italic mb-12 text-balance text-center">
+              <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-[-0.05em] text-white leading-[0.9] sm:leading-[0.85] uppercase italic mb-8 sm:mb-12 text-balance text-center px-2">
                 Commit <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20 text-center">Money where your mouth is.</span>
               </h1>
               
-              <p className="mx-auto max-w-2xl text-lg md:text-xl text-white/40 leading-relaxed font-black italic mb-16 uppercase tracking-tight text-center">
-                THE BEHAVIORAL ENFORCEMENT MANDATE. <br />
+              <p className="mx-auto max-w-2xl text-base sm:text-lg md:text-xl text-white/40 leading-relaxed font-black italic mb-10 sm:mb-16 uppercase tracking-tight text-center px-4">
+                THE BEHAVIORAL ENFORCEMENT MANDATE. <br className="hidden sm:block" />
                 ANCHOR YOUR GOALS WITH CAPITAL. DO WHAT YOU SAID YOU WOULD DO, OR LOSE THE STAKE. NO EXCUSES.
               </p>
 
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-24 text-center">
-                <Link to="/login" className="group relative px-12 py-6 rounded-[2rem] bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-blue-900/40 italic">
-                    <span className="relative flex items-center gap-3 text-center">Enlist in Protocol <ArrowRight size={18} /></span>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mb-16 sm:mb-24 text-center px-4">
+                <Link to="/login" className="w-full sm:w-auto group relative px-10 sm:px-12 py-5 sm:py-6 rounded-2xl sm:rounded-[2rem] bg-blue-600 text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.3em] shadow-2xl hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-blue-900/40 italic">
+                    <span className="relative flex items-center justify-center gap-3 text-center">Enlist in Protocol <ArrowRight size={18} /></span>
                 </Link>
-                <a href="#protocol" className="px-12 py-6 rounded-[2rem] border border-white/10 bg-white/5 text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-white/10 transition-all italic text-center">
+                <a href="#protocol" className="w-full sm:w-auto px-10 sm:px-12 py-5 sm:py-6 rounded-2xl sm:rounded-[2rem] border border-white/10 bg-white/5 text-white font-black text-[10px] sm:text-xs uppercase tracking-[0.3em] hover:bg-white/10 transition-all italic text-center">
                     Operational Manual
                 </a>
               </div>
             </motion.div>
 
             {/* Live Protocol Ticker */}
-            <div className="w-full overflow-hidden border-y border-white/5 bg-white/[0.02] py-4 mb-24 text-left">
+            <div className="w-full overflow-hidden border-y border-white/5 bg-white/[0.02] py-3 sm:py-4 mb-16 sm:mb-24 text-left">
                 <div className="flex whitespace-nowrap animate-marquee">
                     {[1, 2, 3, 4].map((_, i) => (
-                        <div key={i} className="flex items-center gap-12 px-6">
-                            <span className="flex items-center gap-2 text-[9px] font-black uppercase italic text-white/40 tracking-widest text-left">
+                        <div key={i} className="flex items-center gap-8 sm:gap-12 px-4 sm:px-6">
+                            <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-white/40 tracking-widest text-left">
                                 <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> CITIZEN JOSHUA STAKED ₦250K
                             </span>
-                            <span className="flex items-center gap-2 text-[9px] font-black uppercase italic text-red-500 tracking-widest text-left">
-                                <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> MANDATE BREACH: ₦25K FORFEITED TO POOL
+                            <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-red-500 tracking-widest text-left">
+                                <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> MANDATE BREACH: ₦25K FORFEITED
                             </span>
-                            <span className="flex items-center gap-2 text-[9px] font-black uppercase italic text-white/40 tracking-widest text-left">
+                            <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-white/40 tracking-widest text-left">
                                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> NEW MANDATE INITIALIZED: ₦50K
                             </span>
-                            <span className="flex items-center gap-2 text-[9px] font-black uppercase italic text-blue-500 tracking-widest text-glow-blue text-left">
+                            <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-blue-500 tracking-widest text-glow-blue text-left">
                                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)]" /> SYSTEM INTEGRITY: 99.1%
                             </span>
                         </div>
@@ -236,20 +245,20 @@ function LandingPage() {
         </section>
 
         {/* The Integrity Economy */}
-        <section className="py-32 md:py-48 px-6 relative overflow-hidden border-y border-white/5 bg-white/[0.01] text-left">
+        <section className="py-24 sm:py-32 md:py-48 px-4 sm:px-6 relative overflow-hidden border-y border-white/5 bg-white/[0.01] text-left">
             <div className="max-w-7xl mx-auto text-left">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center text-left">
-                    <div className="text-left space-y-12">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center text-left">
+                    <div className="text-left space-y-8 sm:space-y-12">
                         <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 italic">Economic Foundation</p>
-                        <h2 className="text-4xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-[0.85] text-white">
+                        <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-[0.9] sm:leading-[0.85] text-white">
                             The Integrity <br /> <span className="text-blue-500">Economy.</span>
                         </h2>
-                        <p className="text-xl text-white/40 leading-relaxed font-black italic uppercase tracking-tight max-w-lg">
+                        <p className="text-base sm:text-xl text-white/40 leading-relaxed font-black italic uppercase tracking-tight max-w-lg">
                             IN A WORLD OF CONSTANT DISTRACTION, DISCIPLINE IS THE RAREST COMMODITY. LOCKEDIN CONVERTS YOUR CONSISTENCY INTO A HARD ASSET, BACKED BY CAPITAL AND SOCIAL PROOF.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
                         {[
                             { 
                                 icon: <Cpu size={24} className="text-blue-500" />,
@@ -272,10 +281,10 @@ function LandingPage() {
                                 desc: "WE'VE REMOVED THE PROFIT MOTIVE. PENALTIES STAY WITHIN THE ECOSYSTEM TO FUND REWARDS FOR THE DISCIPLINED."
                             }
                         ].map((feature, i) => (
-                            <div key={i} className="p-8 rounded-[2.5rem] bg-[#0a0f1a] border border-white/5 hover:border-blue-500/20 transition-all group">
-                                <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">{feature.icon}</div>
-                                <h4 className="text-lg font-black italic uppercase tracking-tight text-white mb-4">{feature.title}</h4>
-                                <p className="text-xs text-white/30 font-black italic uppercase leading-relaxed">{feature.desc}</p>
+                            <div key={i} className="p-6 sm:p-8 rounded-2xl sm:rounded-[2.5rem] bg-[#0a0f1a] border border-white/5 hover:border-blue-500/20 transition-all group">
+                                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-white/5 flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">{feature.icon}</div>
+                                <h4 className="text-base sm:text-lg font-black italic uppercase tracking-tight text-white mb-2 sm:mb-4">{feature.title}</h4>
+                                <p className="text-[10px] sm:text-xs text-white/30 font-black italic uppercase leading-relaxed">{feature.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -284,31 +293,31 @@ function LandingPage() {
         </section>
 
         {/* The Operational Creed Section */}
-        <section id="protocol" className="py-32 md:py-48 px-6 relative border-b border-white/5 bg-[#020408] text-center">
+        <section id="protocol" className="py-24 sm:py-32 md:py-48 px-4 sm:px-6 relative border-b border-white/5 bg-[#020408] text-center">
             <div className="max-w-6xl mx-auto text-center">
-                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-16 italic font-black">The Operational Creed</p>
-                <h2 className="text-4xl md:text-7xl lg:text-[7rem] font-black italic uppercase tracking-[-0.05em] leading-[0.8] text-white text-center text-balance">
-                    Willpower is a <br /> <span className="text-transparent bg-clip-text bg-gradient-to-b from-blue-500 to-blue-800">Finite Resource.</span> <br />
-                    Systemic Risk is a <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20">Guarantee.</span>
+                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-8 sm:mb-16 italic font-black text-center">The Operational Creed</p>
+                <h2 className="text-3xl sm:text-5xl md:text-7xl lg:text-[7rem] font-black italic uppercase tracking-[-0.05em] leading-[0.9] sm:leading-[0.8] text-white text-center text-balance">
+                    Willpower is a <br className="sm:hidden" /> <span className="text-transparent bg-clip-text bg-gradient-to-b from-blue-500 to-blue-800 text-center">Finite Resource.</span> <br />
+                    Systemic Risk is a <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20 text-center">Guarantee.</span>
                 </h2>
-                <p className="mt-24 text-xl text-white/40 font-black italic uppercase tracking-tight max-w-2xl mx-auto leading-relaxed">
+                <p className="mt-12 sm:mt-24 text-base sm:text-xl text-white/40 font-black italic uppercase tracking-tight max-w-2xl mx-auto leading-relaxed text-center">
                     MOST GOALS FAIL BECAUSE HUMANS ARE HARDWIRED TO SEEK COMFORT. WE NEGOTIATE WITH OUR WEAKNESS. LOCKEDIN REMOVES THE OPTION TO QUIT.
                 </p>
             </div>
         </section>
 
         {/* Hierarchy of Pain */}
-        <section className="py-32 md:py-48 px-6 relative border-b border-white/5 text-left bg-white/[0.01]">
+        <section className="py-24 sm:py-32 md:py-48 px-4 sm:px-6 relative border-b border-white/5 text-left bg-white/[0.01]">
             <div className="max-w-7xl mx-auto">
-                <div className="mb-24">
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ff7a00] mb-8 italic">Enforcement Tiers</p>
-                    <h2 className="text-4xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter text-white leading-none text-balance">Choose your <br /> <span className="text-white/20">Behavioral Threshold.</span></h2>
-                    <p className="mt-8 text-white/40 text-lg font-black italic uppercase tracking-tight max-w-2xl">
+                <div className="mb-16 sm:mb-24">
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#ff7a00] mb-6 sm:mb-8 italic">Enforcement Tiers</p>
+                    <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter text-white leading-none text-balance">Choose your <br /> <span className="text-white/20">Behavioral Threshold.</span></h2>
+                    <p className="mt-6 sm:mt-8 text-white/40 text-base sm:text-lg font-black italic uppercase tracking-tight max-w-2xl">
                         YOU DEFINE THE COST OF YOUR FAILURE. LOCKEDIN ALLOWS YOU TO CALIBRATE THE PAIN PROTOCOL BASED ON THE SEVERITY OF YOUR MANDATE.
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
                     {[
                         {
                             tier: "Deterrence",
@@ -335,13 +344,13 @@ function LandingPage() {
                             border: "border-red-500/20"
                         }
                     ].map((item, i) => (
-                        <div key={i} className={`p-12 rounded-[3.5rem] border ${item.border} ${item.bg} relative overflow-hidden group hover:scale-[1.02] transition-all`}>
-                            <div className="flex justify-between items-start mb-12">
+                        <div key={i} className={`p-8 sm:p-12 rounded-[2rem] sm:rounded-[3.5rem] border ${item.border} ${item.bg} relative overflow-hidden group hover:scale-[1.02] transition-all`}>
+                            <div className="flex justify-between items-start mb-10 sm:mb-12">
                                 <span className={`text-[10px] font-black uppercase tracking-widest ${item.accent} italic`}>{item.tier} Protocol</span>
-                                <span className="text-4xl font-black italic text-white tracking-tighter">{item.penalty}</span>
+                                <span className="text-3xl sm:text-4xl font-black italic text-white tracking-tighter">{item.penalty}</span>
                             </div>
-                            <h3 className="text-3xl font-black italic uppercase tracking-tighter mb-6 text-white">Daily <br /> Forfeiture.</h3>
-                            <p className="text-white/40 text-sm font-black italic uppercase leading-relaxed tracking-tight mb-8">
+                            <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter mb-4 sm:mb-6 text-white leading-tight">Daily <br /> Forfeiture.</h3>
+                            <p className="text-white/40 text-xs sm:text-sm font-black italic uppercase leading-relaxed tracking-tight mb-8">
                                 {item.desc}
                             </p>
                             <div className={`h-1 w-full bg-white/5 rounded-full overflow-hidden`}>
@@ -357,14 +366,14 @@ function LandingPage() {
             </div>
         </section>
 
-        <section id="architecture" className="py-32 md:py-48 px-6 relative text-left">
+        <section id="architecture" className="py-24 sm:py-32 md:py-48 px-4 sm:px-6 relative text-left">
             <div className="max-w-7xl mx-auto">
-                <div className="mb-24">
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-8 italic">Operating Manual</p>
-                    <h2 className="text-4xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter text-white leading-none text-balance">Three Steps to <br /> <span className="text-white/20 text-3xl md:text-5xl">Absolute Discipline.</span></h2>
+                <div className="mb-16 sm:mb-24">
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-6 sm:mb-8 italic">Operating Manual</p>
+                    <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter text-white leading-none text-balance">Three Steps to <br /> <span className="text-white/20 text-2xl sm:text-3xl md:text-5xl">Absolute Discipline.</span></h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-10">
                     {[
                         { 
                             step: "01", 
@@ -385,13 +394,13 @@ function LandingPage() {
                             icon: <ShieldCheck className="text-green-500" />
                         }
                     ].map((item, i) => (
-                        <div key={i} className="group relative p-12 rounded-[3.5rem] bg-white/[0.01] border border-white/5 hover:bg-white/[0.03] hover:border-white/10 transition-all">
-                            <span className="text-7xl font-black italic text-white/5 absolute top-8 right-10 group-hover:text-white/10 transition-colors">{item.step}</span>
-                            <div className="h-16 w-14 rounded-2xl bg-white/5 flex items-center justify-center mb-12 shadow-xl border border-white/5">
+                        <div key={i} className="group relative p-8 sm:p-12 rounded-[2rem] sm:rounded-[3.5rem] bg-white/[0.01] border border-white/5 hover:bg-white/[0.03] hover:border-white/10 transition-all">
+                            <span className="text-5xl sm:text-7xl font-black italic text-white/5 absolute top-6 right-8 sm:top-8 sm:right-10 group-hover:text-white/10 transition-colors">{item.step}</span>
+                            <div className="h-14 w-12 sm:h-16 sm:w-14 rounded-xl sm:rounded-2xl bg-white/5 flex items-center justify-center mb-8 sm:mb-12 shadow-xl border border-white/5">
                                 {item.icon}
                             </div>
-                            <h3 className="text-3xl font-black italic uppercase tracking-tighter mb-6 text-white">{item.title}</h3>
-                            <p className="text-white/30 text-sm font-black italic uppercase leading-relaxed tracking-tight">
+                            <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter mb-4 sm:mb-6 text-white leading-tight">{item.title}</h3>
+                            <p className="text-white/30 text-xs sm:text-sm font-black italic uppercase leading-relaxed tracking-tight">
                                 {item.desc}
                             </p>
                         </div>
@@ -401,38 +410,38 @@ function LandingPage() {
         </section>
 
         {/* Governance Section */}
-        <section id="governance" className="py-32 md:py-48 px-6 relative bg-[#020408] border-t border-white/5 text-left">
+        <section id="governance" className="py-24 sm:py-32 md:py-48 px-4 sm:px-6 relative bg-[#020408] border-t border-white/5 text-left">
             <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
-                    <div className="space-y-12">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+                    <div className="space-y-8 sm:space-y-12">
                         <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 italic">Financial Governance</p>
-                        <h2 className="text-4xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-[0.85] text-white">
+                        <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-[0.9] sm:leading-[0.85] text-white">
                             Sunday <br /> <span className="text-blue-500">Liquidation.</span>
                         </h2>
-                        <p className="text-xl text-white/40 leading-relaxed font-black italic uppercase tracking-tight max-w-lg">
+                        <p className="text-base sm:text-xl text-white/40 leading-relaxed font-black italic uppercase tracking-tight max-w-lg">
                             PROTOCOL BREACHES FUND THE ENCLAVE. EVERY SUNDAY, THE PENALTY POOL IS REDISTRIBUTED TO CITIZENS WITH PERFECT INTEGRITY SCORES. WE DON'T JUST PUNISH FAILURE WE SUBSIDIZE ELITE PERFORMANCE.
                         </p>
                     </div>
 
                     <div className="relative">
-                        <div className="absolute inset-0 bg-blue-600/10 blur-[100px] rounded-full" />
-                        <div className="relative p-12 md:p-16 rounded-[4rem] bg-[#0a0f1a] border border-white/5 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden">
-                            <div className="flex items-center gap-4 mb-16">
-                                <div className="h-12 w-12 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 border border-blue-500/20 shadow-xl italic font-black text-lg shadow-blue-500/10">Σ</div>
-                                <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white">Pool Dynamics.</h3>
+                        <div className="absolute inset-0 bg-blue-600/10 blur-[60px] sm:blur-[100px] rounded-full" />
+                        <div className="relative p-8 sm:p-12 md:p-16 rounded-[2rem] sm:rounded-[4rem] bg-[#0a0f1a] border border-white/5 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden">
+                            <div className="flex items-center gap-4 mb-12 sm:mb-16">
+                                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 border border-blue-500/20 shadow-xl italic font-black text-lg shadow-blue-500/10">Σ</div>
+                                <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter text-white">Pool Dynamics.</h3>
                             </div>
                             
-                            <div className="space-y-10">
-                                <div className="p-10 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-inner group hover:bg-white/[0.04] transition-colors">
-                                    <p className="text-4xl font-black text-white italic mb-4">CAPITAL POOL</p>
-                                    <p className="text-[10px] uppercase tracking-widest text-blue-500 font-black italic mb-6">DISTRIBUTION PROTOCOL</p>
-                                    <p className="text-xs text-white/30 leading-relaxed font-black italic uppercase text-balance">FORFEITED PRINCIPAL FROM MANDATE BREACHES IS POOLED AND SYNCHRONIZED. PERFECT ADHERENCE CITIZENS RECEIVE THESE REWARDS AS NON-MONETARY PROTOCOL CREDITS AND STATUS MULTIPLIERS.</p>
+                            <div className="space-y-8 sm:space-y-10">
+                                <div className="p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-inner group hover:bg-white/[0.04] transition-colors">
+                                    <p className="text-2xl sm:text-4xl font-black text-white italic mb-3 sm:mb-4">CAPITAL POOL</p>
+                                    <p className="text-[8px] sm:text-[10px] uppercase tracking-widest text-blue-500 font-black italic mb-4 sm:mb-6">DISTRIBUTION PROTOCOL</p>
+                                    <p className="text-[10px] sm:text-xs text-white/30 leading-relaxed font-black italic uppercase text-balance">FORFEITED PRINCIPAL FROM MANDATE BREACHES IS POOLED AND SYNCHRONIZED. PERFECT ADHERENCE CITIZENS RECEIVE THESE REWARDS AS NON-MONETARY PROTOCOL CREDITS AND STATUS MULTIPLIERS.</p>
                                 </div>
                                 
-                                <div className="p-10 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-inner group hover:bg-white/[0.04] transition-colors">
-                                    <p className="text-4xl font-black text-white italic mb-4">INTEGRITY</p>
-                                    <p className="text-[10px] uppercase tracking-widest text-white/40 font-black italic mb-6">THE HIGH PERFORMERS</p>
-                                    <p className="text-xs text-white/30 leading-relaxed font-black italic uppercase text-balance">CITIZENS WITH 100% ADHERENCE ARE SHIELDED FROM FUTURE POOL SWEEPS. YOUR DISCIPLINE EARNS YOU IMMUNITY FROM THE PROTOCOL'S HARSHEST ENFORCEMENTS.</p>
+                                <div className="p-6 sm:p-10 rounded-2xl sm:rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-inner group hover:bg-white/[0.04] transition-colors">
+                                    <p className="text-2xl sm:text-4xl font-black text-white italic mb-3 sm:mb-4">INTEGRITY</p>
+                                    <p className="text-[8px] sm:text-[10px] uppercase tracking-widest text-white/40 font-black italic mb-4 sm:mb-6">THE HIGH PERFORMERS</p>
+                                    <p className="text-[10px] sm:text-xs text-white/30 leading-relaxed font-black italic uppercase text-balance">CITIZENS WITH 100% ADHERENCE ARE SHIELDED FROM FUTURE POOL SWEEPS. YOUR DISCIPLINE EARNS YOU IMMUNITY FROM THE PROTOCOL'S HARSHEST ENFORCEMENTS.</p>
                                 </div>
                             </div>
                         </div>
@@ -442,96 +451,96 @@ function LandingPage() {
         </section>
 
         {/* FAQ Section */}
-        <section className="py-32 md:py-48 px-6 relative bg-white/[0.01] border-t border-white/5 text-left">
+        <section className="py-24 sm:py-32 md:py-48 px-4 sm:px-6 relative bg-white/[0.01] border-t border-white/5 text-left">
             <div className="max-w-4xl mx-auto">
-                <div className="mb-20">
-                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-8 italic">Protocol Intelligence</p>
-                    <h2 className="text-4xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter text-white leading-none text-balance">Frequently Asked <br /> <span className="text-white/20 text-3xl md:text-5xl">Protocol Details.</span></h2>
+                <div className="mb-16 sm:mb-20">
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-blue-500 mb-6 sm:mb-8 italic">Protocol Intelligence</p>
+                    <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter text-white leading-none text-balance">Frequently Asked <br /> <span className="text-white/20 text-2xl sm:text-3xl md:text-5xl">Protocol Details.</span></h2>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6">
+                <div className="grid grid-cols-1 gap-4 sm:gap-6">
                     {[
                         { q: "How is my capital secured?", a: "YOUR FUNDS ARE ESCROWED IN A PROTOCOL-CONTROLLED VAULT. WE USE INSTITUTIONAL-GRADE SECURITY TO ENSURE YOUR STAKE IS ONLY TOUCHED IN THE EVENT OF A PROTOCOL BREACH." },
                         { q: "What happens if I miss a check-in?", a: "DEPENDING ON YOUR PAIN TIER, A PERCENTAGE OF YOUR PRINCIPAL (2%, 5%, OR 10%) IS IMMEDIATELY FORFEITED TO ENSURE PROTOCOL STABILITY." },
                         { q: "Can I withdraw my money?", a: "ONLY LIQUID FUNDS IN YOUR WALLET CAN BE EXTRACTED. CAPITAL STAKED IN AN ACTIVE MANDATE IS LOCKED UNTIL THE PROTOCOL PERIOD ENDS OR IS BREACHED." },
                         { q: "What is a 'Witness'?", a: "A WITNESS IS A DESIGNATED ACCOUNTABILITY PARTNER WHO VERIFIES YOUR PHOTOGRAPHIC EVIDENCE. THEY ENSURE YOU AREN'T GAMING THE SYSTEM." }
                     ].map((item, i) => (
-                        <div key={i} className="p-10 rounded-[3rem] bg-[#0a0f1a] border border-white/5 hover:border-white/10 transition-all group">
-                            <h4 className="text-2xl font-black italic uppercase text-white mb-6 group-hover:text-blue-500 transition-colors font-black">{item.q}</h4>
-                            <p className="text-white/30 text-sm font-black italic uppercase leading-relaxed tracking-tight">{item.a}</p>
+                        <div key={i} className="p-6 sm:p-10 rounded-[1.5rem] sm:rounded-[3rem] bg-[#0a0f1a] border border-white/5 hover:border-white/10 transition-all group">
+                            <h4 className="text-lg sm:text-2xl font-black italic uppercase text-white mb-4 sm:mb-6 group-hover:text-blue-500 transition-colors font-black leading-tight">{item.q}</h4>
+                            <p className="text-[10px] sm:text-sm text-white/30 font-black italic uppercase leading-relaxed tracking-tight">{item.a}</p>
                         </div>
                     ))}
                 </div>
             </div>
         </section>
 
-        <section id="identity" className="py-32 md:py-48 px-6 relative overflow-hidden border-t border-white/5 text-center">
-            <div className="max-w-4xl mx-auto relative z-10">
-                <div className="h-24 w-24 rounded-[2.5rem] bg-blue-600 flex items-center justify-center mx-auto mb-12 shadow-[0_0_50px_rgba(37,99,235,0.4)]">
-                    <History size={40} className="text-white" />
+        <section id="identity" className="py-24 sm:py-32 md:py-48 px-4 sm:px-6 relative overflow-hidden border-t border-white/5 text-center">
+            <div className="max-w-4xl mx-auto relative z-10 w-full">
+                <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-2xl sm:rounded-[2.5rem] bg-blue-600 flex items-center justify-center mx-auto mb-8 sm:mb-12 shadow-[0_0_50px_rgba(37,99,235,0.4)]">
+                    <History size={30} sm:size={40} className="text-white" />
                 </div>
-                <h2 className="text-5xl md:text-7xl lg:text-8xl font-black italic uppercase tracking-tighter mb-10 text-white leading-none">Stop making <br /> <span className="text-white/20">Empty Promises.</span></h2>
-                <p className="text-xl text-white/40 font-black italic uppercase tracking-tight mb-20 leading-relaxed text-center">
+                <h2 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-black italic uppercase tracking-tighter mb-8 sm:mb-10 text-white leading-none">Stop making <br /> <span className="text-white/20">Empty Promises.</span></h2>
+                <p className="text-base sm:text-xl text-white/40 font-black italic uppercase tracking-tight mb-12 sm:mb-20 leading-relaxed text-center px-4">
                     JOIN THE PROTOCOL TODAY. ANCHOR YOUR DISCIPLINE WITH CAPITAL AND START WINNING THE WAR AGAINST MEDIOCRITY.
                 </p>
 
                 {isSuccess ? (
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                        className="p-16 rounded-[4rem] bg-green-500/10 border border-green-500/20 flex flex-col items-center gap-6 shadow-2xl"
+                        className="p-10 sm:p-16 rounded-[2rem] sm:rounded-[4rem] bg-green-500/10 border border-green-500/20 flex flex-col items-center gap-6 shadow-2xl mx-4"
                     >
-                        <CheckCircle2 size={60} className="text-green-500" />
+                        <CheckCircle2 size={40} sm:size={60} className="text-green-500" />
                         <div className="space-y-2">
-                            <p className="text-3xl font-black italic uppercase text-green-500">Identity Anchored.</p>
-                            <p className="text-white/40 text-sm uppercase tracking-widest font-black italic">We will reach out via your secure email soon.</p>
+                            <p className="text-2xl sm:text-3xl font-black italic uppercase text-green-500">Identity Anchored.</p>
+                            <p className="text-[10px] sm:text-sm uppercase tracking-widest font-black italic text-white/40">We will reach out via your secure email soon.</p>
                         </div>
                     </motion.div>
                 ) : (
-                    <form onSubmit={handleWaitlist} className="flex flex-col md:flex-row gap-6 max-w-3xl mx-auto group">
+                    <form onSubmit={handleWaitlist} className="flex flex-col md:flex-row gap-4 sm:gap-6 max-w-3xl mx-auto group px-4">
                         <input 
                             type="email" 
                             required
-                            placeholder="OPERATIONAL EMAIL ADDRESS"
+                            placeholder="OPERATIONAL EMAIL"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="flex-1 bg-white/[0.02] border border-white/10 rounded-[2.5rem] px-10 py-8 text-xl font-black italic uppercase outline-none focus:border-blue-500 focus:bg-white/[0.04] transition-all placeholder:text-white/5"
+                            className="w-full flex-1 bg-white/[0.02] border border-white/10 rounded-xl sm:rounded-[2.5rem] px-6 sm:px-10 py-5 sm:py-8 text-lg sm:text-xl font-black italic uppercase outline-none focus:border-blue-500 focus:bg-white/[0.04] transition-all placeholder:text-white/5"
                         />
                         <button 
                             disabled={isSubmitting}
-                            className="px-12 py-8 rounded-[2.5rem] bg-white text-black font-black uppercase tracking-widest text-sm italic shadow-2xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50 shadow-white/5 text-center font-black"
+                            className="w-full md:w-auto px-10 sm:px-12 py-5 sm:py-8 rounded-xl sm:rounded-[2.5rem] bg-white text-black font-black uppercase tracking-widest text-xs sm:text-sm italic shadow-2xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50 shadow-white/5 text-center"
                         >
                             {isSubmitting ? 'ENROLLING...' : 'Enlist in Protocol'}
                         </button>
                     </form>
                 )}
                 
-                <p className="mt-16 text-[10px] text-white/10 font-black uppercase tracking-[0.5em] italic">Identity Synchronization via Secure Protocol Bridge</p>
+                <p className="mt-12 sm:mt-16 text-[8px] sm:text-[10px] text-white/10 font-black uppercase tracking-[0.3em] sm:tracking-[0.5em] italic">Identity Synchronization via Secure Protocol Bridge</p>
             </div>
             
-            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-blue-600/10 blur-[150px] rounded-full pointer-events-none -z-10" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] sm:w-[1000px] h-[250px] sm:h-[500px] bg-blue-600/10 blur-[80px] sm:blur-[150px] rounded-full pointer-events-none -z-10" />
         </section>
 
-        <footer className="py-40 px-6 relative bg-[#020408] border-t border-white/5 text-left">
+        <footer className="py-24 sm:py-32 md:py-40 px-4 sm:px-6 relative bg-[#020408] border-t border-white/5 text-left">
             <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-20 mb-40 border-b border-white/5 pb-20">
-                    <div className="max-w-md">
-                        <div className="flex items-center gap-3 mb-12">
-                            <div className="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-2xl italic text-xl shadow-blue-900/40">L</div>
-                            <span className="text-3xl font-black tracking-tighter uppercase italic text-white">Lockedin</span>
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-16 lg:gap-20 mb-24 sm:mb-40 border-b border-white/5 pb-16 sm:pb-20">
+                    <div className="max-w-md w-full">
+                        <div className="flex items-center gap-3 mb-8 sm:mb-12">
+                            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-2xl italic text-xl shadow-blue-900/40">L</div>
+                            <span className="text-2xl sm:text-3xl font-black tracking-tighter uppercase italic text-white leading-none">Lockedin</span>
                         </div>
-                        <p className="text-white/30 font-black italic uppercase tracking-tight text-xl mb-12 leading-relaxed text-balance">
+                        <p className="text-lg sm:text-xl text-white/30 font-black italic uppercase tracking-tight mb-8 sm:mb-12 leading-relaxed text-balance">
                             LOCKEDIN IS A BEHAVIORAL ENFORCEMENT MANDATE FOR THOSE WHO REFUSE TO LIVE MEDIOCRE LIVES.
                         </p>
                         <div className="flex gap-4">
-                             <a href="#" className="h-14 w-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white shadow-xl italic font-black">𝕏</a>
-                             <a href="#" className="h-14 w-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white shadow-xl italic font-black text-xs uppercase tracking-widest">IN</a>
+                             <a href="#" className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white shadow-xl italic font-black text-lg">𝕏</a>
+                             <a href="#" className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white shadow-xl italic font-black text-xs uppercase tracking-widest">IN</a>
                         </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-24 text-left font-black italic uppercase">
-                        <div className="space-y-10">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic font-black">Protocol</h4>
-                            <ul className="space-y-6 text-[10px] font-black uppercase tracking-widest text-white/60 font-black">
+                    <div className="grid grid-cols-2 gap-12 sm:gap-24 text-left font-black italic uppercase w-full lg:w-auto">
+                        <div className="space-y-8 sm:space-y-10">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Protocol</h4>
+                            <ul className="space-y-4 sm:space-y-6 text-[10px] font-black uppercase tracking-widest text-white/60">
                                 <li onClick={() => setShowModal({ 
                                     title: 'Architecture', 
                                     content: 'I. THE BEHAVIORAL ENGINE\nOur architecture is built on a non-custodial enforcement engine. Once a mandate is initialized, the capital escrow is controlled by the protocol logic, not human administrators.\n\nII. ESCROW MECHANICS\nCapital is held in multi-sig vaults synchronized with the behavioral ledger. Withdrawal is only permitted upon mandate completion or cancellation (subject to liquidations).\n\nIII. EVIDENCE PIPELINE\nEvidence logs are processed via secure upload endpoints and distributed to designated witnesses for authorization. The logic ensures zero single-point-of-failure in the verification loop.' 
@@ -548,9 +557,9 @@ function LandingPage() {
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">API Docs</li>
                             </ul>
                         </div>
-                        <div className="space-y-10">
-                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic font-black">Legal</h4>
-                            <ul className="space-y-6 text-[10px] font-black uppercase tracking-widest text-white/60 font-black">
+                        <div className="space-y-8 sm:space-y-10">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Legal</h4>
+                            <ul className="space-y-4 sm:space-y-6 text-[10px] font-black uppercase tracking-widest text-white/60">
                                 <li onClick={() => setShowModal({ 
                                     title: 'Terms of Enlistment', 
                                     content: 'I. THE BEHAVIORAL CONTRACT\nBy staking capital, you enter into a binding behavioral agreement with the Lockedin Protocol. You acknowledge that failure to provide evidence of execution results in non-negotiable capital forfeiture.\n\nII. RISK ACKNOWLEDGEMENT\nYou understand that all staked capital is at risk. The protocol enforces rules without human bias or intervention. There are no refunds for mandate breaches.\n\nIII. DISPUTE RESOLUTION\nDisputes are resolved through the Witness Protocol. The collective decision of your designated witnesses is final and binding within the system logic.' 
@@ -570,11 +579,11 @@ function LandingPage() {
                     </div>
                 </div>
 
-                <div className="pt-12 flex flex-col md:flex-row justify-between items-center gap-8 pb-20">
-                    <p className="text-[9px] font-black uppercase tracking-[0.5em] text-white/10 italic text-center md:text-left text-balance uppercase font-black">© 2024 LOCK-IN PROTOCOL BEHAVIORAL ENFORCEMENT. ALL RIGHTS RESERVED.</p>
-                    <div className="flex items-center gap-6">
-                        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-[9px] font-black uppercase tracking-widest text-white/30 italic font-black">System Operational</span>
+                <div className="pt-8 sm:pt-12 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 pb-16 sm:pb-20">
+                    <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.3em] sm:tracking-[0.5em] text-white/10 italic text-center md:text-left text-balance uppercase font-black">© 2024 LOCK-IN PROTOCOL BEHAVIORAL ENFORCEMENT. ALL RIGHTS RESERVED.</p>
+                    <div className="flex items-center gap-4 sm:gap-6">
+                        <div className="h-1.5 w-1.5 sm:h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-white/30 italic">System Operational</span>
                     </div>
                 </div>
             </div>
