@@ -163,7 +163,7 @@ export const joinByInvite = mutation({
         .unique();
     
     if (existing) {
-        return { success: true, message: "You are already a witness for this mandate." };
+        return { success: true, message: "You are already a witness for this goal." };
     }
 
     await ctx.db.insert("accountability_partners", {
@@ -181,7 +181,7 @@ export const joinByInvite = mutation({
     await ctx.db.insert("notifications", {
         userId: vault.userId,
         title: "Witness Anchored",
-        message: `${partner?.name || 'A partner'} has accepted your mandate oversight.`,
+        message: `${partner?.name || 'A partner'} has accepted your goal oversight.`,
         type: "partner_request",
         read: false
     });

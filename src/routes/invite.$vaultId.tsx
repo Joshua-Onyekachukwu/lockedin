@@ -110,7 +110,7 @@ function PartnerInvite() {
                 onClick={handleAccept}
                 className="py-4 rounded-2xl bg-blue-600 font-bold text-white hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20 active:scale-95 text-center text-center"
             >
-                Accept Mandate <ArrowRight size={18} />
+                Accept Goal <ArrowRight size={18} />
             </button>
           </div>
         </div>

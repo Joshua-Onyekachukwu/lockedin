@@ -440,7 +440,7 @@ function LandingPage() {
                         <div className="absolute inset-0 bg-blue-600/10 blur-[60px] sm:blur-[100px] rounded-full" />
                         <div className="relative p-8 sm:p-12 md:p-16 rounded-[2rem] sm:rounded-[4rem] bg-[#0a0f1a] border border-white/5 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-hidden">
                             <div className="flex items-center gap-4 mb-12 sm:mb-16">
-                                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 border border-blue-500/20 shadow-xl italic font-black text-lg shadow-blue-500/10">Σ</div>
+                                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-2xl italic text-xl shadow-blue-900/40">L</div>
                                 <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter text-white">Pool Dynamics.</h3>
                             </div>
                             
@@ -473,7 +473,7 @@ function LandingPage() {
 
                 <div className="grid grid-cols-1 gap-4 sm:gap-6">
                     {[
-                        { q: "How is my capital secured?", a: "YOUR FUNDS ARE ESCROWED IN A PROTOCOL-CONTROLLED VAULT. WE USE INSTITUTIONAL-GRADE SECURITY TO ENSURE YOUR STAKE IS ONLY TOUCHED IN THE EVENT OF A PROTOCOL BREACH." },
+                        { q: "How is my capital secured?", a: "YOUR FUNDS ARE ESCROWED IN A PROTOCOL-CONTROLLED VAULT. WE USE INSTITUTIONAL-GRADE SECURITY TO ENSURE YOUR STAKE IS ONLY TOUCHED IN THE EVENT OF A GOAL BREACH." },
                         { q: "What happens if I miss a check-in?", a: "DEPENDING ON YOUR PAIN TIER, A PERCENTAGE OF YOUR PRINCIPAL (2%, 5%, OR 10%) IS IMMEDIATELY FORFEITED TO ENSURE PROTOCOL STABILITY." },
                         { q: "Can I withdraw my money?", a: "ONLY LIQUID FUNDS IN YOUR WALLET CAN BE EXTRACTED. CAPITAL STAKED IN AN ACTIVE GOAL IS LOCKED UNTIL THE PROTOCOL PERIOD ENDS OR IS BREACHED." },
                         { q: "What is a 'Witness'?", a: "A WITNESS IS A DESIGNATED ACCOUNTABILITY PARTNER WHO VERIFIES YOUR PHOTOGRAPHIC EVIDENCE. THEY ENSURE YOU AREN'T GAMING THE SYSTEM." }

@@ -63,7 +63,7 @@ function VerifyBvnPage() {
           </div>
           <h1 className="text-3xl font-black tracking-tight uppercase italic text-center leading-none">Identity Anchor</h1>
           <p className="text-white/30 mt-4 text-center text-sm font-medium italic max-w-[280px]">
-            To participate in capital-backed mandates, your identity must be verified via the federal banking protocol.
+            To participate in capital-backed goals, your identity must be verified via the federal banking protocol.
           </p>
         </div>
 

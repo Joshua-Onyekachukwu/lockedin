@@ -1,6 +1,6 @@
 # 🔒 Lockedin: Behavioral Enforcement Protocol
 
-Lockedin is a zero-trust behavioral bank built to solve the human willpower problem. It uses economic escrow and institutional-grade enforcement to ensure mandates (goals) are fulfilled.
+Lockedin is a zero-trust behavioral bank built to solve the human willpower problem. It uses economic escrow and institutional-grade enforcement to ensure goals (goals) are fulfilled.
 
 ## 🏗️ The Stack
 - **Frontend:** TanStack Start (React + Vite + File-based Routing)
@@ -13,7 +13,7 @@ Lockedin is a zero-trust behavioral bank built to solve the human willpower prob
 ## ⚖️ The Protocol Mechanics
 
 ### 1. The Pain Tiers (Forfeiture)
-When a citizen anchors a mandate, they select their level of economic pain:
+When a citizen anchors a goal, they select their level of economic pain:
 - **Deterrence (2%):** Minor sting for habit formation.
 - **Enforcement (5%):** Serious skin in the game.
 - **Liquidation (10%):** High-stakes behavioral contract.

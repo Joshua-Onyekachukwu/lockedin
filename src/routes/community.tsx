@@ -34,10 +34,10 @@ function CommunityPage() {
   }, [isAuthenticated, authLoading, navigate]);
 
   const { data: discoverableUsers } = useSuspenseQuery(convexQuery(api.users.listDiscoverable, {}) as any);
-  const { data: discoverableMandates } = useSuspenseQuery(convexQuery(api.goals.listDiscoverable, {}) as any);
+  const { data: discoverableGoals } = useSuspenseQuery(convexQuery(api.goals.listDiscoverable, {}) as any);
   const { data: myVaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, {}) as any);
   
-  const [activeView, setActiveView] = useState<'mandates' | 'witnesses'>('mandates');
+  const [activeView, setActiveView] = useState<'goals' | 'witnesses'>('goals');
   const [searchTerm, setSearchTerm] = useState('');
   const [requestingTo, setRequestingTo] = useState<any>(null);
 
@@ -62,16 +62,16 @@ function CommunityPage() {
               Collective <br /> <span className="text-blue-500 text-left">Enforcement.</span>
             </h1>
             <p className="text-white/30 mt-6 text-lg max-w-2xl leading-relaxed text-left font-medium italic">
-              Transparency drives discipline. Browse the protocol mandates of fellow high-performers or anchor a new witness role.
+              Transparency drives discipline. Browse the protocol goals of fellow high-performers or anchor a new witness role.
             </p>
           </div>
 
           <div className="flex bg-white/5 p-1.5 rounded-[2rem] border border-white/10 shadow-2xl">
             <button 
-                onClick={() => setActiveView('mandates')}
-                className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all italic ${activeView === 'mandates' ? 'bg-white text-black shadow-xl' : 'text-white/30 hover:text-white/60'}`}
+                onClick={() => setActiveView('goals')}
+                className={`px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all italic ${activeView === 'goals' ? 'bg-white text-black shadow-xl' : 'text-white/30 hover:text-white/60'}`}
             >
-                Mandate Feed
+                Goal Feed
             </button>
             <button 
                 onClick={() => setActiveView('witnesses')}
@@ -86,7 +86,7 @@ function CommunityPage() {
             <Search className="absolute left-8 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-blue-500 transition-colors" size={24} />
             <input 
               type="text" 
-              placeholder={`SEARCH ${activeView === 'mandates' ? 'ACTIVE MANDATES' : 'HIGH-INTEGRITY WITNESSES'}...`}
+              placeholder={`SEARCH ${activeView === 'goals' ? 'ACTIVE GOALS' : 'HIGH-INTEGRITY WITNESSES'}...`}
               className="w-full bg-white/[0.02] border border-white/10 rounded-[2.5rem] pl-20 pr-8 py-6 text-sm outline-none focus:border-blue-500 transition-all text-white text-left font-black italic tracking-widest shadow-inner uppercase"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -94,20 +94,20 @@ function CommunityPage() {
         </div>
 
         <AnimatePresence mode="wait">
-            {activeView === 'mandates' ? (
+            {activeView === 'goals' ? (
                 <motion.div 
-                    key="mandates"
+                    key="goals"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                 >
-                    {discoverableMandates && (discoverableMandates as any[]).length === 0 ? (
+                    {discoverableGoals && (discoverableGoals as any[]).length === 0 ? (
                         <div className="col-span-full py-40 rounded-[4rem] border border-dashed border-white/10 text-center">
                             <History size={60} className="mx-auto text-white/5 mb-8 opacity-10" />
-                            <p className="text-sm text-white/20 font-black uppercase tracking-[0.3em] italic">No discoverable mandates found in this sector</p>
+                            <p className="text-sm text-white/20 font-black uppercase tracking-[0.3em] italic">No discoverable goals found in this sector</p>
                         </div>
                     ) : (
-                        (discoverableMandates as any[]).map((mandate: any) => (
-                            <MandateCard key={mandate._id} mandate={mandate} />
+                        (discoverableGoals as any[]).map((goal: any) => (
+                            <GoalCard key={goal._id} goal={goal} />
                         ))
                     )}
                 </motion.div>
@@ -138,7 +138,7 @@ function CommunityPage() {
   );
 }
 
-function MandateCard({ mandate }: { mandate: any }) {
+function GoalCard({ goal }: { goal: any }) {
     return (
         <motion.div 
             whileHover={{ y: -10 }}
@@ -152,36 +152,36 @@ function MandateCard({ mandate }: { mandate: any }) {
                 <div className="flex items-center gap-4 mb-8">
                     <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5 shadow-lg">
                         <div className="h-full w-full rounded-xl bg-[#0a0f1a] flex items-center justify-center font-black text-xs text-white uppercase italic">
-                            {mandate.user?.name?.[0]}
+                            {goal.user?.name?.[0]}
                         </div>
                     </div>
                     <div className="text-left font-black">
-                        <p className="text-[10px] text-white/20 uppercase tracking-widest italic">{mandate.user?.name}</p>
-                        <p className="text-[9px] text-blue-500 uppercase tracking-widest italic">Score: {mandate.user?.integrityScore}%</p>
+                        <p className="text-[10px] text-white/20 uppercase tracking-widest italic">{goal.user?.name}</p>
+                        <p className="text-[9px] text-blue-500 uppercase tracking-widest italic">Score: {goal.user?.integrityScore}%</p>
                     </div>
                 </div>
 
-                <h3 className="text-2xl font-black italic uppercase tracking-tight text-white mb-4 leading-tight">{mandate.goal?.title}</h3>
+                <h3 className="text-2xl font-black italic uppercase tracking-tight text-white mb-4 leading-tight">{goal.goal?.title}</h3>
                 <p className="text-xs text-white/30 font-medium italic uppercase tracking-tighter leading-relaxed mb-10 line-clamp-2">
-                    {mandate.goal?.description}
+                    {goal.goal?.description}
                 </p>
 
                 <div className="flex items-center justify-between p-6 rounded-2xl bg-white/[0.02] border border-white/5 mb-8 shadow-inner font-black italic">
                     <div className="text-left">
                         <p className="text-[9px] text-white/20 uppercase tracking-widest mb-1">Staked</p>
-                        <p className="text-lg text-white">₦{(mandate.amount / 100).toLocaleString()}</p>
+                        <p className="text-lg text-white">₦{(goal.amount / 100).toLocaleString()}</p>
                     </div>
                     <div className="h-8 w-px bg-white/5" />
                     <div className="text-right">
                         <p className="text-[9px] text-[#ff7a00] uppercase tracking-widest mb-1">Pain Tier</p>
-                        <p className="text-lg text-[#ff7a00] uppercase">{mandate.painTier || 'Serious'}</p>
+                        <p className="text-lg text-[#ff7a00] uppercase">{goal.painTier || 'Serious'}</p>
                     </div>
                 </div>
             </div>
 
             <Link 
                 to="/vault/$id" 
-                params={{ id: mandate._id }}
+                params={{ id: goal._id }}
                 className="relative z-10 w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-white/20 text-[10px] font-black uppercase tracking-widest hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 italic"
             >
                 View Protocol Specs <ArrowRight size={14} />
@@ -271,7 +271,7 @@ function VaultPickerModal({ partner, vaults, onClose }: any) {
                     <div className="flex items-center justify-between mb-10">
                         <div className="flex items-center gap-4">
                             <div className="h-12 w-12 rounded-2xl bg-blue-600/10 text-blue-500 flex items-center justify-center italic font-black border border-blue-500/20 shadow-xl">V</div>
-                            <h2 className="text-2xl font-black tracking-tight uppercase italic text-white leading-none">Select Mandate</h2>
+                            <h2 className="text-2xl font-black tracking-tight uppercase italic text-white leading-none">Select Goal</h2>
                         </div>
                         <button onClick={onClose} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 text-white/20 hover:text-white transition-colors active:scale-90"><X size={20} /></button>
                     </div>
@@ -283,7 +283,7 @@ function VaultPickerModal({ partner, vaults, onClose }: any) {
                     <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
                         {activeVaults.length === 0 ? (
                             <div className="p-12 rounded-[2.5rem] border border-dashed border-white/10 text-center bg-white/[0.01]">
-                                <p className="text-xs text-white/10 font-black uppercase tracking-[0.3em] italic">No active mandates found in your identity</p>
+                                <p className="text-xs text-white/10 font-black uppercase tracking-[0.3em] italic">No active goals found in your identity</p>
                                 <button onClick={onClose} className="mt-8 px-8 py-3 rounded-2xl bg-white text-black font-black uppercase text-[10px] tracking-widest italic">Go Initiate Protocol</button>
                             </div>
                         ) : (

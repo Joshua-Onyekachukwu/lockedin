@@ -130,7 +130,7 @@ function ProfileSettings() {
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 ml-6 italic">Behavioral Mandate (Bio)</label>
+              <label className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 ml-6 italic">Behavioral Goal (Bio)</label>
               <textarea 
                 value={formData.bio}
                 placeholder="Describe your commitment protocol..."
@@ -155,7 +155,7 @@ function ProfileSettings() {
                             <p className={`font-black italic uppercase text-xs tracking-tight ${formData.is_discoverable ? 'text-white' : 'text-white/20'}`}>Community Feed</p>
                         </div>
                         <p className="text-[10px] text-white/30 font-bold italic uppercase leading-relaxed font-black">
-                            {formData.is_discoverable ? 'Mandates are visible in the Community Hub.' : 'Mandates are private and hidden from public feeds.'}
+                            {formData.is_discoverable ? 'Goals are visible in the Community Hub.' : 'Goals are private and hidden from public feeds.'}
                         </p>
                     </button>
 

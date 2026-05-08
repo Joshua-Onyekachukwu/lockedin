@@ -54,8 +54,9 @@ export default defineSchema({
     ),
     title: v.string(),
     description: v.string(),
-    frequency_type: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
-    target_count: v.number(), // e.g., 3 (times per week)
+    frequency_type: v.optional(v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly"))),
+    target_count: v.optional(v.number()), // e.g., 3 (times per week)
+    checkin_day: v.optional(v.string()), // Legacy field
   }).index("by_vault", ["vaultId"]).index("by_user", ["userId"]),
 
   goal_logs: defineTable({

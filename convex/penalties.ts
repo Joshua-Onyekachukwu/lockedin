@@ -2,7 +2,7 @@ import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
- * MANDATE EVALUATION ENGINE
+ * GOAL EVALUATION ENGINE
  * Runs every midnight to enforce protocol discipline.
  */
 

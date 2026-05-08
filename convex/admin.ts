@@ -169,7 +169,7 @@ export const enforceProtocolBreach = mutation({
         await ctx.db.insert("notifications", {
             userId: vault.userId,
             title: "PROTOCOL BREACH ENFORCED",
-            message: "System has detected an unrecoverable mandate failure. Principal has been forfeited.",
+            message: "System has detected an unrecoverable goal failure. Principal has been forfeited.",
             type: "streak_alert",
             read: false,
         });

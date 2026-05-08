@@ -35,7 +35,7 @@ function VaultPage() {
         <main className="max-w-7xl mx-auto p-6 lg:p-12 text-left">
             <header className="mb-16 text-left">
                 <div className="flex items-center gap-4 mb-8 text-left">
-                    <span className="px-4 py-1 rounded-full bg-blue-600/10 border border-blue-500/20 text-[10px] font-black text-blue-500 uppercase tracking-widest italic">Active Mandate</span>
+                    <span className="px-4 py-1 rounded-full bg-blue-600/10 border border-blue-500/20 text-[10px] font-black text-blue-500 uppercase tracking-widest italic">Active Goal</span>
                     <span className="text-white/10 uppercase tracking-widest text-[10px] font-black">Ref: {vaultId.slice(0, 8)}</span>
                 </div>
                 <h1 className="text-4xl font-bold tracking-tight md:text-5xl lg:text-7xl text-left text-white leading-tight font-black uppercase italic">

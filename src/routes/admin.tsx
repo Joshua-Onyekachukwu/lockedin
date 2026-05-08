@@ -161,7 +161,7 @@ function AdminDashboard() {
                     <Wallet size={18} className="text-[#ff7a00]" />
                 </div>
                 <p className="text-4xl font-black text-white italic tracking-tighter uppercase">₦{(stats.totalStaked / 100).toLocaleString()}</p>
-                <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">{stats.activeVaults} Active Mandates</p>
+                <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">{stats.activeVaults} Active Goals</p>
             </div>
 
             <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-blue-500/20 transition-all text-left">
@@ -224,7 +224,7 @@ function AdminDashboard() {
                                             <th className="px-10 py-6">Citizen</th>
                                             <th className="px-10 py-6">Amount</th>
                                             <th className="px-10 py-6">Bank Specifications</th>
-                                            <th className="px-10 py-6 text-right">Mandate</th>
+                                            <th className="px-10 py-6 text-right">Goal</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -265,7 +265,7 @@ function AdminDashboard() {
                         >
                             <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
                                 <div className="text-left font-black italic uppercase">
-                                    <h3 className="text-lg text-white">Active Mandate Monitor</h3>
+                                    <h3 className="text-lg text-white">Active Goal Monitor</h3>
                                     <p className="text-[10px] text-white/20 tracking-widest mt-1">High Risk Candidates</p>
                                 </div>
                             </div>

@@ -207,10 +207,10 @@ function DashboardContent({ user }: { user: any }) {
             </h1>
             <p className="text-white/30 mt-6 text-lg max-w-2xl leading-relaxed text-left font-medium italic">
                 {activeTab === 'protocols' 
-                    ? `Integrity Score: ${user.integrityScore || 100}%. Adherence to active mandates is non-negotiable.`
+                    ? `Integrity Score: ${user.integrityScore || 100}%. Adherence to active goals is non-negotiable.`
                     : activeTab === 'witnessing'
-                    ? `Review protocol evidence and authorize mandate compliance for your peers.`
-                    : `Command your liquid capital. Deploy stakes to enforce behavioral mandates.`
+                    ? `Review protocol evidence and authorize goal compliance for your peers.`
+                    : `Command your liquid capital. Deploy stakes to enforce behavioral goals.`
                 }
             </p>
           </div>
@@ -565,7 +565,7 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
                 ? 'bg-red-500 text-white border-red-400 animate-pulse' 
                 : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
           }`}>
-            {isFailed ? 'Protocol Breach' : 'Active Mandate'}
+            {isFailed ? 'Protocol Breach' : 'Active Goal'}
           </div>
           <span className={`text-[10px] font-black uppercase tracking-widest italic ${isFailed ? 'text-red-500/40' : 'text-white/10'}`}>Ref: {vault._id.slice(0,6)}</span>
         </div>
@@ -677,7 +677,7 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
 
                     <div className="space-y-8 text-left font-bold italic">
                         <div className="text-left">
-                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Mandate Name</label>
+                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Goal Name</label>
                             <input 
                                 required
                                 value={title}
@@ -766,7 +766,7 @@ function CreateVaultModal({ onClose }: { onClose: () => void }) {
                         disabled={loading}
                         className="w-full mt-12 py-6 rounded-2xl bg-white text-black font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all shadow-white/5 italic"
                     >
-                        {loading ? 'Initializing...' : 'Initialize Mandate'}
+                        {loading ? 'Initializing...' : 'Initialize Goal'}
                     </button>
                 </form>
             </motion.div>
@@ -948,7 +948,7 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
                     </div>
 
                     <p className="text-white/30 text-xs font-bold italic uppercase tracking-widest mb-10 leading-relaxed">
-                        Inject capital into your behavioral bank account. This capital is used to stake against your mandates.
+                        Inject capital into your behavioral bank account. This capital is used to stake against your goals.
                     </p>
 
                     <div className="space-y-8">
