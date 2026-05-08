@@ -237,6 +237,15 @@ function LandingPage() {
                             <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-blue-500 tracking-widest text-glow-blue text-left">
                                 <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)]" /> SYSTEM INTEGRITY: 99.1%
                             </span>
+                            <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-white/40 tracking-widest text-left">
+                                <span className="h-1.5 w-1.5 rounded-full bg-purple-500" /> CITIZEN SARAH COMPLETED WEEKLY MANDATE
+                            </span>
+                            <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-green-500 tracking-widest text-left">
+                                <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> REWARD POOL PAYOUT: ₦12.5K CREDITED
+                            </span>
+                            <span className="flex items-center gap-2 text-[8px] sm:text-[9px] font-black uppercase italic text-white/40 tracking-widest text-left">
+                                <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" /> BVN HASH SYNCHRONIZED: CITIZEN #482
+                            </span>
                         </div>
                     ))}
                 </div>
@@ -400,9 +409,7 @@ function LandingPage() {
                                 {item.icon}
                             </div>
                             <h3 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter mb-4 sm:mb-6 text-white leading-tight">{item.title}</h3>
-                            <p className="text-white/30 text-[10px] sm:text-xs font-black italic uppercase leading-relaxed tracking-tight">
-                                {item.desc}
-                            </p>
+                            <p className="text-white/30 text-[10px] sm:text-xs font-black italic uppercase leading-relaxed tracking-tight">{item.desc}</p>
                         </div>
                     ))}
                 </div>
@@ -418,7 +425,7 @@ function LandingPage() {
                         <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black italic uppercase tracking-tighter leading-[0.9] sm:leading-[0.85] text-white">
                             Sunday <br /> <span className="text-blue-500">Liquidation.</span>
                         </h2>
-                        <p className="text-xs sm:text-sm md:text-base text-white/40 leading-relaxed font-black italic uppercase tracking-tight max-w-lg">
+                        <p className="text-sm sm:text-base text-white/40 leading-relaxed font-black italic uppercase tracking-tight max-w-lg">
                             PROTOCOL BREACHES FUND THE ENCLAVE. EVERY SUNDAY, THE PENALTY POOL IS REDISTRIBUTED TO CITIZENS WITH PERFECT INTEGRITY SCORES. WE DON'T JUST PUNISH FAILURE WE SUBSIDIZE ELITE PERFORMANCE.
                         </p>
                     </div>
@@ -520,9 +527,9 @@ function LandingPage() {
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] sm:w-[1000px] h-[250px] sm:h-[500px] bg-blue-600/10 blur-[80px] sm:blur-[150px] rounded-full pointer-events-none -z-10" />
         </section>
 
-        <footer className="py-24 sm:py-32 md:py-40 px-4 sm:px-6 relative bg-[#020408] border-t border-white/5 text-left">
+        <footer className="py-20 sm:py-24 md:py-32 px-4 sm:px-6 relative bg-[#020408] border-t border-white/5 text-left">
             <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col lg:flex-row justify-between items-start gap-16 lg:gap-20 mb-24 sm:mb-40 border-b border-white/5 pb-16 sm:pb-20">
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-16 lg:gap-20 mb-16 sm:mb-24 border-b border-white/5 pb-12 sm:pb-16">
                     <div className="max-w-md w-full">
                         <div className="flex items-center gap-3 mb-8 sm:mb-12">
                             <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-2xl italic text-xl shadow-blue-900/40">L</div>
@@ -532,55 +539,55 @@ function LandingPage() {
                             LOCKEDIN IS A BEHAVIORAL ENFORCEMENT MANDATE FOR THOSE WHO REFUSE TO LIVE MEDIOCRE LIVES.
                         </p>
                         <div className="flex gap-4">
-                             <a href="#" className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white shadow-xl italic font-black text-lg">𝕏</a>
-                             <a href="#" className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white shadow-xl italic font-black text-xs uppercase tracking-widest">IN</a>
+                             <a href="#" className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white shadow-xl italic font-black text-lg">𝕏</a>
+                             <a href="#" className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white shadow-xl italic font-black text-xs uppercase tracking-widest">IN</a>
                         </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-12 sm:gap-24 text-left font-black italic uppercase w-full lg:w-auto">
-                        <div className="space-y-8 sm:space-y-10">
+                        <div className="space-y-6 sm:space-y-10">
                             <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Protocol</h4>
                             <ul className="space-y-4 sm:space-y-6 text-[10px] font-black uppercase tracking-widest text-white/60">
                                 <li onClick={() => setShowModal({ 
                                     title: 'Architecture', 
-                                    content: 'I. THE BEHAVIORAL ENGINE\nOur architecture is built on a non-custodial enforcement engine. Once a mandate is initialized, the capital escrow is controlled by the protocol logic, not human administrators.\n\nII. ESCROW MECHANICS\nCapital is held in multi-sig vaults synchronized with the behavioral ledger. Withdrawal is only permitted upon mandate completion or cancellation (subject to liquidations).\n\nIII. EVIDENCE PIPELINE\nEvidence logs are processed via secure upload endpoints and distributed to designated witnesses for authorization. The logic ensures zero single-point-of-failure in the verification loop.' 
+                                    content: 'I. THE BEHAVIORAL ENGINE\nOur core engine is built on a non-custodial enforcement layer. Once a mandate is initialized, capital escrow is governed by algorithmic logic.\n\nII. ESCROW HIERARCHY\nFunds are distributed across smart-contract vaults synchronized with the behavioral ledger. No human has direct access to staked principal.\n\nIII. EVIDENCE PIPELINE\nEvidence logs undergo a 3-stage validation: initial cryptographic hashing, witness review, and final integrity scoring.\n\nIV. SYSTEM LATENCY\nThe protocol operates with millisecond latency for logging, ensuring real-time feedback on behavioral adherence.\n\nV. MULTI-SIG AUTH\nAdministrative changes require multi-signature authorization to prevent unauthorized protocol modifications.\n\nVI. ASYNC AUDITING\nThe system runs background audits every 6 hours to detect any anomalies in the integrity ledger.\n\nVII. LOAD BALANCING\nArchitecture scales horizontally to support thousands of concurrent mandates without performance degradation.\n\nVIII. DATA REDUNDANCY\nAll behavioral data is replicated across three secure regions to ensure 99.9% protocol availability.' 
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">Architecture</li>
                                 
                                 <li onClick={() => setShowModal({ 
                                     title: 'Security', 
-                                    content: 'I. IDENTITY ANCHORING\nSecurity begins at the identity level. BVN verification ensures each citizen has one unique presence on the protocol, preventing sybil attacks and gaming.\n\nII. CAPITAL SECURITY\nStaked principal is stored in high-security environments with institutional-grade encryption. We utilize cold-storage patterns for long-term escrow stability.\n\nIII. NETWORK INTEGRITY\nAll transactions are logged on an immutable integrity ledger. This ensures that every stake, log, and forfeiture is auditable and transparent within the protocol.' 
+                                    content: 'I. IDENTITY ANCHORING\nBVN verification is the bedrock of our protocol. It ensures a 1:1 human-to-citizen ratio to prevent sybil attacks.\n\nII. DATA ENCRYPTION\nAll citizen data is encrypted using AES-256 at rest and TLS 1.3 in transit.\n\nIII. HASHED SENSITIVE DATA\nWe never store raw BVN or financial IDs. We only store irreversible cryptographic hashes for identity matching.\n\nIV. ACCESS CONTROL\nStrict Row-Level Security (RLS) ensures that even system administrators cannot view your private evidence logs.\n\nV. FRAUD DETECTION\nAI-powered behavioral analysis monitors logs for signs of evidence tampering or synthetic generation.\n\nVI. COLD STORAGE\nThe majority of protocol liquidity is held in cold storage to minimize hot-wallet risk.\n\nVII. REGULAR PENTESTING\nOur infrastructure undergoes monthly external penetration testing to identify and patch vulnerabilities.\n\nVIII. INCIDENT RESPONSE\nA dedicated security team is on standby 24/7 with a protocol-wide lockdown capability for extreme threats.' 
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">Security</li>
                                 
                                 <li onClick={() => setShowModal({ 
                                     title: 'API Docs', 
-                                    content: 'I. PUBLIC ENDPOINTS\nDevelopers can access public protocol stats, pool liquidity, and integrity leaderboards via our public API layer.\n\nII. AUTHENTICATED COMMANDS\nActive citizens can programmatically initialize mandates and upload evidence via secure JWT-authorized endpoints.\n\nIII. INTEGRATION\nAPI access is strictly controlled to maintain network integrity. Documentation and API keys are restricted to citizens who have completed the basic identity anchoring protocol.' 
+                                    content: 'I. PUBLIC ENDPOINTS\nAccess real-time protocol stats and system integrity scores via GET /v1/public/stats.\n\nII. CITIZEN COMMANDS\nInitialize mandates programmatically via POST /v1/mandates/initialize with JWT authorization.\n\nIII. EVIDENCE WEBHOOKS\nRegister webhooks to receive notifications when your witnesses approve or flag an evidence log.\n\nIV. RATE LIMITING\nAPI access is governed by integrity score multipliers; high-integrity citizens receive higher request ceilings.\n\nV. SANDBOX ENVIRONMENT\nTest your behavioral integrations in our secure sandbox before deploying to the live protocol.\n\nVI. SDK AVAILABILITY\nOfficial client libraries are available for React, Node.js, and Python.\n\nVII. AUTHENTICATION\nAll private endpoints require Bearer Token authentication via our secure OAuth2 bridge.\n\nVIII. DOCUMENTATION PORTAL\nDetailed endpoint specifications and schemas are available to all anchored citizens in the developer terminal.' 
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">API Docs</li>
                             </ul>
                         </div>
-                        <div className="space-y-8 sm:space-y-10">
+                        <div className="space-y-6 sm:space-y-10">
                             <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Legal</h4>
                             <ul className="space-y-4 sm:space-y-6 text-[10px] font-black uppercase tracking-widest text-white/60">
                                 <li onClick={() => setShowModal({ 
                                     title: 'Terms of Enlistment', 
-                                    content: 'I. THE BEHAVIORAL CONTRACT\nBy staking capital, you enter into a binding behavioral agreement with the Lockedin Protocol. You acknowledge that failure to provide evidence of execution results in non-negotiable capital forfeiture.\n\nII. RISK ACKNOWLEDGEMENT\nYou understand that all staked capital is at risk. The protocol enforces rules without human bias or intervention. There are no refunds for mandate breaches.\n\nIII. DISPUTE RESOLUTION\nDisputes are resolved through the Witness Protocol. The collective decision of your designated witnesses is final and binding within the system logic.' 
+                                    content: 'I. THE BINDING CONTRACT\nBy staking capital, you enter into a non-negotiable behavioral agreement. You are the sole party responsible for execution.\n\nII. FORFEITURE CONSENT\nYou explicitly authorize the protocol to seize a percentage of your stake in the event of a mandate breach.\n\nIII. NO REFUND POLICY\nAll forfeitures are final. The protocol does not offer reversals or appeals for missed check-ins.\n\nIV. WITNESS JURISDICTION\nYou agree that the collective decision of your designated witnesses is final and legally binding.\n\nV. SYSTEMIC RISK\nYou acknowledge that while we use high-grade security, all digital systems carry inherent risk. Stake only what you can afford to lose.\n\nVI. PROHIBITED CONDUCT\nAny attempt to game the system via fake evidence results in immediate identity termination and total stake forfeiture.\n\nVII. PROTOCOL MODIFICATIONS\nTerms are subject to update via protocol governance; active citizens will be notified 48 hours before changes take effect.\n\nVIII. DISPUTE RESOLUTION\nAny legal disputes shall be resolved via binding arbitration under the laws of the Federal Republic of Nigeria.' 
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">Terms</li>
                                 
                                 <li onClick={() => setShowModal({ 
                                     title: 'Privacy Protocol', 
-                                    content: 'I. DATA MINIMIZATION\nWe only collect data necessary for identity anchoring and mandate verification. Your evidence logs are private and only visible to you and your designated witnesses.\n\nII. DATA ENCRYPTION\nAll evidence (photos/notes) is encrypted at rest and in transit. Identity hashes are used to store your BVN data to ensure the actual number is never stored on our servers.\n\nIII. CITIZEN RIGHTS\nYou have the right to extract your liquid capital and deactivate your identity terminal at any time, provided no active mandates are currently in escrow.' 
+                                    content: 'I. DATA MINIMIZATION\nWe only collect data that is strictly necessary for identity anchoring and mandate verification.\n\nII. EVIDENCE VISIBILITY\nYour photos and notes are only visible to you and your designated witnesses. We do not use them for training models.\n\nIII. THIRD-PARTY DISCLOSURE\nWe never sell citizen data. We only share hashes with licensed identity providers for KYC purposes.\n\nIV. COOKIE USAGE\nWe use zero tracking cookies. Our system only uses functional session tokens to keep you authenticated.\n\nV. RIGHT TO ERASURE\nYou can request total identity erasure once all active mandates are closed and capital is extracted.\n\nVI. DATA RETENTION\nForfeiture logs are kept for 2 years for auditing purposes before being scrubbed from the active ledger.\n\nVII. CROSS-BORDER TRANSFERS\nData is stored on encrypted servers that may reside outside your home jurisdiction, complying with global standards.\n\nVIII. BREACH NOTIFICATION\nIn the event of a data incident, all citizens will be notified via secure channels within 4 hours of discovery.' 
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">Privacy</li>
                                 
                                 <li onClick={() => setShowModal({ 
                                     title: 'BVN Usage Policy', 
-                                    content: 'I. VERIFICATION ONLY\nYour Bank Verification Number (BVN) is used strictly to verify your identity against government-regulated databases. This ensures a 1:1 citizen-to-account ratio.\n\nII. SECURE HASHING\nWe do not store your raw BVN. We generate a unique identity hash that allows us to identify you without holding your sensitive financial ID.\n\nIII. COMPLIANCE\nOur usage of BVN data complies with Nigerian Data Protection Regulations (NDPR) and is processed via licensed 3rd-party identity providers.' 
+                                    content: 'I. IDENTITY VERIFICATION ONLY\nBVN data is used exclusively to verify that you are a real human and to prevent account duplication.\n\nII. NO RAW STORAGE\nWe do not store your 11-digit BVN. It is processed through a one-way cryptographic hash function.\n\nIII. COMPLIANCE STANDARDS\nOur verification protocol is fully compliant with the Nigerian Data Protection Act (NDPR).\n\nIV. SECURE INTERFACE\nBVN entry happens through a secure, isolated terminal that encrypts the input before it leaves your browser.\n\nV. ACCESS RESTRICTION\nNo employee or administrator of Lockedin has access to view or retrieve individual citizen hashes.\n\nVI. PURPOSE LIMITATION\nYour identity data is never used for credit scoring or external financial reporting.\n\nVII. SERVICE PROVIDERS\nVerification is facilitated by CBN-licensed third-party partners (e.g., Smile ID, Mono) under strict NDAs.\n\nVIII. TRANSPARENCY\nYou can view your identity anchoring status and hash metadata in your Citizen Settings at any time.' 
                                 })} className="hover:text-blue-500 cursor-pointer transition-colors">BVN Data</li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <div className="pt-8 sm:pt-12 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 pb-16 sm:pb-20">
-                    <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.3em] sm:tracking-[0.5em] text-white/10 italic text-center md:text-left text-balance uppercase font-black">© 2024 LOCK-IN PROTOCOL BEHAVIORAL ENFORCEMENT. ALL RIGHTS RESERVED.</p>
+                <div className="pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 pb-8 sm:pb-12">
+                    <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.3em] sm:tracking-[0.5em] text-white/10 italic text-center md:text-left text-balance uppercase font-black">© 2025 LOCK-IN PROTOCOL BEHAVIORAL ENFORCEMENT. ALL RIGHTS RESERVED.</p>
                     <div className="flex items-center gap-4 sm:gap-6">
                         <div className="h-1.5 w-1.5 sm:h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                         <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-white/30 italic">System Operational</span>

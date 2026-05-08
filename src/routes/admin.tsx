@@ -45,20 +45,30 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
     render() {
         if (this.state.hasError) {
+            const errorMsg = this.state.error?.message || "";
+            const isAuthError = errorMsg.includes("UNAUTHORIZED") || errorMsg.includes("ACCESS DENIED") || errorMsg.includes("privileges required");
+            
             return (
                 <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center p-6 text-center">
-                    <div className="h-20 w-20 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500 mb-8">
+                    <div className={`h-20 w-20 rounded-3xl ${isAuthError ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-orange-500/10 border-orange-500/20 text-orange-500'} border flex items-center justify-center mb-8`}>
                         <Lock size={40} />
                     </div>
-                    <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-4">Access Denied</h1>
+                    <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-4">
+                        {isAuthError ? "Access Denied" : "System Error"}
+                    </h1>
                     <p className="text-white/40 font-black italic uppercase text-sm max-w-md leading-relaxed mb-10">
-                        {this.state.error?.message?.includes("Administrative") 
-                            ? "Security Alert: This terminal is restricted to authorized protocol administrators only."
-                            : "System Error: The Administrative interface failed to initialize."}
+                        {isAuthError 
+                            ? "Security Alert: This terminal is restricted to authorized protocol administrators only. Your identity hash has been logged."
+                            : `Technical Breach: The Administrative interface failed to initialize. (${errorMsg.slice(0, 50)}...)`}
                     </p>
-                    <Link to="/dashboard" className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all">
-                        Return to Dashboard
-                    </Link>
+                    <div className="flex gap-4">
+                        <Link to="/login" className="px-10 py-4 rounded-2xl bg-blue-600 text-white font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all">
+                            Verify Identity
+                        </Link>
+                        <Link to="/" className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all">
+                            Return Home
+                        </Link>
+                    </div>
                 </div>
             );
         }
@@ -356,8 +366,8 @@ function AdminDashboard() {
                                 try {
                                     await sweep({});
                                     alert("Midnight Sweep Protocol Initialized.");
-                                } catch (e) {
-                                    alert("Access Denied: You do not have root privileges.");
+                                } catch (e: any) {
+                                    alert(`Access Denied: ${e.message}`);
                                 }
                             }}
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-blue-600/20 hover:border-blue-500/30 transition-all text-center active:scale-95"
@@ -369,8 +379,8 @@ function AdminDashboard() {
                                 try {
                                     await distribute({});
                                     alert("Weekly Distribution Protocol Initialized.");
-                                } catch (e) {
-                                    alert("Access Denied: You do not have root privileges.");
+                                } catch (e: any) {
+                                    alert(`Access Denied: ${e.message}`);
                                 }
                             }}
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-orange-600/20 hover:border-orange-500/30 transition-all text-center active:scale-95"
