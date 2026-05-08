@@ -50,10 +50,11 @@ function LoginPage() {
         });
       } else {
         await signIn("password", { 
-        email: formData.email, 
-        password: formData.password, 
-        flow: "signIn" 
-      });
+          email: formData.email, 
+          password: formData.password, 
+          flow: "signIn" 
+        });
+      }
       navigate({ to: '/dashboard' });
     } catch (err: any) {
       let friendlyError = err.message || "An error occurred during authentication.";
