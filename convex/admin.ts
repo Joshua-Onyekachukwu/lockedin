@@ -1,4 +1,4 @@
-import { mutation, query, action, internalQuery } from "./_generated/server";
+import { mutation, query, action, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { auth } from "./auth";
 import { internal, api } from "./_generated/api";
@@ -110,7 +110,11 @@ export const approveWithdrawal = action({
         return { success: false, message: "Request already processed or not found." };
     }
 
-    const { bank_details, amount, userId } = withdrawal;
+    const { bank_details, amount } = withdrawal;
+
+    if (!bank_details) {
+        return { success: false, message: "Invalid extraction details: Missing bank data." };
+    }
 
     try {
         // 3. Create Transfer Recipient
@@ -169,7 +173,7 @@ export const approveWithdrawal = action({
   },
 });
 
-export const finalizeWithdrawal = mutation({
+export const finalizeWithdrawal = internalMutation({
     args: { 
         withdrawalId: v.id("withdrawals"), 
         status: v.string(),
