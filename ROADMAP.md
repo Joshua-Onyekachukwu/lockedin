@@ -19,7 +19,7 @@ The current system follows a "Zero-Excuse" architecture:
 
 1.  **Onboarding:** User anchors identity via Email/Google. Mandatory BVN verification (Mono) to ensure identity consistency.
 2.  **Wallet Injection:** User deposits capital via Paystack. Funds are held in a logical protocol wallet.
-3.  **Mandate Initialization:** User defines a goal:
+3.  **Goal Initialization:** User defines a goal:
     *   **Goal Types:** Fitness, Learning, Financial, Habit, Professional.
     *   **Stake:** User locks a specific amount of NGN.
     *   **Penalty Selection:** Predefined "Pain Tiers":
@@ -70,13 +70,13 @@ To maximize retention without App Store friction:
 
 ### 🟦 Phase 3: Global Scale (Long-Term)
 *   [ ] **AI Proctor:** GPT-4o Vision to automatically flag fraudulent logs.
-*   [ ] **Corporate Mandates:** Team-based commitment challenges.
+*   [ ] **Corporate Goals:** Team-based commitment challenges.
 *   [ ] **Integrity API:** Allowing other apps to verify a user's discipline score.
 
 ---
 
 ## 6. Admin Capabilities
 *   **User Management:** Search, ban, or manual integrity score overrides.
-*   **Goal Overview:** View all active mandates and staked liquidity.
+*   **Goal Overview:** View all active goals and staked liquidity.
 *   **System Logs:** Real-time visibility into "Midnight Sweep" executions.
 *   **Moderation:** Flagging and removing suspicious evidence photos.

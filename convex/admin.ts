@@ -1,7 +1,9 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { auth } from "./auth";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
+
+const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 
 // SECURITY: Admin privileges are strictly limited to these authorized emails.
 const ADMIN_EMAILS = [
@@ -80,43 +82,133 @@ export const getPendingWithdrawals = query({
   },
 });
 
-export const approveWithdrawal = mutation({
+export const getWithdrawalById = internalQuery({
+    args: { withdrawalId: v.id("withdrawals") },
+    returns: v.any(),
+    handler: async (ctx, args) => {
+        return await ctx.db.get(args.withdrawalId);
+    }
+});
+
+/**
+ * PRODUCTION EXTRACTION PROTOCOL (Paystack Transfer)
+ * This is an action because it communicates with the external Paystack API.
+ */
+export const approveWithdrawal = action({
   args: { withdrawalId: v.id("withdrawals") },
-  returns: v.null(),
+  returns: v.object({ success: v.boolean(), message: v.string() }),
   handler: async (ctx, args) => {
-    await checkAdmin(ctx);
-    const withdrawal = await ctx.db.get(args.withdrawalId);
-    if (!withdrawal || withdrawal.status !== "pending") return null;
+    // 1. Authenticate Admin
+    await ctx.runQuery(api.admin.getSystemStats, {}); // Reusing stats check for auth
 
-    await ctx.db.patch(args.withdrawalId, {
-      status: "completed",
-      processed_at: Date.now(),
+    // 2. Fetch withdrawal details
+    const withdrawal = await ctx.runQuery(internal.admin.getWithdrawalById, { 
+        withdrawalId: args.withdrawalId 
     });
 
-    await ctx.db.insert("notifications", {
-      userId: withdrawal.userId,
-      title: "Extraction Complete",
-      message: `Your withdrawal of ₦${(withdrawal.amount / 100).toLocaleString()} has been processed.`,
-      type: "verification_needed", // Reusing type or add more
-      read: false,
-    });
-
-    // Update transaction status
-    const tx = await ctx.db
-      .query("transactions")
-      .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
-      .filter((q) => q.and(
-          q.eq(q.field("amount"), -withdrawal.amount),
-          q.eq(q.field("status"), "pending")
-      ))
-      .first();
-    
-    if (tx) {
-        await ctx.db.patch(tx._id, { status: "completed" });
+    if (!withdrawal || withdrawal.status !== "pending") {
+        return { success: false, message: "Request already processed or not found." };
     }
 
-    return null;
+    const { bank_details, amount, userId } = withdrawal;
+
+    try {
+        // 3. Create Transfer Recipient
+        const recipientRes = await fetch("https://api.paystack.co/transferrecipient", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${PAYSTACK_SECRET}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                type: "nuban",
+                name: bank_details.account_name,
+                account_number: bank_details.account_number,
+                bank_code: bank_details.bank_code,
+                currency: "NGN",
+            }),
+        });
+
+        const recipientData = await recipientRes.json();
+        if (!recipientData.status) throw new Error(recipientData.message);
+
+        const recipientCode = recipientData.data.recipient_code;
+
+        // 4. Initiate Transfer
+        const transferRes = await fetch("https://api.paystack.co/transfer", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${PAYSTACK_SECRET}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                source: "balance",
+                amount: amount, // amount is already in kobo
+                recipient: recipientCode,
+                reason: "Lockedin Extraction",
+                reference: `EXT-${args.withdrawalId.slice(0, 8)}-${Date.now()}`,
+            }),
+        });
+
+        const transferData = await transferRes.json();
+        if (!transferData.status) throw new Error(transferData.message);
+
+        // 5. Update Record via Mutation
+        await ctx.runMutation(internal.admin.finalizeWithdrawal, {
+            withdrawalId: args.withdrawalId,
+            status: "completed",
+            processedAt: Date.now()
+        });
+
+        return { success: true, message: "Capital extraction protocol executed successfully." };
+
+    } catch (err: any) {
+        console.error("PAYSTACK TRANSFER ERROR:", err);
+        return { success: false, message: `Disbursement Failed: ${err.message}` };
+    }
   },
+});
+
+export const finalizeWithdrawal = mutation({
+    args: { 
+        withdrawalId: v.id("withdrawals"), 
+        status: v.string(),
+        processedAt: v.number()
+    },
+    returns: v.null(),
+    handler: async (ctx, args) => {
+        const withdrawal = await ctx.db.get(args.withdrawalId);
+        if (!withdrawal) return null;
+
+        await ctx.db.patch(args.withdrawalId, {
+            status: args.status as any,
+            processed_at: args.processedAt,
+        });
+
+        await ctx.db.insert("notifications", {
+            userId: withdrawal.userId,
+            title: "Extraction Protocol Complete",
+            message: `Your capital of ₦${(withdrawal.amount / 100).toLocaleString()} has been dispersed to your bank account.`,
+            type: "verification_needed",
+            read: false,
+        });
+
+        // Update transaction status
+        const tx = await ctx.db
+          .query("transactions")
+          .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
+          .filter((q) => q.and(
+              q.eq(q.field("amount"), -withdrawal.amount),
+              q.eq(q.field("status"), "pending")
+          ))
+          .first();
+        
+        if (tx) {
+            await ctx.db.patch(tx._id, { status: "completed" });
+        }
+
+        return null;
+    }
 });
 
 export const getBreachCandidates = query({

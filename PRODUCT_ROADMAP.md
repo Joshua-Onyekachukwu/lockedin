@@ -19,7 +19,7 @@ This roadmap outlines the evolution of Lockedin from a behavioral protocol to a 
 ## Phase 3: Financial Scalability (Q2 2024)
 - [ ] **Multi-Currency Support:** Support for USD/GBP via Stripe/LemonSqueezy.
 - [ ] **Tiered Subscriptions:** Premium tiers with lower protocol fees but higher dividend multipliers.
-- [ ] **Corporate Mandates:** B2B version for high-performance teams (Sales/Engineering).
+- [ ] **Corporate Goals:** B2B version for high-performance teams (Sales/Engineering).
 - [ ] **Automated Disputes:** AI-powered verification of evidence to reduce partner workload.
 
 ## Phase 4: Social & AI Performance (Q3 2024)

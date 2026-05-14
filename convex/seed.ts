@@ -8,7 +8,7 @@ const GOALS = [
     { title: "Deep Work Protocol", cat: "professional" },
     { title: "5AM Club Wakeup", cat: "habit" },
     { title: "Python Mastery", cat: "learning" },
-    { title: "Weight Loss Mandate", cat: "fitness" },
+    { title: "Weight Loss Goal", cat: "fitness" },
     { title: "No Sugar Streak", cat: "fitness" },
     { title: "Daily Writing Log", cat: "habit" },
     { title: "Stock Market Study", cat: "financial" },
