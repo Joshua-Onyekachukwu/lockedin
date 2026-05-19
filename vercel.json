@@ -1,4 +1,6 @@
 {
   "version": 2,
-  "framework": "tanstack-start"
+  "framework": "tanstack-start",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".output"
 }
