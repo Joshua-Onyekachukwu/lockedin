@@ -21,8 +21,10 @@ import {
   User,
   Users,
   Eye,
-  Clock
+  Clock,
+  ArrowRight
 } from 'lucide-react';
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePaystackPayment } from 'react-paystack';
@@ -486,7 +488,7 @@ function DashboardContent({ user }: { user: any }) {
 
       <AnimatePresence>
         {isCreating && (
-          <CreateVaultModal onClose={() => setIsCreating(false)} />
+          <CreateVaultModal user={user} onClose={() => setIsCreating(false)} />
         )}
         {isFunding && (
           <FundWalletModal user={user} onClose={() => setIsFunding(false)} />
@@ -627,7 +629,7 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
   );
 }
 
-function CreateVaultModal({ onClose }: { onClose: () => void }) {
+function CreateVaultModal({ user, onClose }: { user: any; onClose: () => void }) {
     const createVault = useMutation(api.goals.create);
     const [title, setTitle] = useState('');
     const [category, setCategory] = useState<any>('habit');

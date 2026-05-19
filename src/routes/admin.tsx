@@ -97,7 +97,7 @@ function AdminDashboard() {
   
   const sweep = useMutation(api.admin.triggerMidnightSweep);
   const distribute = useMutation(api.admin.triggerWeeklyDistribution);
-  const approveWithdrawal = useMutation(api.admin.approveWithdrawal);
+  const approveWithdrawal = useAction(api.admin.approveWithdrawal);
   const enforceBreach = useMutation(api.admin.enforceProtocolBreach);
 
   const [activeTab, setActiveTab] = useState<'waitlist' | 'withdrawals' | 'breaches'>('withdrawals');
