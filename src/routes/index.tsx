@@ -318,6 +318,12 @@ function LandingPage() {
                 <p className="mt-12 sm:mt-24 text-sm sm:text-base text-white/40 font-black italic uppercase tracking-tight max-w-2xl mx-auto leading-relaxed text-center">
                     MOST GOALS FAIL BECAUSE HUMANS ARE HARDWIRED TO SEEK COMFORT. WE NEGOTIATE WITH OUR WEAKNESS. LOCKEDIN REMOVES THE OPTION TO QUIT.
                 </p>
+
+                <div className="mt-16 sm:mt-20">
+                    <Link to="/login" className="px-12 py-6 rounded-[2rem] bg-white text-black font-black uppercase tracking-[0.3em] text-xs italic hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/5 inline-block">
+                        Lock In My First Goal
+                    </Link>
+                </div>
             </div>
         </section>
 
