@@ -201,8 +201,8 @@ function LandingPage() {
               </div>
               
               <h1 className="text-4xl sm:text-6xl md:text-8xl lg:text-9xl font-black tracking-[-0.05em] text-white leading-[0.9] sm:leading-[0.85] uppercase italic mb-8 sm:mb-12 text-balance text-center px-2">
-                Commit <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20 text-center">Capital behind your Goals.</span>
+                You said you would. <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-b from-white to-white/20 text-center">Now prove it.</span>
               </h1>
               
               <p className="mx-auto max-w-2xl text-xs sm:text-sm md:text-base text-white/40 leading-relaxed font-black italic mb-10 sm:mb-16 uppercase tracking-tight text-center px-4">
