@@ -22,6 +22,22 @@ async function checkAdmin(ctx: any) {
     return user;
 }
 
+/**
+ * Dedicated Admin Authorization Helper
+ */
+export const checkAdminStatus = query({
+    args: {},
+    returns: v.object({ isAdmin: v.boolean(), user: v.optional(v.any()) }),
+    handler: async (ctx) => {
+        try {
+            const user = await checkAdmin(ctx);
+            return { isAdmin: true, user };
+        } catch (e) {
+            return { isAdmin: false };
+        }
+    }
+});
+
 export const getSystemStats = query({
   args: {},
   returns: v.any(),

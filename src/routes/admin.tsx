@@ -89,6 +89,7 @@ function AdminDashboard() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
   
+  const { data: adminStatus } = useSuspenseQuery(convexQuery(api.admin.checkAdminStatus, {}));
   const { data: stats } = useSuspenseQuery(convexQuery(api.admin.getSystemStats, {}));
   const { data: waitlist } = useSuspenseQuery(convexQuery(api.waitlist.list, {}));
   const { data: pendingWithdrawals } = useSuspenseQuery(convexQuery(api.admin.getPendingWithdrawals, {}));
@@ -102,12 +103,12 @@ function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'waitlist' | 'withdrawals' | 'breaches'>('withdrawals');
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (!authLoading && (!isAuthenticated || !adminStatus?.isAdmin)) {
       navigate({ to: '/login' });
     }
-  }, [isAuthenticated, authLoading, navigate]);
+  }, [isAuthenticated, authLoading, adminStatus, navigate]);
 
-  if (!stats) return <AdminLoading />;
+  if (!stats || !adminStatus?.isAdmin) return <AdminLoading />;
 
   const exportCSV = () => {
     const csv = [

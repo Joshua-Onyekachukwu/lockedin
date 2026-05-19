@@ -101,7 +101,6 @@ export const generateUploadUrl = mutation({
 export const checkIn = mutation({
   args: {
     goalId: v.id("goals"),
-    week_number: v.number(),
     proofImageId: v.optional(v.id("_storage")),
     note: v.optional(v.string()),
   },
@@ -121,11 +120,16 @@ export const checkIn = mutation({
     const vault = await ctx.db.get(goal.vaultId);
     if (!vault || vault.status !== "active") return { success: false, message: "Vault is not active" };
 
+    // Calculate current week
+    const now = Date.now();
+    const diffMs = now - vault.startDate;
+    const week_number = Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
+
     const today = new Date().toISOString().split('T')[0];
     
     await ctx.db.insert("goal_logs", {
       goalId: args.goalId,
-      week_number: args.week_number,
+      week_number,
       date: today,
       status: "completed",
       proofImageId: args.proofImageId,
