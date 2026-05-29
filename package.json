@@ -13,7 +13,7 @@
     "build": "vinxi build",
     "postbuild": "tsc --noEmit",
     "start": "vinxi start",
-    "auth:generate-key": "node -e \"console.log(require('crypto').generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } }).privateKey)\"",
+    "auth:generate-key": "node ./scripts/generate-auth-keys.mjs",
     "format": "prettier --write .",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0"
   },
