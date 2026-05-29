@@ -16,6 +16,7 @@ function LoginPage() {
   const [step, setStep] = useState<'signin' | 'signup'>('signin');
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const [isNameFocused, setIsNameFocused] = useState(false);
 
@@ -34,10 +35,16 @@ function LoginPage() {
   const handleSignIn = async (provider: string) => {
     setIsPending(true);
     setError(null);
+    setSuccess(provider === 'google' ? 'Redirecting to Google...' : 'Verifying identity...');
     try {
-      await signIn(provider);
+      if (provider === 'google') {
+        await signIn(provider, { redirectTo: '/dashboard' } as any);
+      } else {
+        await signIn(provider);
+      }
     } catch (err: any) {
       setError("Authentication failed. Please try again.");
+      setSuccess(null);
       setIsPending(false);
     }
   };
@@ -46,6 +53,7 @@ function LoginPage() {
     e.preventDefault();
     setIsPending(true);
     setError(null);
+    setSuccess(null);
 
     try {
       if (step === 'signup') {
@@ -58,14 +66,15 @@ function LoginPage() {
             name: formData.name,
             flow: "signUp" 
         });
+        setSuccess('Identity established. Initializing session...');
       } else {
         await signIn("password", { 
           email: formData.email, 
           password: formData.password, 
           flow: "signIn" 
         });
+        setSuccess('Access authorized. Initializing session...');
       }
-      setIsPending(false);
     } catch (err: any) {
       let friendlyError = err.message || "An error occurred during authentication.";
       
@@ -77,6 +86,7 @@ function LoginPage() {
       }
       
       setError(friendlyError);
+      setSuccess(null);
       setIsPending(false);
     }
   };
@@ -132,6 +142,17 @@ function LoginPage() {
                 >
                     <AlertCircle size={16} />
                     {error}
+                </motion.div>
+            )}
+            {!error && (isPending || authLoading) && success && (
+                <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-6 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center gap-3 text-blue-400 text-xs font-bold uppercase italic tracking-tight"
+                >
+                    <Loader2 size={16} className="animate-spin" />
+                    {success}
                 </motion.div>
             )}
           </AnimatePresence>
@@ -216,7 +237,12 @@ function LoginPage() {
               className="w-full flex items-center justify-center gap-3 rounded-2xl bg-white text-black py-5 font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl shadow-white/5"
             >
               {isPending ? (
-                <Loader2 size={18} className="animate-spin" />
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>
+                    {step === 'signin' ? 'Authorizing...' : 'Establishing...'}
+                  </span>
+                </>
               ) : (
                 <>
                   {step === 'signin' ? 'Authorize Access' : 'Establish Identity'} 
