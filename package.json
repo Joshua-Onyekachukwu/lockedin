@@ -1,7 +1,9 @@
 {
   "name": "cto-new",
   "private": true,
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "type": "module",
   "scripts": {
     "dev": "npx convex dev --once && concurrently -r npm:dev:web npm:dev:convex",
