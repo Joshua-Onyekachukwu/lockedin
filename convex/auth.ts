@@ -2,6 +2,10 @@ import { Password } from "@convex-dev/auth/providers/Password";
 import Google from "@auth/core/providers/google";
 import { convexAuth } from "@convex-dev/auth/server";
 
+const googleClientId = process.env.AUTH_GOOGLE_ID ?? process.env.GOOGLE_ID;
+const googleClientSecret =
+  process.env.AUTH_GOOGLE_SECRET ?? process.env.GOOGLE_SECRET;
+
 export const { auth, signIn, signOut, store } = convexAuth({
   providers: [
     Password({
@@ -23,26 +27,31 @@ export const { auth, signIn, signOut, store } = convexAuth({
         };
       },
     }),
-    Google({
-      profile(profile: any) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-          // Custom fields for Lockedin
-          balance: 0,
-          bvn_verified: false,
-          integrityScore: 100,
-          streak_count: 0,
-          goals_completed: 0,
-          witness_discoverable: true,
-          tier: "bronze",
-          is_discoverable: true,
-          shields: 0,
-          credits: 0,
-        };
-      },
-    }),
+    ...(googleClientId && googleClientSecret
+      ? [
+          Google({
+            clientId: googleClientId,
+            clientSecret: googleClientSecret,
+            profile(profile: any) {
+              return {
+                id: profile.sub,
+                name: profile.name,
+                email: profile.email,
+                image: profile.picture,
+                balance: 0,
+                bvn_verified: false,
+                integrityScore: 100,
+                streak_count: 0,
+                goals_completed: 0,
+                witness_discoverable: true,
+                tier: "bronze",
+                is_discoverable: true,
+                shields: 0,
+                credits: 0,
+              };
+            },
+          }),
+        ]
+      : []),
   ],
 });
