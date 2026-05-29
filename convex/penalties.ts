@@ -10,7 +10,6 @@ export const midnightSweep = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const now = Date.now();
     const todayDayName = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const isSunday = todayDayName === 'sunday';
     
@@ -30,36 +29,36 @@ export const midnightSweep = internalMutation({
         let breached = false;
 
         if (goal.frequency_type === 'daily') {
-          // DAILY PROTOCOL: Check for log today
-          const startOfToday = new Date().setHours(0,0,0,0);
+          const today = new Date().toISOString().split('T')[0];
           const logs = await ctx.db
             .query("goal_logs")
-            .withIndex("by_goal", (q) => q.eq("goalId", goal._id))
-            .filter(q => q.gte(q.field("_creationTime"), startOfToday))
+            .withIndex("by_goal_and_date", (q) => q.eq("goalId", goal._id).eq("date", today))
             .collect();
           
           if (logs.length === 0) breached = true;
         } else if (goal.frequency_type === 'weekly' && isSunday) {
-          // WEEKLY PROTOCOL: Evaluated every Sunday midnight
-          const startOfWeek = now - (7 * 24 * 60 * 60 * 1000);
-          const logs = await ctx.db
+          const today = new Date();
+          const startOfWeek = new Date(today);
+          startOfWeek.setDate(today.getDate() - 7);
+          const startOfWeekStr = startOfWeek.toISOString().split('T')[0];
+          const weekLogs = await ctx.db
             .query("goal_logs")
-            .withIndex("by_goal", (q) => q.eq("goalId", goal._id))
-            .filter(q => q.gte(q.field("_creationTime"), startOfWeek))
+            .withIndex("by_goal_and_date", (q) => q.eq("goalId", goal._id))
+            .filter(q => q.gte(q.field("date"), startOfWeekStr))
             .collect();
           
-          if (logs.length < (goal.target_count || 1)) breached = true;
+          if (weekLogs.length < (goal.target_count || 1)) breached = true;
         } else if (goal.frequency_type === 'monthly' && new Date().getDate() === 1) {
-            // MONTHLY PROTOCOL: Evaluated 1st of every month
-            const startOfMonth = new Date();
-            startOfMonth.setMonth(startOfMonth.getMonth() - 1);
-            const logs = await ctx.db
+            const today = new Date();
+            const startOfMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const startOfMonthStr = startOfMonth.toISOString().split('T')[0];
+            const monthLogs = await ctx.db
               .query("goal_logs")
-              .withIndex("by_goal", (q) => q.eq("goalId", goal._id))
-              .filter(q => q.gte(q.field("_creationTime"), startOfMonth.getTime()))
+              .withIndex("by_goal_and_date", (q) => q.eq("goalId", goal._id))
+              .filter(q => q.gte(q.field("date"), startOfMonthStr))
               .collect();
             
-            if (logs.length < (goal.target_count || 1)) breached = true;
+            if (monthLogs.length < (goal.target_count || 1)) breached = true;
         }
 
         if (breached) {

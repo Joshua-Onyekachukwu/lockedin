@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useConvexAuth } from 'convex/react';
 import { Lock, LogIn, Mail, Key, User, ArrowRight, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export const Route = createFileRoute('/login')({
   component: LoginPage,
@@ -10,6 +11,7 @@ export const Route = createFileRoute('/login')({
 
 function LoginPage() {
   const { signIn } = useAuthActions();
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState<'signin' | 'signup'>('signin');
   const [isPending, setIsPending] = useState(false);
@@ -22,6 +24,12 @@ function LoginPage() {
     password: '',
     name: '',
   });
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate({ to: '/dashboard' });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
 
   const handleSignIn = async (provider: string) => {
     setIsPending(true);
@@ -57,7 +65,7 @@ function LoginPage() {
           flow: "signIn" 
         });
       }
-      navigate({ to: '/dashboard' });
+      setIsPending(false);
     } catch (err: any) {
       let friendlyError = err.message || "An error occurred during authentication.";
       

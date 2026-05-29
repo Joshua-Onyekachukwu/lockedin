@@ -8,7 +8,7 @@ import * as React from 'react'
 // @ts-ignore
 import { Analytics } from '@vercel/analytics/react'
 import type { QueryClient } from '@tanstack/react-query'
-import appCss from '~/styles/app.css?url'
+import '~/styles/app.css'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -27,7 +27,6 @@ export const Route = createRootRouteWithContext<{
       },
     ],
     links: [
-      { rel: 'stylesheet', href: appCss },
       { rel: 'icon', href: '/favicon.ico' },
     ],
   }),

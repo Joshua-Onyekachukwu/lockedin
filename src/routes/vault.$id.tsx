@@ -1,11 +1,13 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
+import { useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { 
   ShieldCheck, 
   Clock
 } from 'lucide-react';
+import { useEffect } from 'react';
 
 export const Route = createFileRoute('/vault/$id')({
   component: VaultPage,
@@ -13,12 +15,30 @@ export const Route = createFileRoute('/vault/$id')({
 
 function VaultPage() {
   const { id: vaultId } = Route.useParams();
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const navigate = useNavigate();
   
-  const { data: vault }: { data: any } = useSuspenseQuery(convexQuery(api.goals.getFullContext, { 
-    vaultId: vaultId as any
-  }));
+  const vaultQuery = convexQuery(api.goals.getFullContext, {
+    vaultId: vaultId as any,
+  }) as any;
+  const { data: vault }: { data: any } = useSuspenseQuery({
+    ...vaultQuery,
+    enabled: isAuthenticated,
+  });
 
-  if (!vault) return <div>Vault not found</div>;
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate({ to: '/login' });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
+  if (authLoading || !isAuthenticated || !vault) {
+    return (
+      <div className="min-h-screen bg-[#050810] flex items-center justify-center">
+        <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">

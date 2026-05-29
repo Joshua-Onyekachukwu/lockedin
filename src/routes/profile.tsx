@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
-import { useMutation } from 'convex/react';
+import { useConvexAuth, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { 
   User, 
@@ -15,15 +15,20 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export const Route = createFileRoute('/profile')({
   component: ProfileSettings,
 });
 
 function ProfileSettings() {
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
-  const { data: user } = useSuspenseQuery(convexQuery(api.users.current, {}));
+  const userQuery = convexQuery(api.users.current, {}) as any;
+  const { data: user }: { data: any } = useSuspenseQuery({
+    ...userQuery,
+    enabled: isAuthenticated,
+  } as any);
   const updateProfile = useMutation(api.users.updateProfile);
   
   const [isSaving, setIsSaving] = useState(false);
@@ -34,6 +39,20 @@ function ProfileSettings() {
     is_discoverable: user?.is_discoverable ?? true,
     witness_discoverable: user?.witness_discoverable ?? true,
   });
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate({ to: '/login' });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
+  if (authLoading || !isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen bg-[#050810] flex items-center justify-center">
+        <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />
+      </div>
+    );
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

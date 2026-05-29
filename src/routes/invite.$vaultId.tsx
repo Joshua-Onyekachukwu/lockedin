@@ -21,19 +21,35 @@ function PartnerInvite() {
   const { vaultId } = Route.useParams();
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const { data: user } = useSuspenseQuery(convexQuery(api.users.current, {}));
+  const userQuery = convexQuery(api.users.current, {}) as any;
+  const { data: user }: { data: any } = useSuspenseQuery({
+    ...userQuery,
+    enabled: isAuthenticated,
+  } as any);
   
   const joinAsPartner = useMutation(api.partners.join);
   
-  const { data: vault }: { data: any } = useSuspenseQuery(convexQuery(api.goals.getFullContext, { 
-    vaultId: vaultId as any
-  }));
+  const vaultQuery = convexQuery(api.goals.getFullContext, {
+    vaultId: vaultId as any,
+  }) as any;
+  const { data: vault }: { data: any } = useSuspenseQuery({
+    ...vaultQuery,
+    enabled: isAuthenticated,
+  } as any);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       navigate({ to: '/login' });
     }
   }, [isAuthenticated, authLoading, navigate]);
+
+  if (authLoading || !isAuthenticated || !user || !vault) {
+    return (
+      <div className="min-h-screen bg-[#050810] flex items-center justify-center">
+        <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />
+      </div>
+    );
+  }
 
   const handleAccept = async () => {
     if (!user?._id) return;

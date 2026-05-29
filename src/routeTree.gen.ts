@@ -8,68 +8,160 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as VerifyBvnRouteImport } from './routes/verify-bvn'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as LeaderboardRouteImport } from './routes/leaderboard'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CommunityRouteImport } from './routes/community'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as VaultIdRouteImport } from './routes/vault.$id'
-import { Route as InviteVaultIdRouteImport } from './routes/invite.$vaultId'
+// Import Routes
 
-const VerifyBvnRoute = VerifyBvnRouteImport.update({
+import { Route as rootRoute } from './routes/__root'
+import { Route as VerifyBvnImport } from './routes/verify-bvn'
+import { Route as ProfileImport } from './routes/profile'
+import { Route as LoginImport } from './routes/login'
+import { Route as LeaderboardImport } from './routes/leaderboard'
+import { Route as DashboardImport } from './routes/dashboard'
+import { Route as CommunityImport } from './routes/community'
+import { Route as AdminImport } from './routes/admin'
+import { Route as IndexImport } from './routes/index'
+import { Route as VaultIdImport } from './routes/vault.$id'
+import { Route as InviteVaultIdImport } from './routes/invite.$vaultId'
+
+// Create/Update Routes
+
+const VerifyBvnRoute = VerifyBvnImport.update({
   id: '/verify-bvn',
   path: '/verify-bvn',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const ProfileRoute = ProfileRouteImport.update({
+
+const ProfileRoute = ProfileImport.update({
   id: '/profile',
   path: '/profile',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const LoginRoute = LoginRouteImport.update({
+
+const LoginRoute = LoginImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const LeaderboardRoute = LeaderboardRouteImport.update({
+
+const LeaderboardRoute = LeaderboardImport.update({
   id: '/leaderboard',
   path: '/leaderboard',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
+
+const DashboardRoute = DashboardImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const CommunityRoute = CommunityRouteImport.update({
+
+const CommunityRoute = CommunityImport.update({
   id: '/community',
   path: '/community',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const AdminRoute = AdminRouteImport.update({
+
+const AdminRoute = AdminImport.update({
   id: '/admin',
   path: '/admin',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+
+const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const VaultIdRoute = VaultIdRouteImport.update({
+
+const VaultIdRoute = VaultIdImport.update({
   id: '/vault/$id',
   path: '/vault/$id',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
-const InviteVaultIdRoute = InviteVaultIdRouteImport.update({
+
+const InviteVaultIdRoute = InviteVaultIdImport.update({
   id: '/invite/$vaultId',
   path: '/invite/$vaultId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => rootRoute,
 } as any)
+
+// Populate the FileRoutesByPath interface
+
+declare module '@tanstack/react-router' {
+  interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminImport
+      parentRoute: typeof rootRoute
+    }
+    '/community': {
+      id: '/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof CommunityImport
+      parentRoute: typeof rootRoute
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardImport
+      parentRoute: typeof rootRoute
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardImport
+      parentRoute: typeof rootRoute
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginImport
+      parentRoute: typeof rootRoute
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileImport
+      parentRoute: typeof rootRoute
+    }
+    '/verify-bvn': {
+      id: '/verify-bvn'
+      path: '/verify-bvn'
+      fullPath: '/verify-bvn'
+      preLoaderRoute: typeof VerifyBvnImport
+      parentRoute: typeof rootRoute
+    }
+    '/invite/$vaultId': {
+      id: '/invite/$vaultId'
+      path: '/invite/$vaultId'
+      fullPath: '/invite/$vaultId'
+      preLoaderRoute: typeof InviteVaultIdImport
+      parentRoute: typeof rootRoute
+    }
+    '/vault/$id': {
+      id: '/vault/$id'
+      path: '/vault/$id'
+      fullPath: '/vault/$id'
+      preLoaderRoute: typeof VaultIdImport
+      parentRoute: typeof rootRoute
+    }
+  }
+}
+
+// Create and export the route tree
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -83,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
+
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
@@ -95,8 +188,9 @@ export interface FileRoutesByTo {
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
+
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
+  __root__: typeof rootRoute
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/community': typeof CommunityRoute
@@ -108,6 +202,7 @@ export interface FileRoutesById {
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
+
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
@@ -147,6 +242,7 @@ export interface FileRouteTypes {
     | '/vault/$id'
   fileRoutesById: FileRoutesById
 }
+
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
@@ -158,81 +254,6 @@ export interface RootRouteChildren {
   VerifyBvnRoute: typeof VerifyBvnRoute
   InviteVaultIdRoute: typeof InviteVaultIdRoute
   VaultIdRoute: typeof VaultIdRoute
-}
-
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/verify-bvn': {
-      id: '/verify-bvn'
-      path: '/verify-bvn'
-      fullPath: '/verify-bvn'
-      preLoaderRoute: typeof VerifyBvnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/leaderboard': {
-      id: '/leaderboard'
-      path: '/leaderboard'
-      fullPath: '/leaderboard'
-      preLoaderRoute: typeof LeaderboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/community': {
-      id: '/community'
-      path: '/community'
-      fullPath: '/community'
-      preLoaderRoute: typeof CommunityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/vault/$id': {
-      id: '/vault/$id'
-      path: '/vault/$id'
-      fullPath: '/vault/$id'
-      preLoaderRoute: typeof VaultIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invite/$vaultId': {
-      id: '/invite/$vaultId'
-      path: '/invite/$vaultId'
-      fullPath: '/invite/$vaultId'
-      preLoaderRoute: typeof InviteVaultIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-  }
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -247,15 +268,59 @@ const rootRouteChildren: RootRouteChildren = {
   InviteVaultIdRoute: InviteVaultIdRoute,
   VaultIdRoute: VaultIdRoute,
 }
-export const routeTree = rootRouteImport
+
+export const routeTree = rootRoute
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
+/* ROUTE_MANIFEST_START
+{
+  "routes": {
+    "__root__": {
+      "filePath": "__root.tsx",
+      "children": [
+        "/",
+        "/admin",
+        "/community",
+        "/dashboard",
+        "/leaderboard",
+        "/login",
+        "/profile",
+        "/verify-bvn",
+        "/invite/$vaultId",
+        "/vault/$id"
+      ]
+    },
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/admin": {
+      "filePath": "admin.tsx"
+    },
+    "/community": {
+      "filePath": "community.tsx"
+    },
+    "/dashboard": {
+      "filePath": "dashboard.tsx"
+    },
+    "/leaderboard": {
+      "filePath": "leaderboard.tsx"
+    },
+    "/login": {
+      "filePath": "login.tsx"
+    },
+    "/profile": {
+      "filePath": "profile.tsx"
+    },
+    "/verify-bvn": {
+      "filePath": "verify-bvn.tsx"
+    },
+    "/invite/$vaultId": {
+      "filePath": "invite.$vaultId.tsx"
+    },
+    "/vault/$id": {
+      "filePath": "vault.$id.tsx"
+    }
   }
 }
+ROUTE_MANIFEST_END */

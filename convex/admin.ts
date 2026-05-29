@@ -16,7 +16,14 @@ async function checkAdmin(ctx: any) {
     if (userId === null) throw new Error("UNAUTHORIZED: ACCESS DENIED");
     
     const user = await ctx.db.get(userId);
-    if (!user || !user.email || !ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase())) {
+    if (!user) {
+        throw new Error("SECURITY ALERT: Administrative privileges required.");
+    }
+    
+    const isEmailAdmin = user.email && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
+    const isDbAdmin = user.isAdmin === true;
+    
+    if (!isDbAdmin && !isEmailAdmin) {
         throw new Error("SECURITY ALERT: Administrative privileges required.");
     }
     return user;

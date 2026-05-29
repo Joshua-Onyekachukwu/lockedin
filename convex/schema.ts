@@ -21,6 +21,7 @@ export default defineSchema({
     witness_discoverable: v.optional(v.boolean()),
     shields: v.number(), // Protection against breaches
     credits: v.number(), // Non-monetary protocol currency
+    isAdmin: v.optional(v.boolean()),
   }).index("by_email", ["email"])
     .index("by_integrity", ["integrityScore"]),
 

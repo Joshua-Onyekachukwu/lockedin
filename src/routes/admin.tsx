@@ -89,11 +89,37 @@ function AdminDashboard() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
   
-  const { data: adminStatus } = useSuspenseQuery(convexQuery(api.admin.checkAdminStatus, {}));
-  const { data: stats } = useSuspenseQuery(convexQuery(api.admin.getSystemStats, {}));
-  const { data: waitlist } = useSuspenseQuery(convexQuery(api.waitlist.list, {}));
-  const { data: pendingWithdrawals } = useSuspenseQuery(convexQuery(api.admin.getPendingWithdrawals, {}));
-  const { data: breachCandidates } = useSuspenseQuery(convexQuery(api.admin.getBreachCandidates, {}));
+  const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, {}) as any;
+  const { data: adminStatus }: { data: any } = useSuspenseQuery({
+    ...adminStatusQuery,
+    enabled: isAuthenticated,
+  } as any);
+
+  const isAdmin = !!adminStatus?.isAdmin;
+
+  const statsQuery = convexQuery(api.admin.getSystemStats, {}) as any;
+  const { data: stats }: { data: any } = useSuspenseQuery({
+    ...statsQuery,
+    enabled: isAuthenticated && isAdmin,
+  } as any);
+
+  const waitlistQuery = convexQuery(api.waitlist.list, {}) as any;
+  const { data: waitlist }: { data: any } = useSuspenseQuery({
+    ...waitlistQuery,
+    enabled: isAuthenticated && isAdmin,
+  } as any);
+
+  const pendingWithdrawalsQuery = convexQuery(api.admin.getPendingWithdrawals, {}) as any;
+  const { data: pendingWithdrawals }: { data: any } = useSuspenseQuery({
+    ...pendingWithdrawalsQuery,
+    enabled: isAuthenticated && isAdmin,
+  } as any);
+
+  const breachCandidatesQuery = convexQuery(api.admin.getBreachCandidates, {}) as any;
+  const { data: breachCandidates }: { data: any } = useSuspenseQuery({
+    ...breachCandidatesQuery,
+    enabled: isAuthenticated && isAdmin,
+  } as any);
   
   const sweep = useMutation(api.admin.triggerMidnightSweep);
   const distribute = useMutation(api.admin.triggerWeeklyDistribution);
@@ -108,7 +134,7 @@ function AdminDashboard() {
     }
   }, [isAuthenticated, authLoading, adminStatus, navigate]);
 
-  if (!stats || !adminStatus?.isAdmin) return <AdminLoading />;
+  if (authLoading || !isAuthenticated || !adminStatus?.isAdmin || !stats) return <AdminLoading />;
 
   const exportCSV = () => {
     const csv = [

@@ -39,7 +39,11 @@ export const Route = createFileRoute('/dashboard')({
 function Dashboard() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
-  const { data: user }: { data: any } = useSuspenseQuery(convexQuery(api.users.current, {}) as any);
+  const userQuery = convexQuery(api.users.current, {}) as any;
+  const { data: user }: { data: any } = useSuspenseQuery({
+    ...userQuery,
+    enabled: isAuthenticated,
+  });
   
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -47,7 +51,7 @@ function Dashboard() {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  if (authLoading || !user) {
+  if (authLoading || !isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-[#050810] flex items-center justify-center">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />

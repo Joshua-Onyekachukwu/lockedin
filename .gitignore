@@ -3,12 +3,15 @@ node_modules
 !.env
 .env
 .env.local
+.env.development.local
 .DS_Store
 .cache
 .vercel
 .output
 .nitro
 .tanstack
+.vinxi
+.idea
 
 /build/
 /api/

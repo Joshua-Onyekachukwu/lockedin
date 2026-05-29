@@ -3,6 +3,14 @@ description: Guidelines and best practices for building Convex projects, includi
 globs: **/*.ts,**/*.tsx,**/*.js,**/*.jsx
 ---
 
+# Project Security
+
+See [SECURITY.md](./SECURITY.md) for:
+- Rafter security scanning integration
+- API key configuration
+- Security audit schedule
+- Sensitive areas to monitor
+
 # Convex guidelines
 ## Common mistakes to avoid
 - Do NOT use `useQuery` from `convex/react` — use `useSuspenseQuery` from `@tanstack/react-query` with `convexQuery` from `@convex-dev/react-query`.

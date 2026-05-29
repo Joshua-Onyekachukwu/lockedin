@@ -7,6 +7,23 @@ export const add = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    // 1. Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(args.email)) {
+      throw new Error("Invalid email format. Please provide a valid email address.");
+    }
+
+    // 2. Global rate-limiting: max 10 waitlist signups in the last 60 seconds
+    const oneMinuteAgo = Date.now() - 60000;
+    const recentSubmissions = await ctx.db
+      .query("waitlist")
+      .filter((q) => q.gt(q.field("_creationTime"), oneMinuteAgo))
+      .collect();
+    
+    if (recentSubmissions.length >= 10) {
+      throw new Error("Too many requests. Please try again in a minute.");
+    }
+
     const existing = await ctx.db
       .query("waitlist")
       .withIndex("by_email", (q) => q.eq("email", args.email))
