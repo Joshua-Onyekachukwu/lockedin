@@ -1,9 +1,42 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { auth } from "./auth";
+
+function hexToBytes(hex: string) {
+  if (hex.length % 2 !== 0) return null;
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    const byte = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    if (Number.isNaN(byte)) return null;
+    out[i] = byte;
+  }
+  return out;
+}
+
+function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array) {
+  let diff = a.length ^ b.length;
+  const len = Math.min(a.length, b.length);
+  for (let i = 0; i < len; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+async function computePaystackSignature(payload: string, secret: string) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-512" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  return new Uint8Array(mac);
+}
 
 const http = httpRouter();
+
+auth.addHttpRoutes(http);
 
 http.route({
   path: "/paystack-webhook",
@@ -21,19 +54,13 @@ http.route({
 
     const payload = await request.text();
 
-    try {
-      const expected = createHmac("sha512", secret).update(payload).digest("hex");
+    const signatureBytes = hexToBytes(signature);
+    if (!signatureBytes) {
+      return new Response("Unauthorized: Invalid Signature", { status: 401 });
+    }
 
-      const signatureBuf = Buffer.from(signature, "hex");
-      const expectedBuf = Buffer.from(expected, "hex");
-
-      if (
-        signatureBuf.length !== expectedBuf.length ||
-        !timingSafeEqual(signatureBuf, expectedBuf)
-      ) {
-        return new Response("Unauthorized: Invalid Signature", { status: 401 });
-      }
-    } catch {
+    const expectedBytes = await computePaystackSignature(payload, secret);
+    if (!timingSafeEqualBytes(signatureBytes, expectedBytes)) {
       return new Response("Unauthorized: Invalid Signature", { status: 401 });
     }
 
