@@ -41,7 +41,7 @@ http.route({
         const event = JSON.parse(payload);
 
         if (event.event === "charge.success") {
-          const { reference, amount, customer } = event.data;
+          const { reference, amount } = event.data;
           
           // Fulfill the deposit using the internal mutation
           await ctx.runMutation(internal.payments.fulfillDeposit, {
