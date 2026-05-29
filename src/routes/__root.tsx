@@ -3,6 +3,8 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  useRouter,
+  useRouterState,
 } from '@tanstack/react-router'
 import * as React from 'react'
 // @ts-ignore
@@ -47,6 +49,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html>
       <head>
         <HeadContent />
+        <RouterAssetLinks />
       </head>
       <body>
         {children}
@@ -55,4 +58,42 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </body>
     </html>
   )
+}
+
+function RouterAssetLinks() {
+  const router = useRouter()
+
+  const assetLinks = useRouterState({
+    select: (state) => {
+      const manifest = router.ssr?.manifest
+      if (!manifest) return []
+
+      const links: Array<{ tag: 'link'; attrs: Record<string, any> }> = []
+
+      state.matches
+        .map((match) => router.looseRoutesById[match.routeId]!)
+        .forEach((route) => {
+          manifest.routes[route.id]?.assets
+            ?.filter((d: any) => d?.tag === 'link')
+            .forEach((asset: any) => {
+              links.push(asset)
+            })
+        })
+
+      return links
+    },
+    structuralSharing: true as any,
+  })
+
+  const uniqLinks = React.useMemo(() => {
+    const seen = new Set<string>()
+    return assetLinks.filter((l) => {
+      const key = JSON.stringify(l)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [assetLinks])
+
+  return uniqLinks.map((l, i) => <link key={`tsr-asset-${i}`} {...l.attrs} />)
 }
