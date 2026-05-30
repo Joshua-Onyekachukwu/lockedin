@@ -23,7 +23,6 @@ export default defineSchema({
     credits: v.number(), // Non-monetary protocol currency
     isAdmin: v.optional(v.boolean()),
   }).index("email", ["email"])
-    .index("by_email", ["email"])
     .index("by_integrity", ["integrityScore"]),
 
   vaults: defineTable({
