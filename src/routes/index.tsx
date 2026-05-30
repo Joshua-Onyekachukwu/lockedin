@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { 
   Lock, 
   ArrowRight,
@@ -25,6 +25,7 @@ export const Route = createFileRoute('/')({
 
 function LandingPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [email, setEmail] = useState('');
@@ -33,6 +34,12 @@ function LandingPage() {
   const [showModal, setShowModal] = useState<{ title: string; content: string } | null>(null);
   
   const joinWaitlist = useMutation(api.waitlist.add);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate({ to: '/dashboard' });
+    }
+  }, [isLoading, isAuthenticated, navigate]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
