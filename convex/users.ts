@@ -23,6 +23,7 @@ export const current = query({
     _creationTime: v.number(),
     name: v.optional(v.string()),
     email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
     image: v.optional(v.string()),
     phone: v.optional(v.string()),
     city: v.optional(v.string()),
@@ -36,6 +37,8 @@ export const current = query({
     balance: v.number(),
     shields: v.number(),
     credits: v.number(),
+    witness_discoverable: v.optional(v.boolean()),
+    isAdmin: v.optional(v.boolean()),
   })),
   handler: async (ctx) => {
     const userId = await auth.getUserId(ctx);
