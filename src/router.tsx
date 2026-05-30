@@ -33,7 +33,10 @@ export function getRouter() {
       defaultErrorComponent: (err) => <p>{err.error.stack}</p>,
       defaultNotFoundComponent: () => <p>not found</p>,
       Wrap: ({ children }) => (
-        <ConvexAuthProvider client={convexQueryClient.convexClient}>
+        <ConvexAuthProvider
+          client={convexQueryClient.convexClient}
+          storageNamespace="lockedin"
+        >
           {children}
         </ConvexAuthProvider>
       ),
