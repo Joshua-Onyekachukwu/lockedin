@@ -21,6 +21,7 @@ import { Route as AdminImport } from './routes/admin'
 import { Route as IndexImport } from './routes/index'
 import { Route as VaultIdImport } from './routes/vault.$id'
 import { Route as InviteVaultIdImport } from './routes/invite.$vaultId'
+import { Route as AuthCallbackImport } from './routes/auth.callback'
 
 // Create/Update Routes
 
@@ -84,6 +85,12 @@ const InviteVaultIdRoute = InviteVaultIdImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const AuthCallbackRoute = AuthCallbackImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -144,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyBvnImport
       parentRoute: typeof rootRoute
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackImport
+      parentRoute: typeof rootRoute
+    }
     '/invite/$vaultId': {
       id: '/invite/$vaultId'
       path: '/invite/$vaultId'
@@ -172,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
@@ -185,6 +200,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
@@ -199,6 +215,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
 }
@@ -214,6 +231,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
+    | '/auth/callback'
     | '/invite/$vaultId'
     | '/vault/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -226,6 +244,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
+    | '/auth/callback'
     | '/invite/$vaultId'
     | '/vault/$id'
   id:
@@ -238,6 +257,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
+    | '/auth/callback'
     | '/invite/$vaultId'
     | '/vault/$id'
   fileRoutesById: FileRoutesById
@@ -252,6 +272,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   VerifyBvnRoute: typeof VerifyBvnRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   InviteVaultIdRoute: typeof InviteVaultIdRoute
   VaultIdRoute: typeof VaultIdRoute
 }
@@ -265,6 +286,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   VerifyBvnRoute: VerifyBvnRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   InviteVaultIdRoute: InviteVaultIdRoute,
   VaultIdRoute: VaultIdRoute,
 }
@@ -287,6 +309,7 @@ export const routeTree = rootRoute
         "/login",
         "/profile",
         "/verify-bvn",
+        "/auth/callback",
         "/invite/$vaultId",
         "/vault/$id"
       ]
@@ -314,6 +337,9 @@ export const routeTree = rootRoute
     },
     "/verify-bvn": {
       "filePath": "verify-bvn.tsx"
+    },
+    "/auth/callback": {
+      "filePath": "auth.callback.tsx"
     },
     "/invite/$vaultId": {
       "filePath": "invite.$vaultId.tsx"

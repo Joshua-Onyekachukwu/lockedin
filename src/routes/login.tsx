@@ -38,7 +38,7 @@ function LoginPage() {
     setSuccess(provider === 'google' ? 'Redirecting to Google...' : 'Verifying identity...');
     try {
       if (provider === 'google') {
-        await signIn(provider, { redirectTo: '/dashboard' } as any);
+        await signIn(provider, { redirectTo: '/auth/callback?to=/dashboard' } as any);
       } else {
         await signIn(provider);
       }
