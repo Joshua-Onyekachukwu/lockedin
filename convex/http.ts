@@ -74,6 +74,7 @@ http.route({
           await ctx.runMutation(internal.payments.fulfillDeposit, {
             reference: reference,
             amountKobo: amount,
+            metadata: event.data,
           });
         }
 

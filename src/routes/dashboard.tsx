@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useMutation, useAction, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -914,6 +914,7 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
     const [loading, setLoading] = useState(false);
     const [depositReference, setDepositReference] = useState<string | null>(null);
     const [shouldOpenPaystack, setShouldOpenPaystack] = useState(false);
+    const [pollRef, setPollRef] = useState<string | null>(null);
 
     const config = {
         reference: depositReference ?? '',
@@ -939,21 +940,23 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
                 await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any).queryKey });
                 await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, EMPTY_ARGS as any) as any).queryKey });
                 toast.success(result.message, { title: 'Wallet Funded' });
+                setLoading(false);
                 onClose();
             } else {
-                toast.error(result.message, { title: 'Verification Failed' });
+                toast.info('Awaiting confirmation...', { title: 'Processing Deposit' });
+                setPollRef(reference.reference);
             }
         } catch (err: any) {
             console.error(err);
-            toast.error(err?.message || 'Verification error.', { title: 'Verification Error' });
-        } finally {
-            setLoading(false);
+            toast.info('Awaiting confirmation...', { title: 'Processing Deposit' });
+            setPollRef(reference.reference);
         }
     };
 
     const onClosePaystack = () => {
         setLoading(false);
         setDepositReference(null);
+        setPollRef(null);
     };
 
     const handleStartPayment = async () => {
@@ -976,6 +979,30 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
             setLoading(false);
         }
     };
+
+    const depositStatusQuery = convexQuery(api.payments.getDepositStatus, {
+      reference: pollRef ?? '',
+    } as any) as any;
+    const { data: depositStatus }: { data: any } = useQuery({
+      ...(depositStatusQuery as any),
+      enabled: !!pollRef,
+      refetchInterval: 2000,
+    } as any) as any;
+
+    useEffect(() => {
+      if (!pollRef) return;
+      if (!depositStatus) return;
+      if (depositStatus.status !== 'completed') return;
+      (async () => {
+        await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
+        await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any).queryKey });
+        await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, EMPTY_ARGS as any) as any).queryKey });
+        toast.success(`Deposit confirmed. ₦${(depositStatus.amount / 100).toLocaleString()} added to wallet.`, { title: 'Wallet Funded' });
+        setLoading(false);
+        setPollRef(null);
+        onClose();
+      })();
+    }, [depositStatus, onClose, pollRef, queryClient, toast]);
 
     return (
         <motion.div 

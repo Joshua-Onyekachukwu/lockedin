@@ -54,6 +54,9 @@ export const verifyPayment = action({
     message: v.string(),
   }),
   handler: async (ctx, args) => {
+    if (!PAYSTACK_SECRET) {
+      return { success: false, message: "Payment backend not configured." };
+    }
     try {
       const response = await fetch(`https://api.paystack.co/transaction/verify/${args.reference}`, {
         method: "GET",
@@ -73,6 +76,7 @@ export const verifyPayment = action({
           await ctx.runMutation(internal.payments.fulfillDeposit, {
             reference: args.reference,
             amountKobo,
+            metadata: data.data,
           });
         } catch (e: any) {
           return { success: false, message: e?.message || "Deposit reference could not be matched." };
@@ -96,6 +100,7 @@ export const fulfillDeposit = internalMutation({
   args: {
     reference: v.string(),
     amountKobo: v.number(),
+    metadata: v.optional(v.any()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -113,7 +118,7 @@ export const fulfillDeposit = internalMutation({
     }
 
     // Update deposit status
-    await ctx.db.patch(deposit._id, { status: "completed" });
+    await ctx.db.patch(deposit._id, { status: "completed", metadata: args.metadata });
 
     // Update user balance
     const user = await ctx.db.get(deposit.userId);
@@ -128,7 +133,7 @@ export const fulfillDeposit = internalMutation({
         amount: args.amountKobo,
         type: "deposit",
         status: "completed",
-        description: `Paystack Deposit Ref: ${args.reference}`,
+        description: `Paystack deposit: ${args.reference}`,
       });
 
       await ctx.db.insert("notifications", {
@@ -142,6 +147,38 @@ export const fulfillDeposit = internalMutation({
     }
 
     return null;
+  },
+});
+
+export const getDepositStatus = query({
+  args: { reference: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      reference: v.string(),
+      status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
+      amount: v.number(),
+      _creationTime: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return null;
+
+    const deposit = await ctx.db
+      .query("deposits")
+      .withIndex("by_reference", (q) => q.eq("reference", args.reference))
+      .unique();
+
+    if (!deposit) return null;
+    if (deposit.userId !== userId) return null;
+
+    return {
+      reference: deposit.reference,
+      status: deposit.status,
+      amount: deposit.amount,
+      _creationTime: deposit._creationTime,
+    };
   },
 });
 
