@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useConvexAuth, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useToast } from '~/components/toast';
 import { 
   User, 
   MapPin, 
@@ -24,6 +25,8 @@ export const Route = createFileRoute('/profile')({
 function ProfileSettings() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const userQuery = convexQuery(api.users.current, {}) as any;
   const { data: user }: { data: any } = useSuspenseQuery({
     ...userQuery,
@@ -32,6 +35,7 @@ function ProfileSettings() {
   const updateProfile = useMutation(api.users.updateProfile);
   
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     city: user?.city || '',
@@ -39,6 +43,17 @@ function ProfileSettings() {
     is_discoverable: user?.is_discoverable ?? true,
     witness_discoverable: user?.witness_discoverable ?? true,
   });
+
+  useEffect(() => {
+    if (isEditing) return;
+    setFormData({
+      name: user?.name || '',
+      city: user?.city || '',
+      bio: user?.bio || '',
+      is_discoverable: user?.is_discoverable ?? true,
+      witness_discoverable: user?.witness_discoverable ?? true,
+    });
+  }, [isEditing, user]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -59,13 +74,29 @@ function ProfileSettings() {
     setIsSaving(true);
     try {
       await updateProfile(formData);
+      await queryClient.invalidateQueries({ queryKey: userQuery.queryKey });
+      toast.success('Identity synchronized.', { title: 'Synchronization Complete' });
+      setIsEditing(false);
       navigate({ to: '/dashboard' });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to update profile protocol.");
+      toast.error(err?.message ? err.message : 'Failed to update identity protocol.', {
+        title: 'Synchronization Failed',
+      });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const resetAndCloseEdit = () => {
+    setFormData({
+      name: user?.name || '',
+      city: user?.city || '',
+      bio: user?.bio || '',
+      is_discoverable: user?.is_discoverable ?? true,
+      witness_discoverable: user?.witness_discoverable ?? true,
+    });
+    setIsEditing(false);
   };
 
   return (
@@ -87,6 +118,18 @@ function ProfileSettings() {
             <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] mt-1 font-black italic">Configuration Session</span>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsEditing(true)}
+          className={`px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest italic transition-all border ${
+            isEditing
+              ? 'bg-white/5 text-white/30 border-white/10'
+              : 'bg-white text-black border-white/10 hover:scale-[1.02] active:scale-95'
+          }`}
+          disabled={isEditing}
+        >
+          Edit
+        </button>
       </nav>
 
       <main className="max-w-3xl mx-auto p-6 lg:p-12 text-left relative z-10">
@@ -105,6 +148,7 @@ function ProfileSettings() {
               </div>
             </div>
             <h2 className="mt-8 text-3xl font-black italic uppercase tracking-tight">{user?.name}</h2>
+            <p className="mt-3 text-[10px] text-white/20 uppercase tracking-[0.3em] font-black italic">{user?.email}</p>
             <div className="mt-4 flex items-center gap-3">
               <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600/10 border border-blue-500/20 text-[10px] font-black text-blue-500 uppercase tracking-widest italic shadow-xl">
                 <ShieldCheck size={14} /> Integrity Score: {user?.integrityScore}%
@@ -127,7 +171,10 @@ function ProfileSettings() {
                   required
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
-                  className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-8 py-5 text-lg focus:border-blue-500 transition-all placeholder:text-white/5 font-black uppercase italic tracking-widest text-white shadow-inner"
+                  disabled={!isEditing}
+                  className={`w-full bg-white/[0.02] border border-white/10 rounded-2xl px-8 py-5 text-lg transition-all placeholder:text-white/5 font-black uppercase italic tracking-widest text-white shadow-inner ${
+                    isEditing ? 'focus:border-blue-500' : 'opacity-60 cursor-not-allowed'
+                  }`}
                 />
                 <User className="absolute right-8 top-1/2 -translate-y-1/2 text-white/5 group-focus-within:text-blue-500 transition-colors" size={20} />
               </div>
@@ -142,7 +189,10 @@ function ProfileSettings() {
                   value={formData.city}
                   placeholder="e.g. LAGOS, NIGERIA"
                   onChange={e => setFormData({...formData, city: e.target.value})}
-                  className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-8 py-5 text-lg focus:border-blue-500 transition-all placeholder:text-white/10 font-black uppercase italic tracking-widest text-white shadow-inner"
+                  disabled={!isEditing}
+                  className={`w-full bg-white/[0.02] border border-white/10 rounded-2xl px-8 py-5 text-lg transition-all placeholder:text-white/10 font-black uppercase italic tracking-widest text-white shadow-inner ${
+                    isEditing ? 'focus:border-blue-500' : 'opacity-60 cursor-not-allowed'
+                  }`}
                 />
                 <MapPin className="absolute right-8 top-1/2 -translate-y-1/2 text-white/5 group-focus-within:text-blue-500 transition-colors" size={20} />
               </div>
@@ -154,7 +204,10 @@ function ProfileSettings() {
                 value={formData.bio}
                 placeholder="Describe your commitment protocol..."
                 onChange={e => setFormData({...formData, bio: e.target.value})}
-                className="w-full bg-white/[0.02] border border-white/10 rounded-[2.5rem] px-8 py-8 text-lg focus:border-blue-500 transition-all h-40 resize-none placeholder:text-white/10 font-medium italic text-white shadow-inner"
+                disabled={!isEditing}
+                className={`w-full bg-white/[0.02] border border-white/10 rounded-[2.5rem] px-8 py-8 text-lg transition-all h-40 resize-none placeholder:text-white/10 font-medium italic text-white shadow-inner ${
+                  isEditing ? 'focus:border-blue-500' : 'opacity-60 cursor-not-allowed'
+                }`}
               />
             </div>
 
@@ -164,7 +217,10 @@ function ProfileSettings() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <button 
                         type="button"
-                        onClick={() => setFormData({...formData, is_discoverable: !formData.is_discoverable})}
+                        onClick={() => {
+                          if (!isEditing) return;
+                          setFormData({...formData, is_discoverable: !formData.is_discoverable});
+                        }}
                         className={`p-8 rounded-[2.5rem] border transition-all text-left group relative overflow-hidden ${formData.is_discoverable ? 'bg-blue-600/5 border-blue-500/20' : 'bg-white/[0.02] border-white/5'}`}
                     >
                         <div className="flex items-center gap-4 mb-4">
@@ -180,7 +236,10 @@ function ProfileSettings() {
 
                     <button 
                         type="button"
-                        onClick={() => setFormData({...formData, witness_discoverable: !formData.witness_discoverable})}
+                        onClick={() => {
+                          if (!isEditing) return;
+                          setFormData({...formData, witness_discoverable: !formData.witness_discoverable});
+                        }}
                         className={`p-8 rounded-[2.5rem] border transition-all text-left group relative overflow-hidden ${formData.witness_discoverable ? 'bg-[#ff7a00]/5 border-[#ff7a00]/20' : 'bg-white/[0.02] border-white/5'}`}
                     >
                         <div className="flex items-center gap-4 mb-4">
@@ -197,13 +256,33 @@ function ProfileSettings() {
             </div>
           </div>
 
-          <button 
-            type="submit"
-            disabled={isSaving}
-            className="w-full flex items-center justify-center gap-4 rounded-3xl bg-white text-black py-6 font-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all shadow-[0_20px_50px_rgba(255,255,255,0.05)] text-xs italic"
-          >
-            {isSaving ? <Loader2 className="animate-spin" /> : <><Lock size={18} /> Synchronize Identity</>}
-          </button>
+          {isEditing ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={resetAndCloseEdit}
+                disabled={isSaving}
+                className="w-full flex items-center justify-center gap-3 rounded-3xl bg-white/5 border border-white/10 text-white py-6 font-black uppercase tracking-[0.3em] hover:bg-white/10 active:scale-[0.98] disabled:opacity-50 transition-all text-xs italic"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit"
+                disabled={isSaving}
+                className="w-full flex items-center justify-center gap-4 rounded-3xl bg-white text-black py-6 font-black uppercase tracking-[0.3em] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 transition-all shadow-[0_20px_50px_rgba(255,255,255,0.05)] text-xs italic"
+              >
+                {isSaving ? <Loader2 className="animate-spin" /> : <><Lock size={18} /> Synchronize Identity</>}
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="w-full flex items-center justify-center gap-4 rounded-3xl bg-white/5 border border-white/10 text-white py-6 font-black uppercase tracking-[0.3em] hover:bg-white/10 active:scale-[0.98] transition-all text-xs italic"
+            >
+              Edit Identity
+            </button>
+          )}
         </form>
       </main>
 

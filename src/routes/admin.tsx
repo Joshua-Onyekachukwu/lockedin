@@ -3,6 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useMutation, useAction, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useToast } from '~/components/toast';
 import { 
   Users, 
   Download, 
@@ -88,6 +89,7 @@ function AdminLoading() {
 function AdminDashboard() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, {}) as any;
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
@@ -392,9 +394,11 @@ function AdminDashboard() {
                             onClick={async () => {
                                 try {
                                     await sweep({});
-                                    alert("Midnight Sweep Protocol Initialized.");
+                                    toast.success('Midnight sweep protocol initialized.', { title: 'Command Executed' });
                                 } catch (e: any) {
-                                    alert(`Access Denied: ${e.message}`);
+                                    toast.error(e?.message ? `Access denied: ${e.message}` : 'Access denied.', {
+                                      title: 'Command Rejected',
+                                    });
                                 }
                             }}
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-blue-600/20 hover:border-blue-500/30 transition-all text-center active:scale-95"
@@ -405,9 +409,11 @@ function AdminDashboard() {
                             onClick={async () => {
                                 try {
                                     await distribute({});
-                                    alert("Weekly Distribution Protocol Initialized.");
+                                    toast.success('Weekly distribution protocol initialized.', { title: 'Command Executed' });
                                 } catch (e: any) {
-                                    alert(`Access Denied: ${e.message}`);
+                                    toast.error(e?.message ? `Access denied: ${e.message}` : 'Access denied.', {
+                                      title: 'Command Rejected',
+                                    });
                                 }
                             }}
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-orange-600/20 hover:border-orange-500/30 transition-all text-center active:scale-95"

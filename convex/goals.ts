@@ -86,6 +86,15 @@ export const create = mutation({
       status: "completed",
     });
 
+    await ctx.db.insert("notifications", {
+      userId,
+      title: "Protocol Initialized",
+      message: `${args.title} activated. ₦${(args.stakedAmount / 100).toLocaleString()} staked to enforce adherence.`,
+      type: "protocol_created",
+      link: "/dashboard",
+      read: false,
+    });
+
     return vaultId;
   },
 });

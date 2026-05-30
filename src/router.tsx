@@ -4,6 +4,7 @@ import { routerWithQueryClient } from '@tanstack/react-router-with-query'
 import { ConvexQueryClient } from '@convex-dev/react-query'
 import { ConvexAuthProvider } from '@convex-dev/auth/react'
 import { routeTree } from './routeTree.gen'
+import { ToastProvider } from '~/components/toast'
 
 export function getRouter() {
   const CONVEX_URL = import.meta.env.VITE_CONVEX_URL || process.env.VITE_CONVEX_URL
@@ -33,12 +34,14 @@ export function getRouter() {
       defaultErrorComponent: (err) => <p>{err.error.stack}</p>,
       defaultNotFoundComponent: () => <p>not found</p>,
       Wrap: ({ children }) => (
-        <ConvexAuthProvider
-          client={convexQueryClient.convexClient}
-          storageNamespace="lockedin"
-        >
-          {children}
-        </ConvexAuthProvider>
+        <ToastProvider>
+          <ConvexAuthProvider
+            client={convexQueryClient.convexClient}
+            storageNamespace="lockedin"
+          >
+            {children}
+          </ConvexAuthProvider>
+        </ToastProvider>
       ),
     }),
     queryClient,

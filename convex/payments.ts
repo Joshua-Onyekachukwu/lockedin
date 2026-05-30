@@ -120,6 +120,15 @@ export const fulfillDeposit = internalMutation({
         status: "completed",
         description: `Paystack Deposit Ref: ${args.reference}`,
       });
+
+      await ctx.db.insert("notifications", {
+        userId: user._id,
+        title: "Wallet Funded",
+        message: `Deposit confirmed. ₦${(args.amountKobo / 100).toLocaleString()} added to wallet.`,
+        type: "wallet_funded",
+        link: "/dashboard",
+        read: false,
+      });
     }
 
     return null;
@@ -168,6 +177,15 @@ export const requestWithdrawal = mutation({
       type: "platform_fee", // Using platform_fee for deduction log
       status: "pending",
       description: `Withdrawal request to ${args.bankName} (${args.accountNumber})`,
+    });
+
+    await ctx.db.insert("notifications", {
+      userId,
+      title: "Withdrawal Requested",
+      message: `Extraction queued. ₦${(args.amount / 100).toLocaleString()} moved to escrow.`,
+      type: "wallet_withdrawal",
+      link: "/dashboard",
+      read: false,
     });
 
     return { 

@@ -4,6 +4,9 @@ import { convexQuery } from '@convex-dev/react-query';
 import { useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { 
+  ArrowLeft,
+  CheckCircle2,
+  AlertTriangle,
   ShieldCheck, 
   Clock
 } from 'lucide-react';
@@ -44,7 +47,19 @@ function VaultPage() {
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
         <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left">
             <div className="flex items-center gap-4 text-left">
-                <a href="/dashboard" className="relative h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg active:scale-95 transition-transform uppercase italic">L</a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.history.length > 1) {
+                      window.history.back();
+                      return;
+                    }
+                    navigate({ to: '/dashboard' });
+                  }}
+                  className="relative h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90 shadow-xl"
+                >
+                  <ArrowLeft size={20} />
+                </button>
                 <div className="flex flex-col text-left">
                     <span className="font-bold tracking-tight text-lg leading-none text-white">Vault Specification</span>
                     <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] mt-1 font-black">Asset Protocol</span>
@@ -96,19 +111,50 @@ function VaultPage() {
                              </div>
                         ) : (
                             vault.logs?.map((log: any) => (
-                                <div key={log._id} className="p-8 rounded-[2.5rem] border border-white/5 bg-white/[0.02] flex items-center justify-between group hover:bg-white/[0.04] transition-all text-left shadow-xl">
-                                    <div className="flex items-center gap-6 text-left">
-                                        <div className="h-12 w-12 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 shadow-xl group-hover:scale-110 transition-transform">
-                                            <ShieldCheck size={24} />
-                                        </div>
-                                        <div className="text-left">
-                                            <p className="font-black text-white italic text-left">Week {log.week_number} Check-in</p>
-                                            <p className="text-xs text-white/30 mt-1 text-left font-medium">{new Date(log._creationTime).toLocaleDateString()}</p>
-                                        </div>
+                                <div key={log._id} className="p-8 rounded-[2.5rem] border border-white/5 bg-white/[0.02] group hover:bg-white/[0.04] transition-all text-left shadow-xl">
+                                  <div className="flex items-start justify-between gap-6">
+                                    <div className="flex items-start gap-6 text-left">
+                                      <div className="h-12 w-12 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 shadow-xl group-hover:scale-110 transition-transform shrink-0">
+                                        <ShieldCheck size={24} />
+                                      </div>
+                                      <div className="text-left">
+                                        <p className="font-black text-white italic text-left uppercase tracking-tight">Week {log.week_number} Check-in</p>
+                                        <p className="text-[10px] text-white/30 mt-2 text-left font-black uppercase tracking-widest italic">
+                                          {new Date(log._creationTime).toLocaleDateString()}
+                                        </p>
+                                      </div>
                                     </div>
-                                    <div className="px-6 py-2 rounded-xl bg-green-600/10 border border-green-500/20 text-green-500 text-[10px] font-black uppercase tracking-widest italic">
-                                        Verified
+
+                                    {log.confirmed_by ? (
+                                      <div className="px-6 py-2 rounded-xl bg-green-600/10 border border-green-500/20 text-green-500 text-[10px] font-black uppercase tracking-widest italic flex items-center gap-2">
+                                        <CheckCircle2 size={14} /> Verified
+                                      </div>
+                                    ) : (
+                                      <div className="px-6 py-2 rounded-xl bg-yellow-600/10 border border-yellow-500/20 text-yellow-500 text-[10px] font-black uppercase tracking-widest italic flex items-center gap-2">
+                                        <AlertTriangle size={14} /> Pending
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {(log.proofUrl || log.note) ? (
+                                    <div className="mt-8 grid grid-cols-1 md:grid-cols-12 gap-6">
+                                      {log.proofUrl ? (
+                                        <div className="md:col-span-4">
+                                          <div className="w-full aspect-square rounded-[2rem] overflow-hidden border border-white/5 bg-black shadow-inner">
+                                            <img src={log.proofUrl} className="w-full h-full object-cover" alt="Evidence" />
+                                          </div>
+                                        </div>
+                                      ) : null}
+                                      {log.note ? (
+                                        <div className={log.proofUrl ? 'md:col-span-8' : 'md:col-span-12'}>
+                                          <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 shadow-inner">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">Evidence Note</p>
+                                            <p className="mt-4 text-xs text-white/40 italic leading-relaxed">{log.note}</p>
+                                          </div>
+                                        </div>
+                                      ) : null}
                                     </div>
+                                  ) : null}
                                 </div>
                             ))
                         )}

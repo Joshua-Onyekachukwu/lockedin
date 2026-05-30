@@ -83,6 +83,7 @@ export const updateProfile = mutation({
     city: v.optional(v.string()),
     bio: v.optional(v.string()),
     is_discoverable: v.optional(v.boolean()),
+    witness_discoverable: v.optional(v.boolean()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -92,6 +93,15 @@ export const updateProfile = mutation({
     }
 
     await ctx.db.patch(userId, args);
+
+    await ctx.db.insert("notifications", {
+      userId,
+      title: "Identity Updated",
+      message: "Your profile configuration has been synchronized.",
+      type: "profile_updated",
+      link: "/profile",
+      read: false,
+    });
     return null;
   },
 });
@@ -139,7 +149,18 @@ export const listDiscoverable = query({
       .query("users")
       .collect();
     
-    return users.filter(u => u.is_discoverable);
+    return users
+      .filter((u) => u.is_discoverable)
+      .map((u) => ({
+        _id: u._id,
+        _creationTime: u._creationTime,
+        name: u.name,
+        city: u.city,
+        bio: u.bio,
+        streak_count: u.streak_count,
+        integrityScore: u.integrityScore,
+        is_discoverable: u.is_discoverable,
+      }));
   },
 });
 
@@ -151,6 +172,7 @@ export const getLeaderboard = query({
     integrityScore: v.number(),
     streak_count: v.number(),
     goals_completed: v.number(),
+    tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
   })),
   handler: async (ctx) => {
     // Sort by integrity score desc, then streak count desc
@@ -165,6 +187,14 @@ export const getLeaderboard = query({
         }
         return b.streak_count - a.streak_count;
       })
-      .slice(0, 50);
+      .slice(0, 50)
+      .map((u) => ({
+        _id: u._id,
+        name: u.name,
+        integrityScore: u.integrityScore,
+        streak_count: u.streak_count,
+        goals_completed: u.goals_completed,
+        tier: u.tier,
+      }));
   },
 });

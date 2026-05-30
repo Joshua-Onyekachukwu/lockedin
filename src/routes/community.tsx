@@ -3,6 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useMutation, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useToast } from '~/components/toast';
 import { 
   Search, 
   ShieldCheck, 
@@ -255,6 +256,7 @@ function WitnessCard({ user, onInvite }: { user: any, onInvite: () => void }) {
 
 function VaultPickerModal({ partner, vaults, onClose }: any) {
     const sendRequest = useMutation(api.partners.request);
+    const toast = useToast();
     const [sending, setSending] = useState<string | null>(null);
 
     const handleSelect = async (vaultId: any) => {
@@ -264,10 +266,15 @@ function VaultPickerModal({ partner, vaults, onClose }: any) {
                 partnerId: partner._id,
                 vaultId: vaultId,
             });
+            toast.success('Witness request transmitted.', { title: 'Request Sent' });
             onClose();
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert("Failed to transmit request.");
+            const message =
+              err?.message === 'Authorization Breach: You can only request witnesses for your own protocols.'
+                ? 'Select one of your own protocols to attach to this request.'
+                : err?.message || 'Failed to transmit request.'
+            toast.error(message, { title: 'Request Blocked' });
             setSending(null);
         }
     };

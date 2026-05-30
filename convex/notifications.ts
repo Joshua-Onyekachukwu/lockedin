@@ -39,7 +39,16 @@ export const create = mutation({
         userId: v.id("users"),
         title: v.string(),
         message: v.string(),
-        type: v.union(v.literal("partner_request"), v.literal("checkin_due"), v.literal("verification_needed"), v.literal("streak_alert")),
+        type: v.union(
+            v.literal("partner_request"),
+            v.literal("checkin_due"),
+            v.literal("verification_needed"),
+            v.literal("streak_alert"),
+            v.literal("wallet_funded"),
+            v.literal("wallet_withdrawal"),
+            v.literal("protocol_created"),
+            v.literal("profile_updated")
+        ),
         link: v.optional(v.string()),
     },
     returns: v.id("notifications"),

@@ -1,14 +1,18 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
+import { useAuthActions } from '@convex-dev/auth/react';
 import { useMutation, useAction, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useToast } from '~/components/toast';
 import { 
   Bell, 
+  ChevronDown,
   Target, 
   ShieldCheck, 
   Plus, 
   Wallet,
+  LogOut,
   X,
   Camera,
   AlertCircle,
@@ -71,6 +75,8 @@ function Dashboard() {
 }
 
 function DashboardContent({ user }: { user: any }) {
+  const toast = useToast();
+  const { signOut } = useAuthActions();
   const { data: vaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, {}) as any);
   const { data: discoverableVaults } = useSuspenseQuery(convexQuery(api.goals.listDiscoverable, {}) as any);
   const { data: pendingVerifications } = useSuspenseQuery(convexQuery(api.verifications.getPendingVerifications, {}) as any);
@@ -83,6 +89,7 @@ function DashboardContent({ user }: { user: any }) {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [checkingInGoal, setCheckingInGoal] = useState<any>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeTab, setActiveTab] = useState<'protocols' | 'witnessing' | 'wallet'>('protocols');
   
   const verifyLog = useMutation(api.verifications.verifyLog);
@@ -97,13 +104,36 @@ function DashboardContent({ user }: { user: any }) {
   const handleRequestWitness = async (vaultId: any, partnerId: any) => {
       try {
           await requestPartnership({ vaultId, partnerId });
-          alert("Witness Request Transmitted.");
+          toast.success('Witness request transmitted.', { title: 'Request Sent' });
       } catch (err: any) {
-          alert(err.message || "Failed to transmit request.");
+          const message =
+            err?.message === 'Authorization Breach: You can only request witnesses for your own protocols.'
+              ? 'Select one of your own protocols to attach to this request.'
+              : err?.message || 'Failed to transmit request.'
+          toast.error(message, { title: 'Request Blocked' });
       }
   };
 
   const unreadCount = (notifications as any[])?.filter?.((n: any) => !n.read).length || 0;
+
+  const getNotificationMeta = (n: any) => {
+    switch (n.type) {
+      case 'wallet_funded':
+        return { icon: <Wallet size={14} />, className: 'bg-green-600/10 text-green-500 border border-green-500/20 shadow-green-900/20' }
+      case 'wallet_withdrawal':
+        return { icon: <LogOut size={14} />, className: 'bg-orange-600/10 text-[#ff7a00] border border-[#ff7a00]/20 shadow-orange-900/20' }
+      case 'protocol_created':
+        return { icon: <Target size={14} />, className: 'bg-blue-600/10 text-blue-500 border border-blue-500/20 shadow-blue-900/20' }
+      case 'profile_updated':
+        return { icon: <User size={14} />, className: 'bg-white/5 text-white/40 border border-white/10 shadow-black/40' }
+      case 'partner_request':
+        return { icon: <Users size={14} />, className: 'bg-purple-600/10 text-purple-400 border border-purple-500/20 shadow-purple-900/20' }
+      case 'verification_needed':
+        return { icon: <ShieldCheck size={14} />, className: 'bg-blue-600/10 text-blue-500 border border-blue-500/20 shadow-blue-900/20' }
+      default:
+        return { icon: <Bell size={14} />, className: 'bg-white/5 text-white/30 border border-white/10 shadow-black/40' }
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden pb-20">
@@ -146,16 +176,77 @@ function DashboardContent({ user }: { user: any }) {
             <span className="text-sm font-black tracking-tight italic">₦{(user?.balance / 100)?.toLocaleString()}</span>
           </button>
 
-          <Link 
-            to="/profile"
-            className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5 shadow-lg active:scale-95 transition-transform"
+          <button
+            type="button"
+            onClick={() => setShowProfileMenu((v) => !v)}
+            className="flex items-center gap-2 rounded-full bg-white/5 border border-white/10 p-1.5 hover:bg-white/10 transition-all active:scale-95"
           >
-            <div className="h-full w-full rounded-full bg-[#0a0f1a] flex items-center justify-center text-[10px] font-black uppercase">
+            <span className="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5 shadow-lg">
+              <span className="h-full w-full rounded-full bg-[#0a0f1a] flex items-center justify-center text-[10px] font-black uppercase">
                 {user?.name?.[0]}
-            </div>
-          </Link>
+              </span>
+            </span>
+            <ChevronDown size={14} className={`text-white/40 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
+          </button>
         </div>
       </nav>
+
+      <AnimatePresence>
+        {showProfileMenu && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowProfileMenu(false)}
+              className="fixed inset-0 z-40 bg-transparent"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="fixed top-[88px] right-8 z-50 w-[260px] rounded-[2.5rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
+            >
+              <div className="p-6 border-b border-white/10">
+                <p className="text-white font-black uppercase italic tracking-tight">{user?.name || 'Identity'}</p>
+                <p className="text-[10px] text-white/30 uppercase tracking-[0.25em] mt-2 font-black italic truncate">
+                  {user?.email}
+                </p>
+              </div>
+              <div className="p-4 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileMenu(false)
+                    window.location.href = '/profile'
+                  }}
+                  className="w-full p-4 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:bg-white/[0.05] transition-all text-left"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest italic text-white">View Profile</p>
+                  <p className="text-[9px] text-white/30 uppercase tracking-widest mt-2 italic font-black">Identity & privacy</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowProfileMenu(false)
+                    try {
+                      await signOut()
+                      toast.info('Session closed.', { title: 'Signed Out' })
+                      window.location.href = '/'
+                    } catch (err: any) {
+                      toast.error(err?.message || 'Failed to sign out.', { title: 'Sign Out Failed' })
+                    }
+                  }}
+                  className="w-full p-4 rounded-[2rem] bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-all text-left"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest italic text-red-400">Logout</p>
+                  <p className="text-[9px] text-red-400/50 uppercase tracking-widest mt-2 italic font-black">End session</p>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showNotifications && (
@@ -188,8 +279,8 @@ function DashboardContent({ user }: { user: any }) {
                                     className={`p-6 rounded-[2rem] border transition-all text-left group cursor-pointer active:scale-[0.98] ${n.read ? 'bg-transparent border-white/5 opacity-50' : 'bg-white/[0.03] border-white/10 shadow-xl shadow-black/40 hover:bg-white/[0.05] hover:border-white/20'}`}
                                 >
                                     <div className="flex items-start gap-4 text-left">
-                                        <div className={`mt-1 h-8 w-8 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${n.read ? 'bg-white/5 text-white/20' : 'bg-blue-600/10 text-blue-500 group-hover:scale-110 transition-transform shadow-blue-900/20'}`}>
-                                            <Bell size={14} />
+                                        <div className={`mt-1 h-8 w-8 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${getNotificationMeta(n).className} ${n.read ? 'opacity-60' : 'group-hover:scale-110 transition-transform'}`}>
+                                            {getNotificationMeta(n).icon}
                                         </div>
                                         <div className="flex-1 text-left">
                                             <p className="font-black text-sm text-white italic uppercase tracking-tight">{n.title}</p>
@@ -492,7 +583,15 @@ function DashboardContent({ user }: { user: any }) {
 
       <AnimatePresence>
         {isCreating && (
-          <CreateVaultModal user={user} onClose={() => setIsCreating(false)} />
+          <CreateVaultModal
+            user={user}
+            onClose={() => setIsCreating(false)}
+            onOpenFundWallet={() => {
+              setIsCreating(false)
+              setActiveTab('wallet')
+              setIsFunding(true)
+            }}
+          />
         )}
         {isFunding && (
           <FundWalletModal user={user} onClose={() => setIsFunding(false)} />
@@ -633,8 +732,18 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
   );
 }
 
-function CreateVaultModal({ user, onClose }: { user: any; onClose: () => void }) {
+function CreateVaultModal({
+  user,
+  onClose,
+  onOpenFundWallet,
+}: {
+  user: any
+  onClose: () => void
+  onOpenFundWallet: () => void
+}) {
     const createVault = useMutation(api.goals.create);
+    const queryClient = useQueryClient();
+    const toast = useToast();
     const [title, setTitle] = useState('');
     const [category, setCategory] = useState<any>('habit');
     const [description, setDescription] = useState('');
@@ -670,9 +779,19 @@ function CreateVaultModal({ user, onClose }: { user: any; onClose: () => void })
                 duration_weeks: parseInt(durationWeeks), 
                 painTier: painTier
             });
+            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.goals.listByUser, {}) as any).queryKey });
+            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, {}) as any).queryKey });
+            toast.success('Protocol initialized.', { title: 'Protocol Activated' });
             onClose();
         } catch (err: any) {
-            alert(err.message || "Failed to initialize protocol.");
+            if (err?.message === 'Insufficient capital in wallet') {
+              toast.warning('Inject capital before staking a new protocol.', {
+                title: 'Insufficient Capital',
+                action: { label: 'Fund Wallet', onClick: onOpenFundWallet },
+              })
+              return
+            }
+            toast.error(err?.message || 'Failed to initialize protocol.', { title: 'Initialization Failed' });
         } finally {
             setLoading(false);
         }
@@ -861,6 +980,7 @@ function CreateVaultModal({ user, onClose }: { user: any; onClose: () => void })
 function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
     const generateUploadUrl = useMutation(api.goals.generateUploadUrl);
     const checkIn = useMutation(api.goals.checkIn);
+    const toast = useToast();
     const [note, setNote] = useState('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
@@ -885,10 +1005,11 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
                 note: note,
                 proofImageId: proofImageId as any
             });
+            toast.success('Execution log transmitted.', { title: 'Log Submitted' });
             onClose();
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert("Log Transmission Failed.");
+            toast.error(err?.message || 'Log transmission failed.', { title: 'Transmission Failed' });
         } finally {
             setLoading(false);
         }
@@ -962,6 +1083,8 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
     const [amount, setAmount] = useState('5000');
     const initializeDeposit = useMutation(api.payments.initializeDeposit);
     const verifyPayment = useAction(api.payments.verifyPayment);
+    const queryClient = useQueryClient();
+    const toast = useToast();
     const [loading, setLoading] = useState(false);
 
     const config = {
@@ -978,13 +1101,16 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
         try {
             const result = await verifyPayment({ reference: reference.reference });
             if (result.success) {
+                await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, {}) as any).queryKey });
+                await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, {}) as any).queryKey });
+                toast.success(result.message, { title: 'Wallet Funded' });
                 onClose();
             } else {
-                alert("Verification Failed: " + result.message);
+                toast.error(result.message, { title: 'Verification Failed' });
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert("Verification Error.");
+            toast.error(err?.message || 'Verification error.', { title: 'Verification Error' });
         } finally {
             setLoading(false);
         }
@@ -996,16 +1122,16 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
 
     const handleStartPayment = async () => {
         if (!amount || parseInt(amount) < 500) {
-            alert("Minimum deposit is ₦500");
+            toast.warning('Minimum deposit is ₦500.', { title: 'Deposit Too Small' });
             return;
         }
         setLoading(true);
         try {
             await initializeDeposit({ amount: parseInt(amount) });
             initializePayment({onSuccess, onClose: onClosePaystack});
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert("Failed to initialize deposit.");
+            toast.error(err?.message || 'Failed to initialize deposit.', { title: 'Deposit Failed' });
             setLoading(false);
         }
     };
@@ -1076,11 +1202,13 @@ function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
     const [bankName, setBankName] = useState('');
     const [loading, setLoading] = useState(false);
     const requestWithdrawal = useMutation(api.payments.requestWithdrawal);
+    const queryClient = useQueryClient();
+    const toast = useToast();
 
     const handleSubmit = async (e: any) => {
         e.preventDefault();
         if (parseInt(amount) * 100 > user.balance) {
-            alert("Insufficient balance.");
+            toast.warning('Insufficient balance.', { title: 'Insufficient Capital' });
             return;
         }
         setLoading(true);
@@ -1092,11 +1220,17 @@ function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
                 bankName,
                 accountName: user.name || 'Account Holder'
             });
-            alert(res.message);
+            if (!res.success) {
+              toast.error(res.message, { title: 'Withdrawal Failed' });
+              return;
+            }
+            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, {}) as any).queryKey });
+            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, {}) as any).queryKey });
+            toast.success(res.message, { title: 'Withdrawal Requested' });
             onClose();
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert("Extraction Failed.");
+            toast.error(err?.message || 'Extraction failed.', { title: 'Withdrawal Failed' });
         } finally {
             setLoading(false);
         }
