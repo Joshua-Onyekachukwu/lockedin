@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useMutation, useAction, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useToast } from '~/components/toast';
+import { ConfirmModal } from '~/components/confirm-modal';
 import { 
   Users, 
   Download, 
@@ -14,10 +15,16 @@ import {
   Activity,
   ArrowLeft,
   Settings,
-  Lock
+  Lock,
+  Search,
+  Database,
+  ScrollText,
+  X
 } from 'lucide-react';
 import React, { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const EMPTY_ARGS: Record<string, never> = {};
 
 export const Route = createFileRoute('/admin')({
   component: AdminWrapper,
@@ -91,7 +98,7 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const toast = useToast();
   
-  const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, {}) as any;
+  const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, EMPTY_ARGS as any) as any;
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
     ...adminStatusQuery,
     enabled: isAuthenticated,
@@ -99,27 +106,39 @@ function AdminDashboard() {
 
   const isAdmin = !!adminStatus?.isAdmin;
 
-  const statsQuery = convexQuery(api.admin.getSystemStats, {}) as any;
+  const statsQuery = convexQuery(api.admin.getSystemStats, EMPTY_ARGS as any) as any;
   const { data: stats }: { data: any } = useSuspenseQuery({
     ...statsQuery,
     enabled: isAuthenticated && isAdmin,
   } as any);
 
-  const waitlistQuery = convexQuery(api.waitlist.list, {}) as any;
+  const waitlistQuery = convexQuery(api.waitlist.list, EMPTY_ARGS as any) as any;
   const { data: waitlist }: { data: any } = useSuspenseQuery({
     ...waitlistQuery,
     enabled: isAuthenticated && isAdmin,
   } as any);
 
-  const pendingWithdrawalsQuery = convexQuery(api.admin.getPendingWithdrawals, {}) as any;
+  const pendingWithdrawalsQuery = convexQuery(api.admin.getPendingWithdrawals, EMPTY_ARGS as any) as any;
   const { data: pendingWithdrawals }: { data: any } = useSuspenseQuery({
     ...pendingWithdrawalsQuery,
     enabled: isAuthenticated && isAdmin,
   } as any);
 
-  const breachCandidatesQuery = convexQuery(api.admin.getBreachCandidates, {}) as any;
+  const breachCandidatesQuery = convexQuery(api.admin.getBreachCandidates, EMPTY_ARGS as any) as any;
   const { data: breachCandidates }: { data: any } = useSuspenseQuery({
     ...breachCandidatesQuery,
+    enabled: isAuthenticated && isAdmin,
+  } as any);
+
+  const overviewQuery = convexQuery(api.admin.getOverview, EMPTY_ARGS as any) as any;
+  const { data: overview }: { data: any } = useSuspenseQuery({
+    ...overviewQuery,
+    enabled: isAuthenticated && isAdmin,
+  } as any);
+
+  const auditQuery = convexQuery((api as any).admin.getAuditLog, { limit: 100 } as any) as any;
+  const { data: auditLog }: { data: any } = useSuspenseQuery({
+    ...auditQuery,
     enabled: isAuthenticated && isAdmin,
   } as any);
   
@@ -127,8 +146,24 @@ function AdminDashboard() {
   const distribute = useMutation(api.admin.triggerWeeklyDistribution);
   const approveWithdrawal = useAction(api.admin.approveWithdrawal);
   const enforceBreach = useMutation(api.admin.enforceProtocolBreach);
+  const seedHistory = useAction((api as any).admin.seedDummyUserHistory);
 
-  const [activeTab, setActiveTab] = useState<'waitlist' | 'withdrawals' | 'breaches'>('withdrawals');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'audit' | 'waitlist' | 'withdrawals' | 'breaches'>('overview');
+  const [confirm, setConfirm] = useState<{ open: boolean; title: string; description?: string; tone?: 'primary' | 'danger'; confirmLabel: string; run: (() => Promise<void>) | null }>({ open: false, title: '', confirmLabel: '', run: null });
+  const [seedOpen, setSeedOpen] = useState(false);
+  const [seedDomain, setSeedDomain] = useState('protocol.io');
+  const [seedLimit, setSeedLimit] = useState(20);
+  const [seedGoalsPerUser, setSeedGoalsPerUser] = useState(3);
+  const [seedLogsPerGoal, setSeedLogsPerGoal] = useState(10);
+
+  const [userSearch, setUserSearch] = useState('');
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+
+  const searchUsersQuery = convexQuery((api as any).admin.searchUsers, { q: userSearch, limit: 20 } as any) as any;
+  const { data: searchedUsers } = useQuery({
+    ...(searchUsersQuery as any),
+    enabled: isAuthenticated && isAdmin && userSearch.trim().length > 0,
+  } as any);
 
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || !adminStatus?.isAdmin)) {
@@ -212,30 +247,88 @@ function AdminDashboard() {
             </div>
         </div>
 
-        <div className="flex gap-4 mb-8">
-            <button 
-                onClick={() => setActiveTab('withdrawals')}
-                className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'withdrawals' ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
-            >
-                Extractions ({pendingWithdrawals?.length || 0})
-            </button>
-            <button 
-                onClick={() => setActiveTab('breaches')}
-                className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'breaches' ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
-            >
-                Breach Monitor
-            </button>
-            <button 
-                onClick={() => setActiveTab('waitlist')}
-                className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'waitlist' ? 'bg-white text-black shadow-xl' : 'bg-white/5 text-white/40 hover:bg-white/10'}`}
-            >
-                Waitlist
-            </button>
+        <div className="flex flex-wrap gap-4 mb-8">
+            {([
+              { key: 'overview', label: 'Overview', count: null },
+              { key: 'withdrawals', label: 'Extractions', count: pendingWithdrawals?.length || 0 },
+              { key: 'breaches', label: 'Breaches', count: breachCandidates?.length || 0 },
+              { key: 'users', label: 'Users', count: stats?.totalUsers || 0 },
+              { key: 'audit', label: 'Audit', count: (auditLog?.length || 0) },
+              { key: 'waitlist', label: 'Waitlist', count: waitlist?.length || 0 },
+            ] as const).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setActiveTab(t.key as any)}
+                className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  activeTab === (t.key as any)
+                    ? 'bg-white text-black shadow-xl'
+                    : 'bg-white/5 text-white/40 hover:bg-white/10'
+                }`}
+              >
+                {t.label}
+                {typeof t.count === 'number' ? (
+                  <span className="ml-2 text-[9px] font-black uppercase tracking-widest italic opacity-70">
+                    {t.count}
+                  </span>
+                ) : null}
+              </button>
+            ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 rounded-[2.5rem] border border-white/5 bg-[#0a0f1a] overflow-hidden shadow-2xl">
                 <AnimatePresence mode="wait">
+                    {activeTab === 'overview' && (
+                        <motion.div 
+                            key="overview" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                            className="p-10 space-y-8"
+                        >
+                            <div className="text-left">
+                              <h3 className="text-lg text-white font-black italic uppercase">Operational Overview</h3>
+                              <p className="text-[10px] text-white/20 tracking-widest mt-2 font-black italic uppercase">Last 24 Hours</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/10 shadow-inner text-left">
+                                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic">Deposits</p>
+                                <p className="mt-4 text-3xl font-black italic uppercase tracking-tight text-white">
+                                  ₦{((overview?.depositVolume24h ?? 0) / 100).toLocaleString()}
+                                </p>
+                                <p className="mt-2 text-[10px] text-green-500 font-black uppercase tracking-widest italic">
+                                  {overview?.deposits24h ?? 0} Completed
+                                </p>
+                              </div>
+                              <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/10 shadow-inner text-left">
+                                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic">Protocols Created</p>
+                                <p className="mt-4 text-3xl font-black italic uppercase tracking-tight text-white">
+                                  {overview?.protocols24h ?? 0}
+                                </p>
+                                <p className="mt-2 text-[10px] text-blue-500 font-black uppercase tracking-widest italic">
+                                  Active vaults: {overview?.activeVaults ?? 0}
+                                </p>
+                              </div>
+                              <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/10 shadow-inner text-left">
+                                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic">Pending Extractions</p>
+                                <p className="mt-4 text-3xl font-black italic uppercase tracking-tight text-white">
+                                  {overview?.pendingWithdrawals ?? 0}
+                                </p>
+                                <p className="mt-2 text-[10px] text-[#ff7a00] font-black uppercase tracking-widest italic">
+                                  ₦{((overview?.pendingWithdrawalAmount ?? 0) / 100).toLocaleString()} Pending
+                                </p>
+                              </div>
+                              <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/10 shadow-inner text-left">
+                                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic">Admin Signals</p>
+                                <p className="mt-4 text-[10px] text-white/40 font-black uppercase tracking-widest italic leading-relaxed">
+                                  {overview?.pendingWithdrawals ? 'Extraction queue pending. Review before EOD.' : 'No extraction queue backlog.'}
+                                </p>
+                                <p className="mt-3 text-[10px] text-white/20 font-black uppercase tracking-widest italic leading-relaxed">
+                                  {breachCandidates?.length ? 'Active breach candidates require enforcement review.' : 'No breach enforcement flagged.'}
+                                </p>
+                              </div>
+                            </div>
+                        </motion.div>
+                    )}
+
                     {activeTab === 'withdrawals' && (
                         <motion.div 
                             key="withdrawals" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
@@ -273,7 +366,21 @@ function AdminDashboard() {
                                                     </td>
                                                     <td className="px-10 py-6 text-right">
                                                         <button 
-                                                            onClick={() => approveWithdrawal({ withdrawalId: w._id })}
+                                                            onClick={() => setConfirm({
+                                                              open: true,
+                                                              title: 'Process extraction transfer?',
+                                                              description: `This will initiate a Paystack transfer of ₦${(w.amount/100).toLocaleString()} to ${w.bank_details?.bank_name} (${w.bank_details?.account_number}).`,
+                                                              confirmLabel: 'Process Transfer',
+                                                              tone: 'primary',
+                                                              run: async () => {
+                                                                const res = await approveWithdrawal({ withdrawalId: w._id })
+                                                                if (res?.success) {
+                                                                  toast.success(res.message, { title: 'Transfer Initiated' })
+                                                                } else {
+                                                                  toast.error(res?.message || 'Transfer failed.', { title: 'Transfer Failed' })
+                                                                }
+                                                              }
+                                                            })}
                                                             className="px-5 py-2 rounded-xl bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"
                                                         >
                                                             Process Transfer
@@ -324,7 +431,17 @@ function AdminDashboard() {
                                                 </td>
                                                 <td className="px-10 py-6 text-right">
                                                     <button 
-                                                        onClick={() => enforceBreach({ vaultId: b._id })}
+                                                        onClick={() => setConfirm({
+                                                          open: true,
+                                                          title: 'Enforce forfeiture?',
+                                                          description: `This will mark the vault as failed and forfeit ₦${(b.amount/100).toLocaleString()} for ${b.user?.name}.`,
+                                                          confirmLabel: 'Enforce Forfeiture',
+                                                          tone: 'danger',
+                                                          run: async () => {
+                                                            await enforceBreach({ vaultId: b._id })
+                                                            toast.success('Forfeiture enforced.', { title: 'Enforcement Complete' })
+                                                          }
+                                                        })}
                                                         className="px-5 py-2 rounded-xl border border-red-500/30 text-red-500 font-black uppercase text-[10px] tracking-widest hover:bg-red-500/10 transition-all active:scale-95"
                                                     >
                                                         Enforce Forfeiture
@@ -382,6 +499,107 @@ function AdminDashboard() {
                             </div>
                         </motion.div>
                     )}
+
+                    {activeTab === 'audit' && (
+                        <motion.div 
+                            key="audit" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                        >
+                            <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
+                                <div className="text-left font-black italic uppercase">
+                                    <h3 className="text-lg text-white flex items-center gap-3"><ScrollText size={18} className="text-white/40" /> Audit Log</h3>
+                                    <p className="text-[10px] text-white/20 tracking-widest mt-1">Administrative actions</p>
+                                </div>
+                            </div>
+                            <div className="p-10 space-y-4">
+                              {(auditLog as any[])?.length ? (
+                                (auditLog as any[]).map((row: any) => (
+                                  <div key={row._id} className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                                    <div className="flex items-center justify-between gap-6">
+                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/20">
+                                        {row.action}
+                                      </p>
+                                      <p className="text-[9px] font-black uppercase tracking-[0.3em] italic text-white/10">
+                                        {row._creationTime ? new Date(row._creationTime).toLocaleString() : ''}
+                                      </p>
+                                    </div>
+                                    <p className="mt-4 text-xs text-white/40 italic font-medium leading-relaxed">
+                                      {row.message}
+                                    </p>
+                                    <p className="mt-4 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                                      {row.admin?.email || 'admin'}
+                                    </p>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-center py-20 text-white/20 font-black italic uppercase tracking-widest">
+                                  No audit records.
+                                </div>
+                              )}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'users' && (
+                        <motion.div 
+                            key="users" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
+                            className="p-10 space-y-8"
+                        >
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div className="text-left font-black italic uppercase">
+                              <h3 className="text-lg text-white flex items-center gap-3"><Users size={18} className="text-blue-500" /> User Terminal</h3>
+                              <p className="text-[10px] text-white/20 tracking-widest mt-1">Search and inspect citizens</p>
+                            </div>
+                          </div>
+
+                          <div className="relative">
+                            <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" />
+                            <input
+                              value={userSearch}
+                              onChange={(e) => setUserSearch(e.target.value)}
+                              placeholder="SEARCH NAME OR EMAIL..."
+                              className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] pl-14 pr-6 py-5 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
+                            />
+                          </div>
+
+                          <div className="space-y-3">
+                            {userSearch.trim().length === 0 ? (
+                              <div className="text-center py-20 text-white/20 font-black italic uppercase tracking-widest">
+                                Enter a search term.
+                              </div>
+                            ) : (searchedUsers as any[])?.length ? (
+                              (searchedUsers as any[]).map((u: any) => (
+                                <button
+                                  type="button"
+                                  key={u._id}
+                                  onClick={() => setSelectedUser(u)}
+                                  className="w-full p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:border-white/20 transition-all text-left active:scale-[0.99]"
+                                >
+                                  <div className="flex items-center justify-between gap-6">
+                                    <div>
+                                      <p className="text-white font-black uppercase italic tracking-tight">{u.name || 'Anonymous'}</p>
+                                      <p className="mt-2 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black truncate">
+                                        {u.email}
+                                      </p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest italic">
+                                        {u.integrityScore}% Integrity
+                                      </p>
+                                      <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                                        ₦{((u.balance ?? 0) / 100).toLocaleString()}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="text-center py-20 text-white/20 font-black italic uppercase tracking-widest">
+                                No matches.
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                    )}
                 </AnimatePresence>
             </div>
 
@@ -391,36 +609,47 @@ function AdminDashboard() {
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-8 italic">Manual Overrides</p>
                     <div className="space-y-4 font-black uppercase italic tracking-widest text-[10px]">
                         <button 
-                            onClick={async () => {
-                                try {
-                                    await sweep({});
-                                    toast.success('Midnight sweep protocol initialized.', { title: 'Command Executed' });
-                                } catch (e: any) {
-                                    toast.error(e?.message ? `Access denied: ${e.message}` : 'Access denied.', {
-                                      title: 'Command Rejected',
-                                    });
-                                }
-                            }}
+                            onClick={() => setConfirm({
+                              open: true,
+                              title: 'Trigger midnight sweep?',
+                              description: 'This will run enforcement checks and apply penalties where required.',
+                              confirmLabel: 'Trigger Sweep',
+                              tone: 'primary',
+                              run: async () => {
+                                await sweep({})
+                                toast.success('Midnight sweep protocol initialized.', { title: 'Command Executed' })
+                              },
+                            })}
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-blue-600/20 hover:border-blue-500/30 transition-all text-center active:scale-95"
                         >
                             Trigger Midnight Sweep
                         </button>
                         <button 
-                            onClick={async () => {
-                                try {
-                                    await distribute({});
-                                    toast.success('Weekly distribution protocol initialized.', { title: 'Command Executed' });
-                                } catch (e: any) {
-                                    toast.error(e?.message ? `Access denied: ${e.message}` : 'Access denied.', {
-                                      title: 'Command Rejected',
-                                    });
-                                }
-                            }}
+                            onClick={() => setConfirm({
+                              open: true,
+                              title: 'Distribute dividends?',
+                              description: 'This triggers the weekly distribution protocol for eligible citizens.',
+                              confirmLabel: 'Distribute',
+                              tone: 'primary',
+                              run: async () => {
+                                await distribute({})
+                                toast.success('Weekly distribution protocol initialized.', { title: 'Command Executed' })
+                              },
+                            })}
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-orange-600/20 hover:border-orange-500/30 transition-all text-center active:scale-95"
                         >
                             Distribute Dividends
                         </button>
-                        <button className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white transition-all text-center active:scale-95 border-dashed">System Maintenance Mode</button>
+                        <button
+                            type="button"
+                            onClick={() => setSeedOpen(true)}
+                            className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-center active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <Database size={16} /> Seed Demo Logs
+                        </button>
+                        <button className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/20 transition-all text-center border-dashed cursor-not-allowed opacity-60">
+                          System Maintenance Mode
+                        </button>
                     </div>
                 </div>
 
@@ -436,6 +665,206 @@ function AdminDashboard() {
             </div>
         </div>
       </main>
+
+      <ConfirmModal
+        open={confirm.open}
+        title={confirm.title}
+        description={confirm.description}
+        confirmLabel={confirm.confirmLabel}
+        tone={confirm.tone}
+        onConfirm={async () => {
+          if (confirm.run) await confirm.run()
+        }}
+        onClose={() =>
+          setConfirm({ open: false, title: '', confirmLabel: '', run: null })
+        }
+      />
+
+      <AnimatePresence>
+        {seedOpen ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSeedOpen(false)}
+              className="fixed inset-0 z-[90] bg-[#050810]/70 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+            >
+              <div className="w-full max-w-xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
+                <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6">
+                  <div className="text-left">
+                    <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
+                      Seed Dummy Historical Logs
+                    </p>
+                    <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed">
+                      Generates demo vaults, goals, and logs for dummy users (for Vault Specification historical view).
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSeedOpen(false)}
+                    className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="p-10 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic mb-3">
+                        Email Domain
+                      </p>
+                      <input
+                        value={seedDomain}
+                        onChange={(e) => setSeedDomain(e.target.value)}
+                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-5 py-4 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic mb-3">
+                        Limit Users
+                      </p>
+                      <input
+                        value={seedLimit}
+                        onChange={(e) => setSeedLimit(Number(e.target.value))}
+                        type="number"
+                        min={1}
+                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-5 py-4 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic mb-3">
+                        Goals Per User
+                      </p>
+                      <input
+                        value={seedGoalsPerUser}
+                        onChange={(e) => setSeedGoalsPerUser(Number(e.target.value))}
+                        type="number"
+                        min={1}
+                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-5 py-4 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic mb-3">
+                        Logs Per Goal
+                      </p>
+                      <input
+                        value={seedLogsPerGoal}
+                        onChange={(e) => setSeedLogsPerGoal(Number(e.target.value))}
+                        type="number"
+                        min={1}
+                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-5 py-4 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const res = await seedHistory({
+                            domain: seedDomain,
+                            limit: seedLimit,
+                            goalsPerUser: seedGoalsPerUser,
+                            logsPerGoal: seedLogsPerGoal,
+                          })
+                          toast.success(res?.message || 'Seed complete.', { title: 'Seed Executed' })
+                          setSeedOpen(false)
+                        } catch (e: any) {
+                          toast.error(e?.message || 'Seed failed.', { title: 'Seed Failed' })
+                        }
+                      }}
+                      className="flex-1 py-5 rounded-2xl bg-white text-black font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                      Seed Logs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSeedOpen(false)}
+                      className="flex-1 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-[10px] uppercase tracking-[0.3em] italic hover:bg-white/10 active:scale-95 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedUser ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedUser(null)}
+              className="fixed inset-0 bg-[#050810]/60 backdrop-blur-sm z-40"
+            />
+            <motion.div
+              initial={{ x: 420 }}
+              animate={{ x: 0 }}
+              exit={{ x: 420 }}
+              className="fixed top-0 right-0 h-full w-full max-w-md bg-[#0a0f1a] border-l border-white/10 z-50 shadow-[0_0_80px_rgba(0,0,0,1)] p-10 overflow-y-auto backdrop-blur-3xl"
+            >
+              <div className="flex items-center justify-between mb-10">
+                <div className="text-left">
+                  <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                    User Detail
+                  </p>
+                  <p className="mt-2 text-white font-black uppercase italic tracking-tight text-xl">
+                    {selectedUser.name || 'Anonymous'}
+                  </p>
+                  <p className="mt-2 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black truncate">
+                    {selectedUser.email}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedUser(null)}
+                  className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { k: 'Tier', v: selectedUser.tier },
+                  { k: 'Integrity', v: `${selectedUser.integrityScore}%` },
+                  { k: 'Streak', v: `${selectedUser.streak_count}W` },
+                  { k: 'Missions', v: selectedUser.goals_completed },
+                  { k: 'Balance', v: `₦${((selectedUser.balance ?? 0) / 100).toLocaleString()}` },
+                  { k: 'BVN Verified', v: selectedUser.bvn_verified ? 'Yes' : 'No' },
+                  { k: 'Discoverable', v: selectedUser.is_discoverable ? 'Yes' : 'No' },
+                  { k: 'Witness Pool', v: selectedUser.witness_discoverable ? 'Yes' : 'No' },
+                  { k: 'Admin', v: selectedUser.isAdmin ? 'Yes' : 'No' },
+                ].map((row) => (
+                  <div key={row.k} className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                    <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                      {row.k}
+                    </p>
+                    <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                      {String(row.v ?? '')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

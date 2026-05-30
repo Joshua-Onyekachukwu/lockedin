@@ -1,18 +1,15 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
-import { useAuthActions } from '@convex-dev/auth/react';
 import { useMutation, useAction, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useToast } from '~/components/toast';
+import { AppTopNav } from '~/components/app-top-nav';
 import { 
-  Bell, 
-  ChevronDown,
   Target, 
   ShieldCheck, 
   Plus, 
   Wallet,
-  LogOut,
   X,
   Camera,
   AlertCircle,
@@ -34,7 +31,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePaystackPayment } from 'react-paystack';
 import { GOAL_TEMPLATES } from '../lib/goalTemplates';
 
-const PAYSTACK_PUBLIC_KEY = "pk_live_a5789ea13824e2329d75420ee40bf1975b1a13d2";
+const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY;
+const EMPTY_ARGS: Record<string, never> = {};
 
 export const Route = createFileRoute('/dashboard')({
   component: Dashboard,
@@ -43,7 +41,7 @@ export const Route = createFileRoute('/dashboard')({
 function Dashboard() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
-  const userQuery = convexQuery(api.users.current, {}) as any;
+  const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any;
   const { data: user }: { data: any } = useSuspenseQuery({
     ...userQuery,
     enabled: isAuthenticated,
@@ -76,25 +74,20 @@ function Dashboard() {
 
 function DashboardContent({ user }: { user: any }) {
   const toast = useToast();
-  const { signOut } = useAuthActions();
-  const { data: vaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, {}) as any);
-  const { data: discoverableVaults } = useSuspenseQuery(convexQuery(api.goals.listDiscoverable, {}) as any);
-  const { data: pendingVerifications } = useSuspenseQuery(convexQuery(api.verifications.getPendingVerifications, {}) as any);
-  const { data: incomingRequests } = useSuspenseQuery(convexQuery(api.partners.listIncomingRequests, {}) as any);
-  const { data: notifications } = useSuspenseQuery(convexQuery((api as any).notifications.list, {}) as any);
-  const { data: transactions } = useSuspenseQuery(convexQuery(api.payments.getTransactions, {}) as any);
+  const { data: vaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any);
+  const { data: discoverableVaults } = useSuspenseQuery(convexQuery(api.goals.listDiscoverable, EMPTY_ARGS as any) as any);
+  const { data: pendingVerifications } = useSuspenseQuery(convexQuery(api.verifications.getPendingVerifications, EMPTY_ARGS as any) as any);
+  const { data: incomingRequests } = useSuspenseQuery(convexQuery(api.partners.listIncomingRequests, EMPTY_ARGS as any) as any);
+  const { data: transactions } = useSuspenseQuery(convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any);
   
   const [isCreating, setIsCreating] = useState(false);
   const [isFunding, setIsFunding] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [checkingInGoal, setCheckingInGoal] = useState<any>(null);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [activeTab, setActiveTab] = useState<'protocols' | 'witnessing' | 'wallet'>('protocols');
   
   const verifyLog = useMutation(api.verifications.verifyLog);
   const acceptPartnerRequest = useMutation(api.partners.acceptRequest);
-  const markRead = useMutation((api as any).notifications.markRead);
   const requestPartnership = useMutation(api.partners.request);
 
   const handleVerify = async (logId: any, status: 'approved' | 'rejected') => {
@@ -114,187 +107,20 @@ function DashboardContent({ user }: { user: any }) {
       }
   };
 
-  const unreadCount = (notifications as any[])?.filter?.((n: any) => !n.read).length || 0;
-
-  const getNotificationMeta = (n: any) => {
-    switch (n.type) {
-      case 'wallet_funded':
-        return { icon: <Wallet size={14} />, className: 'bg-green-600/10 text-green-500 border border-green-500/20 shadow-green-900/20' }
-      case 'wallet_withdrawal':
-        return { icon: <LogOut size={14} />, className: 'bg-orange-600/10 text-[#ff7a00] border border-[#ff7a00]/20 shadow-orange-900/20' }
-      case 'protocol_created':
-        return { icon: <Target size={14} />, className: 'bg-blue-600/10 text-blue-500 border border-blue-500/20 shadow-blue-900/20' }
-      case 'profile_updated':
-        return { icon: <User size={14} />, className: 'bg-white/5 text-white/40 border border-white/10 shadow-black/40' }
-      case 'partner_request':
-        return { icon: <Users size={14} />, className: 'bg-purple-600/10 text-purple-400 border border-purple-500/20 shadow-purple-900/20' }
-      case 'verification_needed':
-        return { icon: <ShieldCheck size={14} />, className: 'bg-blue-600/10 text-blue-500 border border-blue-500/20 shadow-blue-900/20' }
-      default:
-        return { icon: <Bell size={14} />, className: 'bg-white/5 text-white/30 border border-white/10 shadow-black/40' }
-    }
-  }
-
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden pb-20">
-      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
-        <div className="flex items-center gap-4 text-left">
-          <div className="relative group text-left">
-            <div className="absolute inset-0 bg-blue-600 blur-md opacity-50 group-hover:opacity-100 transition-opacity" />
-            <div className="relative h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold shadow-lg shadow-blue-900/40 transition-transform group-hover:scale-105 active:scale-95 text-white uppercase italic">L</div>
-          </div>
-          <div className="flex flex-col text-left">
-            <span className="font-black tracking-tighter text-xl leading-none text-white uppercase italic">Lock<span className="text-blue-500">edin</span></span>
-            <span className="text-[9px] text-white/20 uppercase tracking-[0.3em] mt-1 font-black italic">Operational Protocol</span>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-8 text-left font-bold">
-          <div className="hidden sm:flex items-center gap-6 text-sm font-black uppercase tracking-widest text-white/40 italic">
-            <Link to="/leaderboard" className="hover:text-white cursor-pointer transition-colors active:scale-95 flex items-center gap-2 italic text-[10px]">
-                <Trophy size={14} className="text-yellow-500" /> Leaderboard
-            </Link>
-            <Link to="/community" className="hover:text-white cursor-pointer transition-colors active:scale-95 text-[10px]">Community</Link>
-          </div>
-          <div className="h-6 w-px bg-white/10 hidden sm:block" />
-          
-          <button 
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/40 hover:text-white active:scale-95"
-          >
-            <Bell size={20} />
-            {unreadCount > 0 && (
-                <span className="absolute top-0 right-0 h-4 w-4 bg-[#ff7a00] rounded-full border-4 border-[#050810] flex items-center justify-center shadow-lg" />
-            )}
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('wallet')}
-            className={`flex items-center gap-3 px-4 py-2 rounded-2xl transition-all active:scale-95 border ${activeTab === 'wallet' ? 'bg-blue-600/10 border-blue-500 text-white shadow-xl shadow-blue-900/10' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'}`}
-          >
-            <Wallet size={16} className={activeTab === 'wallet' ? 'text-blue-500' : 'text-[#ff7a00]'} />
-            <span className="text-sm font-black tracking-tight italic">₦{(user?.balance / 100)?.toLocaleString()}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowProfileMenu((v) => !v)}
-            className="flex items-center gap-2 rounded-full bg-white/5 border border-white/10 p-1.5 hover:bg-white/10 transition-all active:scale-95"
-          >
-            <span className="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5 shadow-lg">
-              <span className="h-full w-full rounded-full bg-[#0a0f1a] flex items-center justify-center text-[10px] font-black uppercase">
-                {user?.name?.[0]}
-              </span>
-            </span>
-            <ChevronDown size={14} className={`text-white/40 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
-          </button>
-        </div>
-      </nav>
-
-      <AnimatePresence>
-        {showProfileMenu && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowProfileMenu(false)}
-              className="fixed inset-0 z-40 bg-transparent"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="fixed top-[88px] right-8 z-50 w-[260px] rounded-[2.5rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
-            >
-              <div className="p-6 border-b border-white/10">
-                <p className="text-white font-black uppercase italic tracking-tight">{user?.name || 'Identity'}</p>
-                <p className="text-[10px] text-white/30 uppercase tracking-[0.25em] mt-2 font-black italic truncate">
-                  {user?.email}
-                </p>
-              </div>
-              <div className="p-4 space-y-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowProfileMenu(false)
-                    window.location.href = '/profile'
-                  }}
-                  className="w-full p-4 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:bg-white/[0.05] transition-all text-left"
-                >
-                  <p className="text-[10px] font-black uppercase tracking-widest italic text-white">View Profile</p>
-                  <p className="text-[9px] text-white/30 uppercase tracking-widest mt-2 italic font-black">Identity & privacy</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setShowProfileMenu(false)
-                    try {
-                      await signOut()
-                      toast.info('Session closed.', { title: 'Signed Out' })
-                      window.location.href = '/'
-                    } catch (err: any) {
-                      toast.error(err?.message || 'Failed to sign out.', { title: 'Sign Out Failed' })
-                    }
-                  }}
-                  className="w-full p-4 rounded-[2rem] bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-all text-left"
-                >
-                  <p className="text-[10px] font-black uppercase tracking-widest italic text-red-400">Logout</p>
-                  <p className="text-[9px] text-red-400/50 uppercase tracking-widest mt-2 italic font-black">End session</p>
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showNotifications && (
-            <>
-                <motion.div 
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                    onClick={() => setShowNotifications(false)}
-                    className="fixed inset-0 bg-[#050810]/60 backdrop-blur-sm z-40"
-                />
-                <motion.div 
-                    initial={{ x: 400 }} animate={{ x: 0 }} exit={{ x: 400 }}
-                    className="fixed top-0 right-0 h-full w-full max-w-sm bg-[#0a0f1a] border-l border-white/10 z-50 shadow-[0_0_80px_rgba(0,0,0,1)] p-8 overflow-y-auto backdrop-blur-3xl"
-                >
-                    <div className="flex items-center justify-between mb-10 text-left">
-                        <h3 className="font-bold text-xl text-left text-white font-black uppercase tracking-widest italic">Protocol Logs</h3>
-                        <button onClick={() => setShowNotifications(false)} className="text-white/20 hover:text-white transition-colors active:scale-95"><X size={24} /></button>
-                    </div>
-
-                    <div className="space-y-4 text-left">
-                        {(notifications as any[]).length === 0 ? (
-                            <div className="text-center mt-20">
-                                <Bell className="mx-auto text-white/5 mb-4 opacity-10" size={60} />
-                                <p className="text-sm text-white/20 italic font-medium uppercase tracking-widest">System logs clear.</p>
-                            </div>
-                        ) : (
-                            (notifications as any[]).map((n: any) => (
-                                <div 
-                                    key={n._id} 
-                                    onClick={() => markRead?.({ notificationId: n._id })}
-                                    className={`p-6 rounded-[2rem] border transition-all text-left group cursor-pointer active:scale-[0.98] ${n.read ? 'bg-transparent border-white/5 opacity-50' : 'bg-white/[0.03] border-white/10 shadow-xl shadow-black/40 hover:bg-white/[0.05] hover:border-white/20'}`}
-                                >
-                                    <div className="flex items-start gap-4 text-left">
-                                        <div className={`mt-1 h-8 w-8 rounded-xl flex items-center justify-center shrink-0 shadow-lg ${getNotificationMeta(n).className} ${n.read ? 'opacity-60' : 'group-hover:scale-110 transition-transform'}`}>
-                                            {getNotificationMeta(n).icon}
-                                        </div>
-                                        <div className="flex-1 text-left">
-                                            <p className="font-black text-sm text-white italic uppercase tracking-tight">{n.title}</p>
-                                            <p className="text-xs text-white/30 mt-1 leading-relaxed font-medium italic">{n.message}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </motion.div>
-            </>
-        )}
-      </AnimatePresence>
+      <AppTopNav
+        variant="dashboard"
+        title="Lockedin"
+        subtitle="Operational Protocol"
+        contextLinks={[
+          { to: '/leaderboard', label: 'Leaderboard', icon: <Trophy size={14} className="text-yellow-500" /> },
+          { to: '/community', label: 'Community' },
+        ]}
+        user={user}
+        walletActive={activeTab === 'wallet'}
+        onWalletClick={() => setActiveTab('wallet')}
+      />
 
       <main className="max-w-7xl mx-auto p-6 lg:p-12 text-left relative z-10">
         <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8 text-left">
@@ -779,16 +605,16 @@ function CreateVaultModal({
                 duration_weeks: parseInt(durationWeeks), 
                 painTier: painTier
             });
-            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.goals.listByUser, {}) as any).queryKey });
-            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, {}) as any).queryKey });
+            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey });
+            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
             toast.success('Protocol initialized.', { title: 'Protocol Activated' });
             onClose();
         } catch (err: any) {
             if (err?.message === 'Insufficient capital in wallet') {
-              toast.warning('Inject capital before staking a new protocol.', {
+              toast.warning('Insufficient capital in wallet. Top up to proceed.', {
                 title: 'Insufficient Capital',
-                action: { label: 'Fund Wallet', onClick: onOpenFundWallet },
-              })
+                action: { label: 'Top Up', onClick: onOpenFundWallet },
+              });
               return
             }
             toast.error(err?.message || 'Failed to initialize protocol.', { title: 'Initialization Failed' });
@@ -1086,9 +912,11 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
     const queryClient = useQueryClient();
     const toast = useToast();
     const [loading, setLoading] = useState(false);
+    const [depositReference, setDepositReference] = useState<string | null>(null);
+    const [shouldOpenPaystack, setShouldOpenPaystack] = useState(false);
 
     const config = {
-        reference: (new Date()).getTime().toString(),
+        reference: depositReference ?? '',
         email: user.email,
         amount: parseInt(amount) * 100, // Paystack expects amount in kobo
         publicKey: PAYSTACK_PUBLIC_KEY,
@@ -1096,13 +924,20 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
 
     const initializePayment = usePaystackPayment(config);
 
+    useEffect(() => {
+        if (!shouldOpenPaystack || !depositReference) return;
+        initializePayment({onSuccess, onClose: onClosePaystack});
+        setShouldOpenPaystack(false);
+    }, [depositReference, initializePayment, shouldOpenPaystack]);
+
     const onSuccess = async (reference: any) => {
         setLoading(true);
         try {
             const result = await verifyPayment({ reference: reference.reference });
             if (result.success) {
-                await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, {}) as any).queryKey });
-                await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, {}) as any).queryKey });
+                await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
+                await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any).queryKey });
+                await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, EMPTY_ARGS as any) as any).queryKey });
                 toast.success(result.message, { title: 'Wallet Funded' });
                 onClose();
             } else {
@@ -1118,17 +953,23 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
 
     const onClosePaystack = () => {
         setLoading(false);
+        setDepositReference(null);
     };
 
     const handleStartPayment = async () => {
+        if (!PAYSTACK_PUBLIC_KEY) {
+            toast.error('Payment configuration missing. Set VITE_PAYSTACK_PUBLIC_KEY.', { title: 'Payment Offline' });
+            return;
+        }
         if (!amount || parseInt(amount) < 500) {
             toast.warning('Minimum deposit is ₦500.', { title: 'Deposit Too Small' });
             return;
         }
         setLoading(true);
         try {
-            await initializeDeposit({ amount: parseInt(amount) });
-            initializePayment({onSuccess, onClose: onClosePaystack});
+            const res = await initializeDeposit({ amount: parseInt(amount) });
+            setDepositReference(res.reference);
+            setShouldOpenPaystack(true);
         } catch (err: any) {
             console.error(err);
             toast.error(err?.message || 'Failed to initialize deposit.', { title: 'Deposit Failed' });
@@ -1224,8 +1065,9 @@ function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
               toast.error(res.message, { title: 'Withdrawal Failed' });
               return;
             }
-            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, {}) as any).queryKey });
-            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, {}) as any).queryKey });
+            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
+            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any).queryKey });
+            await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, EMPTY_ARGS as any) as any).queryKey });
             toast.success(res.message, { title: 'Withdrawal Requested' });
             onClose();
         } catch (err: any) {

@@ -69,10 +69,14 @@ export const verifyPayment = action({
         // Amount check (Paystack returns amount in Kobo)
         const amountKobo = data.data.amount;
         
-        await ctx.runMutation(internal.payments.fulfillDeposit, {
-          reference: args.reference,
-          amountKobo,
-        });
+        try {
+          await ctx.runMutation(internal.payments.fulfillDeposit, {
+            reference: args.reference,
+            amountKobo,
+          });
+        } catch (e: any) {
+          return { success: false, message: e?.message || "Deposit reference could not be matched." };
+        }
 
         return { success: true, message: "Payment verified and wallet funded." };
       }
@@ -100,7 +104,13 @@ export const fulfillDeposit = internalMutation({
       .withIndex("by_reference", (q) => q.eq("reference", args.reference))
       .unique();
 
-    if (!deposit || deposit.status === "completed") return null;
+    if (!deposit) {
+      throw new Error("Deposit reference not found.");
+    }
+    if (deposit.status === "completed") return null;
+    if (deposit.amount !== args.amountKobo) {
+      throw new Error("Deposit amount mismatch.");
+    }
 
     // Update deposit status
     await ctx.db.patch(deposit._id, { status: "completed" });

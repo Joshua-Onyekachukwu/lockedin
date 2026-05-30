@@ -4,7 +4,9 @@ import { convexQuery } from '@convex-dev/react-query';
 import { useMutation, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useToast } from '~/components/toast';
+import { AppTopNav } from '~/components/app-top-nav';
 import { 
+  ChevronDown,
   Search, 
   ShieldCheck, 
   UserPlus,
@@ -18,6 +20,8 @@ import {
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const EMPTY_ARGS: Record<string, never> = {};
+
 export const Route = createFileRoute('/community')({
   component: CommunityPage,
 });
@@ -25,7 +29,7 @@ export const Route = createFileRoute('/community')({
 function CommunityPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
-  const userQuery = convexQuery(api.users.current, {}) as any;
+  const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any;
   const { data: user }: { data: any } = useSuspenseQuery({
     ...userQuery,
     enabled: isAuthenticated,
@@ -38,9 +42,9 @@ function CommunityPage() {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  const { data: discoverableUsers } = useSuspenseQuery(convexQuery(api.users.listDiscoverable, {}) as any);
-  const { data: discoverableGoals } = useSuspenseQuery(convexQuery(api.goals.listDiscoverable, {}) as any);
-  const myVaultsQuery = convexQuery(api.goals.listByUser, {}) as any;
+  const { data: discoverableUsers } = useSuspenseQuery(convexQuery(api.users.listDiscoverable, EMPTY_ARGS as any) as any);
+  const { data: discoverableGoals } = useSuspenseQuery(convexQuery(api.goals.listDiscoverable, EMPTY_ARGS as any) as any);
+  const myVaultsQuery = convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any;
   const { data: myVaults } = useSuspenseQuery({
     ...myVaultsQuery,
     enabled: isAuthenticated,
@@ -49,6 +53,8 @@ function CommunityPage() {
   const [activeView, setActiveView] = useState<'goals' | 'witnesses'>('goals');
   const [searchTerm, setSearchTerm] = useState('');
   const [requestingTo, setRequestingTo] = useState<any>(null);
+  const [minIntegrity, setMinIntegrity] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<'integrity' | 'missions' | 'streak'>('integrity');
 
   if (authLoading || !isAuthenticated || !user) {
     return (
@@ -62,15 +68,13 @@ function CommunityPage() {
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden pb-20">
       <div className="fixed inset-0 pointer-events-none opacity-[0.02] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
       
-      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
-        <div className="flex items-center gap-4 text-left">
-          <a href="/dashboard" className="relative h-10 w-10 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-lg active:scale-95 transition-transform uppercase italic">L</a>
-          <div className="flex flex-col text-left">
-            <span className="font-black tracking-tight text-lg leading-none text-white uppercase italic">Community Hub</span>
-            <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] mt-1 font-black italic">Network Protocol</span>
-          </div>
-        </div>
-      </nav>
+      <AppTopNav
+        title="Community Hub"
+        subtitle="Network Protocol"
+        backTo="/dashboard"
+        contextLinks={[{ to: '/leaderboard', label: 'Leaderboard' }]}
+        user={user}
+      />
 
       <main className="max-w-7xl mx-auto p-6 lg:p-12 text-left relative z-10">
         <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-10">
@@ -123,20 +127,86 @@ function CommunityPage() {
                             <p className="text-sm text-white/20 font-black uppercase tracking-[0.3em] italic">No discoverable goals found in this sector</p>
                         </div>
                     ) : (
-                        (discoverableGoals as any[]).map((goal: any) => (
-                            <GoalCard key={goal._id} goal={goal} />
-                        ))
+                        (discoverableGoals as any[])
+                          .filter((g: any) => {
+                            const q = searchTerm.trim().toLowerCase();
+                            if (!q) return true;
+                            const title = (g.goal?.title || '').toLowerCase();
+                            const desc = (g.goal?.description || '').toLowerCase();
+                            const name = (g.user?.name || '').toLowerCase();
+                            return title.includes(q) || desc.includes(q) || name.includes(q);
+                          })
+                          .map((goal: any) => (
+                              <GoalCard key={goal._id} goal={goal} />
+                          ))
                     )}
                 </motion.div>
             ) : (
                 <motion.div 
                     key="witnesses"
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+                    className="space-y-10"
                 >
-                    {(discoverableUsers as any[]).filter((u: any) => u._id !== userId).map((u: any) => (
-                        <WitnessCard key={u._id} user={u} onInvite={() => setRequestingTo(u)} />
-                    ))}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                      <div className="flex flex-wrap gap-3">
+                        {([
+                          { label: 'All', value: null },
+                          { label: '80%+', value: 80 },
+                          { label: '90%+', value: 90 },
+                          { label: '95%+', value: 95 },
+                        ] as const).map((chip) => (
+                          <button
+                            key={chip.label}
+                            type="button"
+                            onClick={() => setMinIntegrity(chip.value)}
+                            className={`px-6 py-3 rounded-2xl border text-[10px] font-black uppercase tracking-widest italic transition-all active:scale-95 ${
+                              minIntegrity === chip.value
+                                ? 'bg-blue-600 text-white border-blue-500 shadow-xl shadow-blue-900/30'
+                                : 'bg-white/[0.02] text-white/30 border-white/10 hover:text-white hover:bg-white/[0.04]'
+                            }`}
+                          >
+                            {chip.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.35em] italic">Sort</p>
+                        <div className="relative">
+                          <ChevronDown size={16} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
+                          <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as any)}
+                            className="appearance-none bg-white/[0.02] border border-white/10 rounded-2xl pl-6 pr-14 py-4 text-[10px] font-black uppercase tracking-widest italic text-white/70 outline-none focus:border-blue-500"
+                          >
+                            <option value="integrity">Integrity</option>
+                            <option value="missions">Missions</option>
+                            <option value="streak">Streak</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {(discoverableUsers as any[])
+                        .filter((u: any) => u._id !== userId)
+                        .filter((u: any) => {
+                          const q = searchTerm.trim().toLowerCase();
+                          if (!q) return true;
+                          const name = (u.name || '').toLowerCase();
+                          const city = (u.city || '').toLowerCase();
+                          return name.includes(q) || city.includes(q);
+                        })
+                        .filter((u: any) => (minIntegrity ? (u.integrityScore || 0) >= minIntegrity : true))
+                        .sort((a: any, b: any) => {
+                          if (sortBy === 'missions') return (b.goals_completed || 0) - (a.goals_completed || 0);
+                          if (sortBy === 'streak') return (b.streak_count || 0) - (a.streak_count || 0);
+                          return (b.integrityScore || 0) - (a.integrityScore || 0);
+                        })
+                        .map((u: any) => (
+                          <WitnessCard key={u._id} user={u} onInvite={() => setRequestingTo(u)} />
+                        ))}
+                    </div>
                 </motion.div>
             )}
         </AnimatePresence>
@@ -232,7 +302,7 @@ function WitnessCard({ user, onInvite }: { user: any, onInvite: () => void }) {
                     {user.bio || 'HIGH-INTEGRITY PROTOCOL PARTICIPANT FOCUSED ON BEHAVIORAL EXCELLENCE.'}
                 </p>
 
-                <div className="grid grid-cols-2 gap-4 mb-10 font-black italic text-center uppercase">
+                <div className="grid grid-cols-3 gap-3 mb-10 font-black italic text-center uppercase">
                     <div className="p-4 rounded-2xl bg-blue-600/5 border border-blue-500/10 shadow-inner">
                         <p className="text-[9px] text-blue-500/40 uppercase tracking-widest mb-1">Integrity</p>
                         <p className="text-xl text-blue-500">{user.integrityScore || 100}%</p>
@@ -240,6 +310,10 @@ function WitnessCard({ user, onInvite }: { user: any, onInvite: () => void }) {
                     <div className="p-4 rounded-2xl bg-[#ff7a00]/5 border border-[#ff7a00]/10 shadow-inner">
                         <p className="text-[9px] text-[#ff7a00]/40 uppercase tracking-widest mb-1">Streak</p>
                         <p className="text-xl text-[#ff7a00]">{user.streak_count || 0}W</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 shadow-inner">
+                        <p className="text-[9px] text-white/20 uppercase tracking-widest mb-1">Missions</p>
+                        <p className="text-xl text-white">{user.goals_completed || 0}</p>
                     </div>
                 </div>
 

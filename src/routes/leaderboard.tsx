@@ -1,16 +1,20 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
+import { useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { AppTopNav } from '~/components/app-top-nav';
 import { 
   Crown,
   Flame, 
   Medal,
   ShieldCheck,
   Trophy, 
-  ArrowLeft
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
+
+const EMPTY_ARGS: Record<string, never> = {};
 
 export const Route = createFileRoute('/leaderboard')({
   component: LeaderboardPage,
@@ -18,7 +22,26 @@ export const Route = createFileRoute('/leaderboard')({
 
 function LeaderboardPage() {
   const navigate = useNavigate();
-  const { data: leaderboard } = useSuspenseQuery(convexQuery(api.users.getLeaderboard, {}));
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { data: user }: { data: any } = useSuspenseQuery({
+    ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
+    enabled: isAuthenticated,
+  } as any);
+  const { data: leaderboard } = useSuspenseQuery(convexQuery(api.users.getLeaderboard, EMPTY_ARGS as any) as any) as any;
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      navigate({ to: '/login' });
+    }
+  }, [authLoading, isAuthenticated, navigate]);
+
+  if (authLoading || !isAuthenticated || !user) {
+    return (
+      <div className="min-h-screen bg-[#050810] flex items-center justify-center">
+        <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
@@ -28,27 +51,13 @@ function LeaderboardPage() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#ff7a00]/5 blur-[120px] rounded-full" />
       </div>
 
-      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
-        <div className="flex items-center gap-4 text-left">
-          <button
-            type="button"
-            onClick={() => {
-              if (window.history.length > 1) {
-                window.history.back();
-                return;
-              }
-              navigate({ to: '/dashboard' });
-            }}
-            className="relative h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="flex flex-col text-left">
-            <span className="font-bold tracking-tight text-lg leading-none text-white uppercase italic">Protocol Ranking</span>
-            <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] mt-1 font-black">Integrity Board</span>
-          </div>
-        </div>
-      </nav>
+      <AppTopNav
+        title="Protocol Ranking"
+        subtitle="Integrity Board"
+        backTo="/dashboard"
+        contextLinks={[{ to: '/community', label: 'Community' }]}
+        user={user}
+      />
 
       <main className="max-w-6xl mx-auto p-6 lg:p-12 text-left relative z-10">
         <header className="mb-16 text-center">
@@ -66,7 +75,7 @@ function LeaderboardPage() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {leaderboard.map((user, index) => (
+          {(leaderboard as any[]).map((user: any, index: number) => (
             <motion.div
               key={user._id}
               initial={{ opacity: 0, y: 16 }}

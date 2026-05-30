@@ -161,6 +161,41 @@ function ProfileSettings() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Email</p>
+              <p className="mt-4 text-sm text-white font-black italic uppercase tracking-tight">{user?.email || '—'}</p>
+              <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                {user?.emailVerificationTime ? `Verified: ${new Date(user.emailVerificationTime).toLocaleDateString()}` : 'Not verified'}
+              </p>
+            </div>
+            <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">BVN</p>
+              <p className="mt-4 text-sm text-white font-black italic uppercase tracking-tight">
+                {user?.bvn_last4 ? `•••• ${user.bvn_last4}` : 'Not linked'}
+              </p>
+              <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                {user?.bvn_verified ? 'Verified' : 'Pending verification'}
+              </p>
+            </div>
+            <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Tier</p>
+              <p className="mt-4 text-sm text-white font-black italic uppercase tracking-tight">{user?.tier || 'bronze'}</p>
+              <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                Shields: {user?.shields ?? 0} • Credits: {user?.credits ?? 0}
+              </p>
+            </div>
+            <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Wallet</p>
+              <p className="mt-4 text-sm text-white font-black italic uppercase tracking-tight">
+                ₦{((user?.balance ?? 0) / 100).toLocaleString()}
+              </p>
+              <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                Streak: {user?.streak_count ?? 0}W • Missions: {user?.goals_completed ?? 0}
+              </p>
+            </div>
+          </div>
+
           {/* Form Fields */}
           <div className="space-y-10">
             <div className="space-y-4">

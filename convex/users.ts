@@ -11,6 +11,7 @@ export const updateBvnStatus = internalMutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, {
       bvn_verified: true,
+      bvn_last4: args.bvn.slice(-4),
       ...(args.name ? { name: args.name } : {}),
     });
   },
@@ -29,6 +30,7 @@ export const current = query({
     city: v.optional(v.string()),
     bio: v.optional(v.string()),
     bvn_verified: v.boolean(),
+    bvn_last4: v.optional(v.string()),
     is_discoverable: v.boolean(),
     streak_count: v.number(),
     goals_completed: v.number(),
@@ -70,6 +72,7 @@ export const verifyBvn = mutation({
     
     await ctx.db.patch(userId, {
       bvn_verified: true,
+      bvn_last4: args.bvn.slice(-4),
       ...(args.firstName && args.lastName ? { name: `${args.firstName} ${args.lastName}` } : {}),
     });
 
@@ -141,8 +144,10 @@ export const listDiscoverable = query({
     city: v.optional(v.string()),
     bio: v.optional(v.string()),
     streak_count: v.number(),
+    goals_completed: v.number(),
     integrityScore: v.number(),
     is_discoverable: v.boolean(),
+    tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
   })),
   handler: async (ctx) => {
     const users = await ctx.db
@@ -158,8 +163,10 @@ export const listDiscoverable = query({
         city: u.city,
         bio: u.bio,
         streak_count: u.streak_count,
+        goals_completed: u.goals_completed,
         integrityScore: u.integrityScore,
         is_discoverable: u.is_discoverable,
+        tier: u.tier,
       }));
   },
 });
@@ -175,13 +182,20 @@ export const getLeaderboard = query({
     tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
   })),
   handler: async (ctx) => {
-    // Sort by integrity score desc, then streak count desc
+    const tierWeight = (tier: "bronze" | "silver" | "gold") => {
+      if (tier === "gold") return 3;
+      if (tier === "silver") return 2;
+      return 1;
+    };
+
     const users = await ctx.db
       .query("users")
       .collect();
     
     return users
       .sort((a, b) => {
+        const tierDiff = tierWeight(b.tier) - tierWeight(a.tier);
+        if (tierDiff !== 0) return tierDiff;
         if (b.integrityScore !== a.integrityScore) {
           return b.integrityScore - a.integrityScore;
         }

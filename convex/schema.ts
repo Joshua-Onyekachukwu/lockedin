@@ -13,6 +13,7 @@ export default defineSchema({
     city: v.optional(v.string()),
     bio: v.optional(v.string()),
     bvn_verified: v.boolean(),
+    bvn_last4: v.optional(v.string()),
     is_discoverable: v.boolean(),
     streak_count: v.number(),
     goals_completed: v.number(),
@@ -165,4 +166,13 @@ export default defineSchema({
         account_name: v.string(),
     })),
   }).index("by_user", ["userId"]).index("by_status", ["status"]),
+
+  admin_audit: defineTable({
+    adminUserId: v.id("users"),
+    action: v.string(),
+    message: v.string(),
+    targetType: v.optional(v.string()),
+    targetId: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  }).index("by_admin", ["adminUserId"]),
 });

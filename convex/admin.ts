@@ -2,14 +2,19 @@ import { mutation, query, action, internalQuery, internalMutation } from "./_gen
 import { v } from "convex/values";
 import { auth } from "./auth";
 import { internal, api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 
-// SECURITY: Admin privileges are strictly limited to these authorized emails.
-const ADMIN_EMAILS = [
-  "onyekachukwujoshua1@gmail.com",
-  "admin@lockedin.io" // Backup admin
-];
+const ADMIN_EMAILS = (() => {
+  const env = process.env.ADMIN_EMAIL_ALLOWLIST || "";
+  const parsed = env
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  if (parsed.length) return parsed;
+  return ["onyekachukwujoshua1@gmail.com", "admin@lockedin.io"];
+})();
 
 async function checkAdmin(ctx: any) {
     const userId = await auth.getUserId(ctx);
@@ -28,6 +33,140 @@ async function checkAdmin(ctx: any) {
     }
     return user;
 }
+
+export const logAudit = internalMutation({
+  args: {
+    adminUserId: v.id("users"),
+    action: v.string(),
+    message: v.string(),
+    targetType: v.optional(v.string()),
+    targetId: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("admin_audit", {
+      adminUserId: args.adminUserId,
+      action: args.action,
+      message: args.message,
+      targetType: args.targetType,
+      targetId: args.targetId,
+      metadata: args.metadata,
+    });
+    return null;
+  },
+});
+
+export const getAuditLog = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const limit = args.limit ?? 100;
+    const rows = await ctx.db.query("admin_audit").order("desc").take(limit);
+    const results = [];
+    for (const row of rows) {
+      const admin = await ctx.db.get(row.adminUserId);
+      results.push({ ...row, admin });
+    }
+    return results;
+  },
+});
+
+export const searchUsers = query({
+  args: { q: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      _creationTime: v.number(),
+      name: v.optional(v.string()),
+      email: v.optional(v.string()),
+      tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
+      integrityScore: v.number(),
+      streak_count: v.number(),
+      goals_completed: v.number(),
+      balance: v.number(),
+      bvn_verified: v.boolean(),
+      is_discoverable: v.boolean(),
+      witness_discoverable: v.optional(v.boolean()),
+      isAdmin: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const q = args.q.trim().toLowerCase();
+    const limit = args.limit ?? 20;
+    const users = await ctx.db.query("users").collect();
+    return users
+      .filter((u) => {
+        if (!q) return true;
+        const name = (u.name || "").toLowerCase();
+        const email = (u.email || "").toLowerCase();
+        return name.includes(q) || email.includes(q);
+      })
+      .slice(0, limit)
+      .map((u) => ({
+        _id: u._id,
+        _creationTime: u._creationTime,
+        name: u.name,
+        email: u.email,
+        tier: u.tier,
+        integrityScore: u.integrityScore,
+        streak_count: u.streak_count,
+        goals_completed: u.goals_completed,
+        balance: u.balance,
+        bvn_verified: u.bvn_verified,
+        is_discoverable: u.is_discoverable,
+        witness_discoverable: u.witness_discoverable,
+        isAdmin: u.isAdmin,
+      }));
+  },
+});
+
+export const getOverview = query({
+  args: {},
+  returns: v.object({
+    pendingWithdrawals: v.number(),
+    pendingWithdrawalAmount: v.number(),
+    deposits24h: v.number(),
+    depositVolume24h: v.number(),
+    protocols24h: v.number(),
+    activeVaults: v.number(),
+  }),
+  handler: async (ctx) => {
+    await checkAdmin(ctx);
+
+    const now = Date.now();
+    const dayAgo = now - 24 * 60 * 60 * 1000;
+
+    const pendingWithdrawals = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+
+    const recentTx = await ctx.db.query("transactions").order("desc").take(1500);
+    const deposits24h = recentTx.filter(
+      (t) => t.type === "deposit" && t.status === "completed" && t._creationTime >= dayAgo,
+    );
+
+    const recentVaults = await ctx.db.query("vaults").order("desc").take(1500);
+    const protocols24h = recentVaults.filter((v) => v._creationTime >= dayAgo).length;
+
+    const activeVaults = await ctx.db
+      .query("vaults")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+
+    return {
+      pendingWithdrawals: pendingWithdrawals.length,
+      pendingWithdrawalAmount: pendingWithdrawals.reduce((s, w) => s + w.amount, 0),
+      deposits24h: deposits24h.length,
+      depositVolume24h: deposits24h.reduce((s, t) => s + t.amount, 0),
+      protocols24h,
+      activeVaults: activeVaults.length,
+    };
+  },
+});
 
 /**
  * Dedicated Admin Authorization Helper
@@ -66,12 +205,62 @@ export const getSystemStats = query({
   }
 });
 
+export const seedDummyUserHistory = action({
+  args: {
+    domain: v.optional(v.string()),
+    limit: v.optional(v.number()),
+    goalsPerUser: v.optional(v.number()),
+    logsPerGoal: v.optional(v.number()),
+  },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const adminStatus = await ctx.runQuery(api.admin.checkAdminStatus, {});
+    if (!adminStatus?.isAdmin || !adminStatus?.user) {
+      throw new Error("SECURITY ALERT: Administrative privileges required.");
+    }
+
+    const domain = args.domain ?? "protocol.io";
+    const userIds = (await ctx.runQuery(internal.seed.listUsersByEmailDomain, {
+      domain,
+      limit: args.limit,
+    })) as Array<Id<"users">>;
+
+    const goalsPerUser = args.goalsPerUser ?? 3;
+    const logsPerGoal = args.logsPerGoal ?? 10;
+
+    for (const userId of userIds) {
+      await ctx.runMutation(internal.seed.seedHistoryForUser, {
+        userId,
+        goalsPerUser,
+        logsPerGoal,
+      });
+    }
+
+    await ctx.runMutation(internal.admin.logAudit, {
+      adminUserId: (adminStatus.user as any)._id as Id<"users">,
+      action: "seed_dummy_history",
+      message: `Seeded ${goalsPerUser} goal(s) per user for ${userIds.length} user(s) @${domain}.`,
+      metadata: { domain, goalsPerUser, logsPerGoal, users: userIds.length },
+    });
+
+    return {
+      success: true,
+      message: `Seeded historical logs for ${userIds.length} user(s) @${domain}.`,
+    };
+  },
+});
+
 export const triggerMidnightSweep = mutation({
     args: {},
     returns: v.null(),
     handler: async (ctx) => {
-        await checkAdmin(ctx);
+        const admin = await checkAdmin(ctx);
         await ctx.scheduler.runAfter(0, internal.penalties.midnightSweep, {});
+        await ctx.db.insert("admin_audit", {
+          adminUserId: admin._id,
+          action: "trigger_midnight_sweep",
+          message: "Midnight sweep protocol triggered.",
+        });
         return null;
     }
 });
@@ -80,8 +269,13 @@ export const triggerWeeklyDistribution = mutation({
     args: {},
     returns: v.null(),
     handler: async (ctx) => {
-        await checkAdmin(ctx);
+        const admin = await checkAdmin(ctx);
         await ctx.scheduler.runAfter(0, internal.rewards.distributeWeeklyRewards, {});
+        await ctx.db.insert("admin_audit", {
+          adminUserId: admin._id,
+          action: "trigger_weekly_distribution",
+          message: "Weekly distribution protocol triggered.",
+        });
         return null;
     }
 });
@@ -122,7 +316,10 @@ export const approveWithdrawal = action({
   returns: v.object({ success: v.boolean(), message: v.string() }),
   handler: async (ctx, args) => {
     // 1. Authenticate Admin
-    await ctx.runQuery(api.admin.getSystemStats, {}); // Reusing stats check for auth
+    const adminStatus = await ctx.runQuery(api.admin.checkAdminStatus, {});
+    if (!adminStatus?.isAdmin || !adminStatus?.user) {
+      throw new Error("SECURITY ALERT: Administrative privileges required.");
+    }
 
     // 2. Fetch withdrawal details
     const withdrawal = await ctx.runQuery(internal.admin.getWithdrawalById, { 
@@ -187,10 +384,26 @@ export const approveWithdrawal = action({
             processedAt: Date.now()
         });
 
+        await ctx.runMutation(internal.admin.logAudit, {
+          adminUserId: (adminStatus.user as any)._id as Id<"users">,
+          action: "approve_withdrawal",
+          message: `Withdrawal approved and transfer initiated. Amount: ₦${(amount / 100).toLocaleString()}.`,
+          targetType: "withdrawal",
+          targetId: args.withdrawalId,
+          metadata: { amount },
+        });
+
         return { success: true, message: "Capital extraction protocol executed successfully." };
 
     } catch (err: any) {
-        console.error("PAYSTACK TRANSFER ERROR:", err);
+        await ctx.runMutation(internal.admin.logAudit, {
+          adminUserId: (adminStatus.user as any)._id as Id<"users">,
+          action: "approve_withdrawal_failed",
+          message: `Withdrawal transfer failed: ${err?.message || "Unknown error"}`,
+          targetType: "withdrawal",
+          targetId: args.withdrawalId,
+          metadata: { amount },
+        });
         return { success: false, message: `Disbursement Failed: ${err.message}` };
     }
   },
@@ -269,7 +482,7 @@ export const enforceProtocolBreach = mutation({
     args: { vaultId: v.id("vaults") },
     returns: v.null(),
     handler: async (ctx, args) => {
-        await checkAdmin(ctx);
+        const admin = await checkAdmin(ctx);
         const vault = await ctx.db.get(args.vaultId);
         if (!vault || vault.status !== "active") return null;
 
@@ -291,6 +504,15 @@ export const enforceProtocolBreach = mutation({
             message: "System has detected an unrecoverable goal failure. Principal has been forfeited.",
             type: "streak_alert",
             read: false,
+        });
+
+        await ctx.db.insert("admin_audit", {
+            adminUserId: admin._id,
+            action: "enforce_protocol_breach",
+            message: `Forfeiture enforced. Vault: ${args.vaultId}`,
+            targetType: "vault",
+            targetId: args.vaultId,
+            metadata: { amount: vault.amount }
         });
 
         return null;

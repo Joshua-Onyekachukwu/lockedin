@@ -1,4 +1,4 @@
-import { internalAction, internalMutation } from "./_generated/server";
+import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
@@ -105,4 +105,95 @@ export const createSeedUser = internalMutation({
 
         return null;
     }
+});
+
+export const listUsersByEmailDomain = internalQuery({
+    args: { domain: v.string(), limit: v.optional(v.number()) },
+    returns: v.array(v.id("users")),
+    handler: async (ctx, args) => {
+        const users = await ctx.db.query("users").collect();
+        const filtered = users
+            .filter((u) => (u.email || "").toLowerCase().endsWith(`@${args.domain.toLowerCase()}`))
+            .slice(0, args.limit ?? users.length)
+            .map((u) => u._id);
+        return filtered;
+    },
+});
+
+export const seedHistoryForUser = internalMutation({
+    args: {
+        userId: v.id("users"),
+        goalsPerUser: v.number(),
+        logsPerGoal: v.number(),
+    },
+    returns: v.null(),
+    handler: async (ctx, args) => {
+        const user = await ctx.db.get(args.userId);
+        if (!user) return null;
+
+        const now = Date.now();
+
+        for (let i = 0; i < args.goalsPerUser; i++) {
+            const goal = GOALS[Math.floor(Math.random() * GOALS.length)];
+            const stake = Math.floor(Math.random() * (250000 - 10000 + 1) + 10000) * 100;
+            const startDate = now - (Math.floor(Math.random() * 21) + 7) * 24 * 60 * 60 * 1000;
+
+            const vaultId = await ctx.db.insert("vaults", {
+                userId: args.userId,
+                amount: stake,
+                currency: "NGN",
+                duration_weeks: 4,
+                startDate,
+                endDate: startDate + (4 * 7 * 24 * 60 * 60 * 1000),
+                painTier: Math.random() > 0.7 ? "liquidation" : Math.random() > 0.4 ? "enforcement" : "deterrence",
+                status: "active",
+                paystack_reference: "SEED_" + Math.random().toString(36).substring(7),
+                interest_earned: 0
+            });
+
+            const goalId = await ctx.db.insert("goals", {
+                vaultId,
+                userId: args.userId,
+                category: goal.cat as any,
+                title: goal.title,
+                description: `Mandatory adherence for ${user.name || "Citizen"}. Failure results in economic liquidation.`,
+                frequency_type: "daily",
+                target_count: 1
+            });
+
+            for (let j = 0; j < args.logsPerGoal; j++) {
+                const dayOffset = Math.floor(Math.random() * 24);
+                const date = new Date(startDate + dayOffset * 24 * 60 * 60 * 1000);
+                const dateStr = date.toISOString().split("T")[0];
+                const weekNumber = Math.max(1, Math.ceil(((date.getTime() - startDate) / (7 * 24 * 60 * 60 * 1000))));
+                const statusPick = Math.random();
+                const status = statusPick > 0.88 ? "missed" : statusPick > 0.78 ? "disputed" : "completed";
+
+                await ctx.db.insert("goal_logs", {
+                    goalId,
+                    week_number: weekNumber,
+                    date: dateStr,
+                    status: status as any,
+                    note: status === "missed"
+                      ? "Log missed. System recorded a protocol breach."
+                      : status === "disputed"
+                      ? "Evidence submitted. Awaiting arbitration."
+                      : "Execution confirmed. Evidence submitted for verification.",
+                    confirmed_by: status === "completed" && Math.random() > 0.45 ? args.userId : undefined,
+                    confirmed_at: status === "completed" && Math.random() > 0.45 ? now - Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000 : undefined,
+                });
+            }
+
+            await ctx.db.insert("transactions", {
+                userId: args.userId,
+                vaultId,
+                amount: -Math.floor(stake * 0.05),
+                type: "platform_fee",
+                status: "completed",
+                description: "Seeded protocol initialization fee"
+            });
+        }
+
+        return null;
+    },
 });
