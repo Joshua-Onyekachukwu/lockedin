@@ -12,6 +12,10 @@ export const join = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
+
     const vault = await ctx.db.get(args.vaultId);
     if (!vault) throw new Error("Vault not found");
 
@@ -44,6 +48,10 @@ export const request = mutation({
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
     const goal = await ctx.db
         .query("goals")
@@ -98,6 +106,10 @@ export const acceptRequest = mutation({
         const userId = await auth.getUserId(ctx);
         if (userId === null) throw new Error("Unauthenticated");
 
+        const user = await ctx.db.get(userId);
+        if (!user) throw new Error("Identity verification failed");
+        if (!user.emailVerificationTime) throw new Error("Email verification required.");
+
         const partnership = await ctx.db.get(args.partnerShipId);
         if (!partnership || partnership.partnerId !== userId) {
             throw new Error("Authorization Breach: You cannot accept this request.");
@@ -117,6 +129,9 @@ export const listIncomingRequests = query({
     handler: async (ctx) => {
         const userId = await auth.getUserId(ctx);
         if (userId === null) return [];
+
+        const user = await ctx.db.get(userId);
+        if (!user || !user.emailVerificationTime) return [];
 
         const requests = await ctx.db
             .query("accountability_partners")
@@ -141,6 +156,10 @@ export const joinByInvite = mutation({
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
     const vault = await ctx.db.get(args.vaultId);
     if (!vault) throw new Error("Vault not found");

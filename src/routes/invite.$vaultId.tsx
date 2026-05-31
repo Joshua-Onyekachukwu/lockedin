@@ -26,6 +26,7 @@ function PartnerInvite() {
     ...userQuery,
     enabled: isAuthenticated,
   } as any);
+  const isVerified = !!user?.emailVerificationTime;
   
   const joinAsPartner = useMutation(api.partners.join);
   
@@ -34,7 +35,7 @@ function PartnerInvite() {
   }) as any;
   const { data: vault }: { data: any } = useSuspenseQuery({
     ...vaultQuery,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && isVerified,
   } as any);
 
   useEffect(() => {
@@ -43,7 +44,13 @@ function PartnerInvite() {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  if (authLoading || !isAuthenticated || !user || !vault) {
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && !isVerified) {
+      navigate({ to: '/verify-required' });
+    }
+  }, [authLoading, isAuthenticated, isVerified, navigate, user]);
+
+  if (authLoading || !isAuthenticated || !user || !isVerified || !vault) {
     return (
       <div className="min-h-screen bg-[#050810] flex items-center justify-center">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />

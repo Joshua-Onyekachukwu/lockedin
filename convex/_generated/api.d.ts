@@ -11,6 +11,7 @@
 import type * as admin from "../admin.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
+import type * as emailVerification from "../emailVerification.js";
 import type * as goals from "../goals.js";
 import type * as http from "../http.js";
 import type * as migrations from "../migrations.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   auth: typeof auth;
   crons: typeof crons;
+  emailVerification: typeof emailVerification;
   goals: typeof goals;
   http: typeof http;
   migrations: typeof migrations;

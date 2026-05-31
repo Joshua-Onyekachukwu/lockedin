@@ -11,6 +11,8 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as VerifyRequiredImport } from './routes/verify-required'
+import { Route as VerifyEmailImport } from './routes/verify-email'
 import { Route as VerifyBvnImport } from './routes/verify-bvn'
 import { Route as ProfileImport } from './routes/profile'
 import { Route as LoginImport } from './routes/login'
@@ -27,6 +29,18 @@ import { Route as AdminTxTxIdImport } from './routes/admin.tx.$txId'
 import { Route as AdminAuditAuditIdImport } from './routes/admin.audit.$auditId'
 
 // Create/Update Routes
+
+const VerifyRequiredRoute = VerifyRequiredImport.update({
+  id: '/verify-required',
+  path: '/verify-required',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const VerifyEmailRoute = VerifyEmailImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const VerifyBvnRoute = VerifyBvnImport.update({
   id: '/verify-bvn',
@@ -172,6 +186,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyBvnImport
       parentRoute: typeof rootRoute
     }
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailImport
+      parentRoute: typeof rootRoute
+    }
+    '/verify-required': {
+      id: '/verify-required'
+      path: '/verify-required'
+      fullPath: '/verify-required'
+      preLoaderRoute: typeof VerifyRequiredImport
+      parentRoute: typeof rootRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -242,6 +270,8 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
+  '/verify-email': typeof VerifyEmailRoute
+  '/verify-required': typeof VerifyRequiredRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
@@ -259,6 +289,8 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
+  '/verify-email': typeof VerifyEmailRoute
+  '/verify-required': typeof VerifyRequiredRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
@@ -277,6 +309,8 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
+  '/verify-email': typeof VerifyEmailRoute
+  '/verify-required': typeof VerifyRequiredRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
@@ -296,6 +330,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
+    | '/verify-email'
+    | '/verify-required'
     | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
@@ -312,6 +348,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
+    | '/verify-email'
+    | '/verify-required'
     | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
@@ -328,6 +366,8 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
+    | '/verify-email'
+    | '/verify-required'
     | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
@@ -346,6 +386,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
   VerifyBvnRoute: typeof VerifyBvnRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
+  VerifyRequiredRoute: typeof VerifyRequiredRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   InviteVaultIdRoute: typeof InviteVaultIdRoute
   VaultIdRoute: typeof VaultIdRoute
@@ -360,6 +402,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,
   VerifyBvnRoute: VerifyBvnRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
+  VerifyRequiredRoute: VerifyRequiredRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   InviteVaultIdRoute: InviteVaultIdRoute,
   VaultIdRoute: VaultIdRoute,
@@ -383,6 +427,8 @@ export const routeTree = rootRoute
         "/login",
         "/profile",
         "/verify-bvn",
+        "/verify-email",
+        "/verify-required",
         "/auth/callback",
         "/invite/$vaultId",
         "/vault/$id"
@@ -416,6 +462,12 @@ export const routeTree = rootRoute
     },
     "/verify-bvn": {
       "filePath": "verify-bvn.tsx"
+    },
+    "/verify-email": {
+      "filePath": "verify-email.tsx"
+    },
+    "/verify-required": {
+      "filePath": "verify-required.tsx"
     },
     "/admin/settings": {
       "filePath": "admin.settings.tsx",

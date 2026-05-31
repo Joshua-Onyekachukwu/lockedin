@@ -37,7 +37,7 @@ function LandingPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate({ to: '/dashboard' });
+      navigate({ to: '/verify-required' });
     }
   }, [isLoading, isAuthenticated, navigate]);
 

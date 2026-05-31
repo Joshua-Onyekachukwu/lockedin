@@ -192,6 +192,16 @@ export default defineSchema({
     .index("by_customer_email", ["customerEmail"])
     .index("by_resolved", ["resolved"]),
 
+  email_verification_tokens: defineTable({
+    userId: v.id("users"),
+    tokenHash: v.string(),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_expires", ["expiresAt"]),
+
   withdrawals: defineTable({
     userId: v.id("users"),
     amount: v.number(),

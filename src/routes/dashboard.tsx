@@ -54,7 +54,13 @@ function Dashboard() {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  if (authLoading || !isAuthenticated || !user) {
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && !(user as any).emailVerificationTime) {
+      navigate({ to: '/verify-required' });
+    }
+  }, [authLoading, isAuthenticated, navigate, user]);
+
+  if (authLoading || !isAuthenticated || !user || !(user as any).emailVerificationTime) {
     return (
       <div className="min-h-screen bg-[#050810] flex items-center justify-center">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />

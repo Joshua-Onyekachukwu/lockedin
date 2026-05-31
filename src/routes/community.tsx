@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useMutation, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -43,12 +43,29 @@ function CommunityPage() {
     }
   }, [isAuthenticated, authLoading, navigate]);
 
-  const { data: discoverableUsers } = useSuspenseQuery(convexQuery(api.users.listDiscoverable, EMPTY_ARGS as any) as any);
-  const { data: discoverableGoals } = useSuspenseQuery(convexQuery(api.goals.listDiscoverable, EMPTY_ARGS as any) as any);
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && !(user as any).emailVerificationTime) {
+      navigate({ to: '/verify-required' });
+    }
+  }, [authLoading, isAuthenticated, navigate, user]);
+
+  const isVerified = !!(user as any)?.emailVerificationTime;
+  const discoverableUsersQuery = convexQuery(api.users.listDiscoverable, EMPTY_ARGS as any) as any;
+  const { data: discoverableUsers } = useQuery({
+    ...discoverableUsersQuery,
+    enabled: isAuthenticated && isVerified,
+  });
+
+  const discoverableGoalsQuery = convexQuery(api.goals.listDiscoverable, EMPTY_ARGS as any) as any;
+  const { data: discoverableGoals } = useQuery({
+    ...discoverableGoalsQuery,
+    enabled: isAuthenticated && isVerified,
+  });
+
   const myVaultsQuery = convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any;
-  const { data: myVaults } = useSuspenseQuery({
+  const { data: myVaults } = useQuery({
     ...myVaultsQuery,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && isVerified,
   });
   
   const [activeView, setActiveView] = useState<'goals' | 'witnesses'>('goals');
@@ -57,7 +74,7 @@ function CommunityPage() {
   const [minIntegrity, setMinIntegrity] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'integrity' | 'missions' | 'streak'>('integrity');
 
-  if (authLoading || !isAuthenticated || !user) {
+  if (authLoading || !isAuthenticated || !user || !isVerified) {
     return (
       <div className="min-h-screen bg-[#050810] flex items-center justify-center">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />

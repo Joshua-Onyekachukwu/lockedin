@@ -99,49 +99,57 @@ function AdminDashboard() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
   const toast = useToast();
+
+  const { data: user }: { data: any } = useSuspenseQuery({
+    ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
+    enabled: isAuthenticated,
+  } as any);
+  const isVerified = !!user?.emailVerificationTime;
   
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, EMPTY_ARGS as any) as any;
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
     ...adminStatusQuery,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && isVerified,
   } as any);
 
   const isAdmin = !!adminStatus?.isAdmin;
 
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'transactions' | 'audit' | 'waitlist' | 'withdrawals' | 'breaches'>('overview');
+
   const statsQuery = convexQuery(api.admin.getSystemStats, EMPTY_ARGS as any) as any;
   const { data: stats }: { data: any } = useSuspenseQuery({
     ...statsQuery,
-    enabled: isAuthenticated && isAdmin,
+    enabled: isAuthenticated && isVerified && isAdmin,
   } as any);
 
   const waitlistQuery = convexQuery(api.waitlist.list, EMPTY_ARGS as any) as any;
   const { data: waitlist }: { data: any } = useSuspenseQuery({
     ...waitlistQuery,
-    enabled: isAuthenticated && isAdmin,
+    enabled: isAuthenticated && isVerified && isAdmin,
   } as any);
 
   const pendingWithdrawalsQuery = convexQuery(api.admin.getPendingWithdrawals, EMPTY_ARGS as any) as any;
   const { data: pendingWithdrawals }: { data: any } = useSuspenseQuery({
     ...pendingWithdrawalsQuery,
-    enabled: isAuthenticated && isAdmin,
+    enabled: isAuthenticated && isVerified && isAdmin,
   } as any);
 
   const breachCandidatesQuery = convexQuery(api.admin.getBreachCandidates, EMPTY_ARGS as any) as any;
   const { data: breachCandidates }: { data: any } = useSuspenseQuery({
     ...breachCandidatesQuery,
-    enabled: isAuthenticated && isAdmin,
+    enabled: isAuthenticated && isVerified && isAdmin && activeTab === 'breaches',
   } as any);
 
   const overviewQuery = convexQuery(api.admin.getOverview, EMPTY_ARGS as any) as any;
   const { data: overview }: { data: any } = useSuspenseQuery({
     ...overviewQuery,
-    enabled: isAuthenticated && isAdmin,
+    enabled: isAuthenticated && isVerified && isAdmin,
   } as any);
 
   const auditQuery = convexQuery((api as any).admin.getAuditLog, { limit: 100 } as any) as any;
   const { data: auditLog }: { data: any } = useSuspenseQuery({
     ...auditQuery,
-    enabled: isAuthenticated && isAdmin,
+    enabled: isAuthenticated && isVerified && isAdmin,
   } as any);
   
   const sweep = useMutation(api.admin.triggerMidnightSweep);
@@ -153,8 +161,6 @@ function AdminDashboard() {
   const previewPaystackTransaction = useAction((api as any).admin.previewPaystackTransaction);
   const recoverPaystackTransaction = useAction((api as any).admin.recoverPaystackTransaction);
   const paymentsExplorerLookup = useAction((api as any).admin.paymentsExplorerLookup);
-
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'transactions' | 'audit' | 'waitlist' | 'withdrawals' | 'breaches'>('overview');
   const [confirm, setConfirm] = useState<{ open: boolean; title: string; description?: string; tone?: 'primary' | 'danger'; confirmLabel: string; run: (() => Promise<void>) | null }>({ open: false, title: '', confirmLabel: '', run: null });
   const [seedOpen, setSeedOpen] = useState(false);
   const [seedDomain, setSeedDomain] = useState('protocol.io');
@@ -184,7 +190,7 @@ function AdminDashboard() {
   const searchUsersQuery = convexQuery((api as any).admin.searchUsers, { q: userSearch, limit: 20 } as any) as any;
   const { data: searchedUsers } = useQuery({
     ...(searchUsersQuery as any),
-    enabled: isAuthenticated && isAdmin && userSearch.trim().length > 0,
+    enabled: isAuthenticated && isVerified && isAdmin && userSearch.trim().length > 0,
   } as any);
 
   const allUsersQuery = convexQuery(
@@ -193,7 +199,7 @@ function AdminDashboard() {
   ) as any;
   const { data: allUsersPage } = useQuery({
     ...(allUsersQuery as any),
-    enabled: isAuthenticated && isAdmin && userSearch.trim().length === 0,
+    enabled: isAuthenticated && isVerified && isAdmin && userSearch.trim().length === 0,
     placeholderData: { page: [], isDone: false, continueCursor: null },
   } as any);
 
@@ -203,7 +209,7 @@ function AdminDashboard() {
   ) as any;
   const { data: transactionsPage } = useQuery({
     ...(transactionsPageQuery as any),
-    enabled: isAuthenticated && isAdmin && activeTab === 'transactions',
+    enabled: isAuthenticated && isVerified && isAdmin && activeTab === 'transactions',
     placeholderData: { page: [], isDone: false, continueCursor: null },
   } as any);
 
@@ -215,12 +221,24 @@ function AdminDashboard() {
   }, [userSearch]);
 
   useEffect(() => {
-    if (!authLoading && (!isAuthenticated || !adminStatus?.isAdmin)) {
+    if (!authLoading && !isAuthenticated) {
       navigate({ to: '/login' });
     }
-  }, [isAuthenticated, authLoading, adminStatus, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
-  if (authLoading || !isAuthenticated || !adminStatus?.isAdmin || !stats) return <AdminLoading />;
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && !isVerified) {
+      navigate({ to: '/verify-required' });
+    }
+  }, [authLoading, isAuthenticated, isVerified, navigate, user]);
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && isVerified && adminStatus && !adminStatus.isAdmin) {
+      navigate({ to: '/login' });
+    }
+  }, [adminStatus, authLoading, isAuthenticated, isVerified, navigate]);
+
+  if (authLoading || !isAuthenticated || !user || !isVerified || !adminStatus?.isAdmin || !stats) return <AdminLoading />;
 
   const exportCSV = () => {
     const csv = [

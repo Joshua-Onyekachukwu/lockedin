@@ -28,7 +28,7 @@ function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      navigate({ to: '/dashboard' });
+      navigate({ to: '/verify-required' });
     }
   }, [authLoading, isAuthenticated, navigate]);
 
@@ -38,7 +38,7 @@ function LoginPage() {
     setSuccess(provider === 'google' ? 'Redirecting to Google...' : 'Verifying identity...');
     try {
       if (provider === 'google') {
-        await signIn(provider, { redirectTo: '/auth/callback?to=/dashboard' } as any);
+        await signIn(provider, { redirectTo: '/auth/callback?to=/verify-required' } as any);
       } else {
         await signIn(provider);
       }

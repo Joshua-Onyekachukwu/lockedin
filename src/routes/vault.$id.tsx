@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useEffect } from 'react';
 
+const EMPTY_ARGS: Record<string, never> = {};
+
 export const Route = createFileRoute('/vault/$id')({
   component: VaultPage,
 });
@@ -20,13 +22,19 @@ function VaultPage() {
   const { id: vaultId } = Route.useParams();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
+
+  const { data: user }: { data: any } = useSuspenseQuery({
+    ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
+    enabled: isAuthenticated,
+  } as any);
+  const isVerified = !!user?.emailVerificationTime;
   
   const vaultQuery = convexQuery(api.goals.getFullContext, {
     vaultId: vaultId as any,
   }) as any;
   const { data: vault }: { data: any } = useSuspenseQuery({
     ...vaultQuery,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && isVerified,
   });
 
   useEffect(() => {
@@ -35,7 +43,13 @@ function VaultPage() {
     }
   }, [authLoading, isAuthenticated, navigate]);
 
-  if (authLoading || !isAuthenticated || !vault) {
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && !isVerified) {
+      navigate({ to: '/verify-required' });
+    }
+  }, [authLoading, isAuthenticated, isVerified, navigate, user]);
+
+  if (authLoading || !isAuthenticated || !user || !isVerified || !vault) {
     return (
       <div className="min-h-screen bg-[#050810] flex items-center justify-center">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />

@@ -50,6 +50,7 @@ export const create = mutation({
 
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
     if (user.balance < args.stakedAmount) throw new Error("Insufficient capital in wallet");
 
     // Deduct balance (Logical escrow)
@@ -103,6 +104,11 @@ export const generateUploadUrl = mutation({
   args: {},
   returns: v.string(),
   handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -117,6 +123,10 @@ export const checkIn = mutation({
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
     const goal = await ctx.db.get(args.goalId);
     if (!goal) throw new Error("Goal not found");
@@ -156,6 +166,9 @@ export const listByUser = query({
     const userId = await auth.getUserId(ctx);
     if (userId === null) return [];
 
+    const user = await ctx.db.get(userId);
+    if (!user || !user.emailVerificationTime) return [];
+
     const vaults = await ctx.db
       .query("vaults")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -182,6 +195,9 @@ export const getFullContext = query({
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) return null;
+
+    const user = await ctx.db.get(userId);
+    if (!user || !user.emailVerificationTime) return null;
 
     const vault = await ctx.db.get(args.vaultId);
     if (!vault) return null;
@@ -229,6 +245,11 @@ export const listDiscoverable = query({
     args: { limit: v.optional(v.number()) },
     returns: v.array(v.any()),
     handler: async (ctx, args) => {
+        const userId = await auth.getUserId(ctx);
+        if (userId === null) return [];
+        const user = await ctx.db.get(userId);
+        if (!user || !user.emailVerificationTime) return [];
+
         const limit = Math.max(1, Math.min(args.limit ?? 120, 200));
 
         const discoverableUsers = await ctx.db

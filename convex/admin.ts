@@ -72,6 +72,10 @@ async function checkAdmin(ctx: any) {
     if (!user) {
         throw new Error("SECURITY ALERT: Administrative privileges required.");
     }
+
+    if (!user.emailVerificationTime) {
+        throw new Error("Email verification required.");
+    }
     
     const isEmailAdmin = user.email && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
     const isDbAdmin = user.isAdmin === true;
@@ -1055,16 +1059,17 @@ export const finalizeWithdrawal = internalMutation({
 });
 
 export const getBreachCandidates = query({
-    args: {},
+    args: { limit: v.optional(v.number()) },
     returns: v.array(v.any()),
-    handler: async (ctx) => {
+    handler: async (ctx, args) => {
         await checkAdmin(ctx);
+        const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
         // Vaults that are active and might need manual failure enforcement
         const activeVaults = await ctx.db
             .query("vaults")
             .withIndex("by_status", q => q.eq("status", "active"))
             .order("desc")
-            .take(300);
+            .take(limit);
         
         const results = [];
         for (const vault of activeVaults) {

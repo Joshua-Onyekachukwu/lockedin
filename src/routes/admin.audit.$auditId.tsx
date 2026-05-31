@@ -15,25 +15,43 @@ function AuditDetail() {
   const navigate = useNavigate()
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
 
+  const { data: user }: { data: any } = useSuspenseQuery({
+    ...(convexQuery(api.users.current, {} as any) as any),
+    enabled: isAuthenticated,
+  } as any)
+  const isVerified = !!user?.emailVerificationTime
+
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, {} as any) as any
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
     ...adminStatusQuery,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && isVerified,
   } as any)
 
   const auditQuery = convexQuery((api as any).admin.getAuditById, { auditId } as any) as any
   const { data: audit }: { data: any } = useSuspenseQuery({
     ...(auditQuery as any),
-    enabled: isAuthenticated && adminStatus?.isAdmin,
+    enabled: isAuthenticated && isVerified && adminStatus?.isAdmin,
   } as any)
 
   useEffect(() => {
-    if (!authLoading && (!isAuthenticated || !adminStatus?.isAdmin)) {
+    if (!authLoading && !isAuthenticated) {
       navigate({ to: '/login' })
     }
-  }, [adminStatus, authLoading, isAuthenticated, navigate])
+  }, [authLoading, isAuthenticated, navigate])
 
-  if (authLoading || !isAuthenticated || !adminStatus?.isAdmin) {
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && !isVerified) {
+      navigate({ to: '/verify-required' })
+    }
+  }, [authLoading, isAuthenticated, isVerified, navigate, user])
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && isVerified && adminStatus && !adminStatus.isAdmin) {
+      navigate({ to: '/login' })
+    }
+  }, [adminStatus, authLoading, isAuthenticated, isVerified, navigate])
+
+  if (authLoading || !isAuthenticated || !user || !isVerified || !adminStatus?.isAdmin) {
     return (
       <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center text-white/20 italic font-black uppercase tracking-[0.5em]">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full mb-8" />
@@ -137,4 +155,3 @@ function AuditDetail() {
     </div>
   )
 }
-

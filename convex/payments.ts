@@ -1,7 +1,7 @@
 import { mutation, query, action, internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { auth } from "./auth";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 
@@ -30,6 +30,7 @@ export const initializeDeposit = mutation({
 
     const user = await ctx.db.get(userId);
     if (!user || !user.email) throw new Error("User email required for payment");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
     const reference = `LKD-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 
@@ -61,6 +62,9 @@ export const verifyPayment = action({
     message: v.string(),
   }),
   handler: async (ctx, args) => {
+    const user = await ctx.runQuery(api.users.current, {});
+    if (!user || !user.emailVerificationTime) throw new Error("Email verification required.");
+
     if (!PAYSTACK_SECRET) {
       return { success: false, message: "Payment backend not configured." };
     }
@@ -667,6 +671,7 @@ export const requestWithdrawal = mutation({
 
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("User not found");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
     if (user.balance < args.amount) {
       return { success: false, message: "Insufficient capital for withdrawal." };

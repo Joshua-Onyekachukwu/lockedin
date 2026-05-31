@@ -66,6 +66,9 @@ export const generateProfileImageUploadUrl = mutation({
   handler: async (ctx) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Not authenticated");
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -79,6 +82,7 @@ export const setProfileImage = mutation({
 
     const user = await ctx.db.get(userId);
     if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
     const previous = user.profileImageId;
     await ctx.db.patch(userId, { profileImageId: args.storageId });
@@ -143,6 +147,10 @@ export const updateProfile = mutation({
     if (userId === null) {
       throw new Error("Not authenticated");
     }
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
     const patch: Record<string, any> = {};
 
@@ -223,6 +231,11 @@ export const listDiscoverable = query({
     tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
   })),
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) return [];
+    const user = await ctx.db.get(userId);
+    if (!user || !user.emailVerificationTime) return [];
+
     const limit = Math.max(1, Math.min(args.limit ?? 200, 500));
 
     const discoverable = await ctx.db
@@ -263,6 +276,11 @@ export const getLeaderboard = query({
     tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
   })),
   handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) return [];
+    const user = await ctx.db.get(userId);
+    if (!user || !user.emailVerificationTime) return [];
+
     const tierWeight = (tier?: "bronze" | "silver" | "gold") => {
       if (tier === "gold") return 3;
       if (tier === "silver") return 2;

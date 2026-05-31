@@ -66,7 +66,15 @@ function ProfileSettings() {
     }
   }, [authLoading, isAuthenticated, navigate]);
 
-  if (authLoading || !isAuthenticated || !user) {
+  const isVerified = !!user?.emailVerificationTime;
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && !isVerified) {
+      navigate({ to: '/verify-required' });
+    }
+  }, [authLoading, isAuthenticated, isVerified, navigate, user]);
+
+  if (authLoading || !isAuthenticated || !user || !isVerified) {
     return (
       <div className="min-h-screen bg-[#050810] flex items-center justify-center">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />

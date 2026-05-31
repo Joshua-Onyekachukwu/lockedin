@@ -27,9 +27,10 @@ function LeaderboardPage() {
     ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
     enabled: isAuthenticated,
   } as any);
+  const isVerified = !!(user as any)?.emailVerificationTime;
   const { data: leaderboard } = useSuspenseQuery({
     ...(convexQuery(api.users.getLeaderboard, EMPTY_ARGS as any) as any),
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && isVerified,
   } as any) as any;
 
   useEffect(() => {
@@ -38,7 +39,13 @@ function LeaderboardPage() {
     }
   }, [authLoading, isAuthenticated, navigate]);
 
-  if (authLoading || !isAuthenticated || !user) {
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user && !isVerified) {
+      navigate({ to: '/verify-required' });
+    }
+  }, [authLoading, isAuthenticated, isVerified, navigate, user]);
+
+  if (authLoading || !isAuthenticated || !user || !isVerified) {
     return (
       <div className="min-h-screen bg-[#050810] flex items-center justify-center">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />
