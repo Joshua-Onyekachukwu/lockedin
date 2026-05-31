@@ -34,8 +34,8 @@ function ProfileSettings() {
     enabled: isAuthenticated,
   } as any);
   const updateProfile = useMutation(api.users.updateProfile);
-  const generateUploadUrl = useMutation((api as any).users.generateProfileImageUploadUrl);
-  const setProfileImage = useMutation((api as any).users.setProfileImage);
+  const generateUploadUrl = useMutation(api.users.generateProfileImageUploadUrl as any);
+  const setProfileImage = useMutation(api.users.setProfileImage as any);
   
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);

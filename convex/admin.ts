@@ -414,7 +414,7 @@ export const getOverview = query({
     const pendingWithdrawals = await ctx.db
       .query("withdrawals")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .collect();
+      .take(1000);
 
     const recentTx = await ctx.db.query("transactions").order("desc").take(1500);
     const deposits24h = recentTx.filter(
@@ -427,7 +427,7 @@ export const getOverview = query({
     const activeVaults = await ctx.db
       .query("vaults")
       .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
+      .take(5000);
 
     return {
       pendingWithdrawals: pendingWithdrawals.length,
@@ -729,8 +729,11 @@ export const getSystemStats = query({
     await checkAdmin(ctx);
 
     const stats = await ctx.db.query("system_stats").unique();
-    const totalUsers = (await ctx.db.query("users").collect()).length;
-    const activeVaults = (await ctx.db.query("vaults").withIndex("by_status", q => q.eq("status", "active")).collect());
+    const totalUsers = (await ctx.db.query("users").order("desc").take(5000)).length;
+    const activeVaults = await ctx.db
+      .query("vaults")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .take(5000);
     const totalStaked = activeVaults.reduce((sum, v) => sum + v.amount, 0);
 
     return {
@@ -888,7 +891,7 @@ export const getPendingWithdrawals = query({
     const withdrawals = await ctx.db
       .query("withdrawals")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .collect();
+      .take(1000);
 
     const results = [];
     for (const w of withdrawals) {
@@ -1060,16 +1063,16 @@ export const getBreachCandidates = query({
         const activeVaults = await ctx.db
             .query("vaults")
             .withIndex("by_status", q => q.eq("status", "active"))
-            .collect();
+            .order("desc")
+            .take(300);
         
         const results = [];
         for (const vault of activeVaults) {
             const user = await ctx.db.get(vault.userId);
-            const goals = await ctx.db
+            const goal = await ctx.db
                 .query("goals")
                 .withIndex("by_vault", q => q.eq("vaultId", vault._id))
-                .collect();
-            const goal = goals[0] ?? null;
+                .first();
             
             // Check if they missed a check-in recently
             // This is just a basic list for now

@@ -208,7 +208,7 @@ export const exchangeCreditsForShield = mutation({
 });
 
 export const listDiscoverable = query({
-  args: {},
+  args: { limit: v.optional(v.number()) },
   returns: v.array(v.object({
     _id: v.id("users"),
     _creationTime: v.number(),
@@ -222,12 +222,14 @@ export const listDiscoverable = query({
     is_discoverable: v.boolean(),
     tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
   })),
-  handler: async (ctx) => {
-    const users = await ctx.db
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 200, 500));
+
+    const discoverable = await ctx.db
       .query("users")
-      .collect();
-    
-    const discoverable = users.filter((u) => u.is_discoverable);
+      .withIndex("by_is_discoverable", (q) => q.eq("is_discoverable", true))
+      .take(limit);
+
     return await Promise.all(
       discoverable.map(async (u) => {
         const profileUrl = u.profileImageId ? await ctx.storage.getUrl(u.profileImageId) : null;
@@ -269,7 +271,8 @@ export const getLeaderboard = query({
 
     const users = await ctx.db
       .query("users")
-      .collect();
+      .order("desc")
+      .take(5000);
     
     const sorted = users
       .sort((a, b) => {

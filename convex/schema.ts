@@ -26,7 +26,9 @@ export default defineSchema({
     credits: v.number(), // Non-monetary protocol currency
     isAdmin: v.optional(v.boolean()),
   }).index("email", ["email"])
-    .index("by_integrity", ["integrityScore"]),
+    .index("by_integrity", ["integrityScore"])
+    .index("by_is_discoverable", ["is_discoverable"])
+    .index("by_discoverable_integrity", ["is_discoverable", "integrityScore"]),
 
   vaults: defineTable({
     userId: v.id("users"),

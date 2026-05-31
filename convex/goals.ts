@@ -167,7 +167,7 @@ export const listByUser = query({
         const goal = await ctx.db
             .query("goals")
             .withIndex("by_vault", (q) => q.eq("vaultId", vault._id))
-            .unique();
+            .first();
         if (goal) {
             results.push({ ...vault, goal });
         }
@@ -189,7 +189,7 @@ export const getFullContext = query({
     const goal = await ctx.db
         .query("goals")
         .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
-        .unique();
+        .first();
     if (!goal) return null;
 
     // Security check: only owner or partner can view
@@ -226,44 +226,46 @@ export const getFullContext = query({
 });
 
 export const listDiscoverable = query({
-    args: {},
+    args: { limit: v.optional(v.number()) },
     returns: v.array(v.any()),
-    handler: async (ctx) => {
-        // Find discoverable users
-        const users = await ctx.db
-            .query("users")
-            .filter(q => q.eq(q.field("is_discoverable"), true))
-            .collect();
-        
-        const usersWithImages = await Promise.all(
-          users.map(async (u) => {
-            const profileUrl = u.profileImageId ? await ctx.storage.getUrl(u.profileImageId) : null;
-            return { ...u, image: profileUrl ?? u.image };
-          }),
-        );
-        const userById = new Map(usersWithImages.map((u) => [u._id, u]));
-        const userIds = new Set(usersWithImages.map(u => u._id));
-        const results = [];
+    handler: async (ctx, args) => {
+        const limit = Math.max(1, Math.min(args.limit ?? 120, 200));
 
-        // Get active vaults from these users
+        const discoverableUsers = await ctx.db
+          .query("users")
+          .withIndex("by_is_discoverable", (q) => q.eq("is_discoverable", true))
+          .take(2000);
+
+        const userById = new Map(discoverableUsers.map((u) => [u._id, u]));
+        const discoverableIds = new Set(discoverableUsers.map((u) => u._id));
+
         const activeVaults = await ctx.db
-            .query("vaults")
-            .withIndex("by_status", q => q.eq("status", "active"))
-            .collect();
-        
+          .query("vaults")
+          .withIndex("by_status", (q) => q.eq("status", "active"))
+          .order("desc")
+          .take(1500);
+
+        const results: any[] = [];
+
         for (const vault of activeVaults) {
-            if (userIds.has(vault.userId)) {
-                const user = userById.get(vault.userId);
-                const goals = await ctx.db
-                    .query("goals")
-                    .withIndex("by_vault", q => q.eq("vaultId", vault._id))
-                    .collect();
-                const goal = goals[0] ?? null;
-                if (goal && user) {
-                    results.push({ ...vault, goal, user });
-                }
-            }
+          if (results.length >= limit) break;
+          if (!discoverableIds.has(vault.userId)) continue;
+
+          const goal = await ctx.db
+            .query("goals")
+            .withIndex("by_vault", (q) => q.eq("vaultId", vault._id))
+            .first();
+          if (!goal) continue;
+
+          const rawUser = userById.get(vault.userId);
+          if (!rawUser) continue;
+
+          const profileUrl = rawUser.profileImageId ? await ctx.storage.getUrl(rawUser.profileImageId) : null;
+          const user = { ...rawUser, image: profileUrl ?? rawUser.image };
+
+          results.push({ ...vault, goal, user });
         }
+
         return results;
     }
 });
