@@ -111,12 +111,44 @@ export const searchUsers = query({
   ),
   handler: async (ctx, args) => {
     await checkAdmin(ctx);
-    const q = args.q.trim().toLowerCase();
+    const qRaw = args.q.trim();
+    const q = qRaw.toLowerCase();
     const limit = args.limit ?? 20;
-    const users = await ctx.db.query("users").collect();
+    if (!q) return [];
+
+    if (q.includes("@")) {
+      const direct =
+        (await ctx.db
+          .query("users")
+          .withIndex("email", (qq) => qq.eq("email", qRaw))
+          .unique()) ||
+        (await ctx.db
+          .query("users")
+          .withIndex("email", (qq) => qq.eq("email", q))
+          .unique());
+      if (!direct) return [];
+      return [
+        {
+          _id: direct._id,
+          _creationTime: direct._creationTime,
+          name: direct.name,
+          email: direct.email,
+          tier: direct.tier,
+          integrityScore: direct.integrityScore,
+          streak_count: direct.streak_count,
+          goals_completed: direct.goals_completed,
+          balance: direct.balance,
+          bvn_verified: direct.bvn_verified,
+          is_discoverable: direct.is_discoverable,
+          witness_discoverable: direct.witness_discoverable,
+          isAdmin: direct.isAdmin,
+        },
+      ];
+    }
+
+    const users = await ctx.db.query("users").order("desc").take(2000);
     return users
       .filter((u) => {
-        if (!q) return true;
         const name = (u.name || "").toLowerCase();
         const email = (u.email || "").toLowerCase();
         return name.includes(q) || email.includes(q);
