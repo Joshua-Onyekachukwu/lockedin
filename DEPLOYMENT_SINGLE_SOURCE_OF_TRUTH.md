@@ -11,6 +11,19 @@ This document prevents “split brain” production issues (frontend pointing at
 **Frontend production (Vercel):**
 - Site URL: `https://lock3din.vercel.app`
 
+## Temporary Testing Mode (Current)
+
+While the team is actively testing (and the existing data lives on the older deployment), use **one** Convex deployment end-to-end for the live site:
+
+**Temporary testing backend (single source of truth during testing):**
+- Cloud URL (client): `https://ardent-dinosaur-415.convex.cloud`
+- HTTP URL (webhooks + auth routes): `https://ardent-dinosaur-415.convex.site`
+
+When testing mode is enabled:
+- Vercel Production must point at `ardent-dinosaur-415.convex.cloud`
+- Paystack webhook must point at `ardent-dinosaur-415.convex.site/paystack-webhook`
+- Google redirect URIs remain on `https://lock3din.vercel.app/api/auth/callback/google`
+
 ## What Each URL Is Used For
 
 ### Convex Cloud (`*.convex.cloud`)
@@ -97,3 +110,21 @@ Cause: Paystack webhook is still pointing at the old Convex `.site` URL.
 Fix:
 - Update Paystack webhook to `https://quick-starfish-723.convex.site/paystack-webhook`
 
+## Convex CLI: How to Target the Correct Deployment
+
+The Convex CLI chooses which deployment to deploy to using `CONVEX_DEPLOYMENT`.
+
+### Check what your CLI is targeting
+- Run `npx convex dashboard` and confirm the opened dashboard shows the expected deployment name in the URL.
+
+### Force CLI to re-configure (safest)
+1) Run `npx convex logout`
+2) Run `npx convex dev`
+3) Follow the prompts and select the deployment you want to use (for testing mode, choose `ardent-dinosaur-415`)
+
+### If you already have a local config
+Convex typically stores the deployment name in a local env file created during setup:
+- `.env.local` should contain `CONVEX_DEPLOYMENT=<deploymentName>`
+
+For testing mode, that value should be:
+- `CONVEX_DEPLOYMENT=ardent-dinosaur-415`
