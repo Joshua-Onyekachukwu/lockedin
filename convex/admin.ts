@@ -140,6 +140,83 @@ export const searchUsers = query({
   },
 });
 
+export const listUsersPage = query({
+  args: { cursor: v.optional(v.string()), limit: v.optional(v.number()) },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("users"),
+        _creationTime: v.number(),
+        name: v.optional(v.string()),
+        email: v.optional(v.string()),
+        tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
+        integrityScore: v.number(),
+        streak_count: v.number(),
+        goals_completed: v.number(),
+        balance: v.number(),
+        bvn_verified: v.boolean(),
+        is_discoverable: v.boolean(),
+        witness_discoverable: v.optional(v.boolean()),
+        isAdmin: v.optional(v.boolean()),
+      }),
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.null(), v.string()),
+  }),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const limit = Math.max(1, Math.min(args.limit ?? 25, 100));
+    const result = await (ctx.db.query("users").order("desc") as any).paginate({
+      cursor: args.cursor ?? null,
+      numItems: limit,
+    });
+    return {
+      page: result.page.map((u: any) => ({
+        _id: u._id,
+        _creationTime: u._creationTime,
+        name: u.name,
+        email: u.email,
+        tier: u.tier,
+        integrityScore: u.integrityScore,
+        streak_count: u.streak_count,
+        goals_completed: u.goals_completed,
+        balance: u.balance,
+        bvn_verified: u.bvn_verified,
+        is_discoverable: u.is_discoverable,
+        witness_discoverable: u.witness_discoverable,
+        isAdmin: u.isAdmin,
+      })),
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+    };
+  },
+});
+
+export const getAuditById = query({
+  args: { auditId: v.id("admin_audit") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("admin_audit"),
+      _creationTime: v.number(),
+      adminUserId: v.id("users"),
+      action: v.string(),
+      message: v.string(),
+      targetType: v.optional(v.string()),
+      targetId: v.optional(v.string()),
+      metadata: v.optional(v.any()),
+      admin: v.optional(v.any()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const row = await ctx.db.get(args.auditId);
+    if (!row) return null;
+    const admin = await ctx.db.get(row.adminUserId);
+    return { ...row, admin };
+  },
+});
+
 export const getOverview = query({
   args: {},
   returns: v.object({

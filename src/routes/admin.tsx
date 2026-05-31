@@ -158,6 +158,8 @@ function AdminDashboard() {
   const [seedLimit, setSeedLimit] = useState(20);
   const [seedGoalsPerUser, setSeedGoalsPerUser] = useState(3);
   const [seedLogsPerGoal, setSeedLogsPerGoal] = useState(10);
+  const [seedRunning, setSeedRunning] = useState<null | 'seed' | 'populate'>(null);
+  const [seedFeedback, setSeedFeedback] = useState<{ tone: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
   const [paystackReference, setPaystackReference] = useState('');
   const [paystackPreview, setPaystackPreview] = useState<any>(null);
@@ -165,12 +167,32 @@ function AdminDashboard() {
 
   const [userSearch, setUserSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [usersCursor, setUsersCursor] = useState<string | null>(null);
+  const [usersCursorStack, setUsersCursorStack] = useState<Array<string | null>>([]);
+  const usersPageSize = 25;
 
   const searchUsersQuery = convexQuery((api as any).admin.searchUsers, { q: userSearch, limit: 20 } as any) as any;
   const { data: searchedUsers } = useQuery({
     ...(searchUsersQuery as any),
     enabled: isAuthenticated && isAdmin && userSearch.trim().length > 0,
   } as any);
+
+  const allUsersQuery = convexQuery(
+    (api as any).admin.listUsersPage,
+    { cursor: usersCursor, limit: usersPageSize } as any,
+  ) as any;
+  const { data: allUsersPage } = useQuery({
+    ...(allUsersQuery as any),
+    enabled: isAuthenticated && isAdmin && userSearch.trim().length === 0,
+    placeholderData: { page: [], isDone: false, continueCursor: null },
+  } as any);
+
+  useEffect(() => {
+    if (userSearch.trim().length === 0) {
+      setUsersCursor(null);
+      setUsersCursorStack([]);
+    }
+  }, [userSearch]);
 
   useEffect(() => {
     if (!authLoading && (!isAuthenticated || !adminStatus?.isAdmin)) {
@@ -210,7 +232,12 @@ function AdminDashboard() {
             <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-500 font-black uppercase tracking-widest text-[10px] italic">
                 <ShieldCheck size={14} /> Root Access Active
             </div>
-            <button className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-white transition-all"><Settings size={20} /></button>
+            <Link
+              to="/admin/settings"
+              className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-white transition-all active:scale-95"
+            >
+              <Settings size={20} />
+            </Link>
         </div>
       </nav>
 
@@ -231,7 +258,9 @@ function AdminDashboard() {
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">Active Stakes</span>
                     <Wallet size={18} className="text-[#ff7a00]" />
                 </div>
-                <p className="text-4xl font-black text-white italic tracking-tighter uppercase">₦{(stats.totalStaked / 100).toLocaleString()}</p>
+                <p className="text-[clamp(1.5rem,2.6vw,2.25rem)] font-black text-white italic tracking-tighter uppercase whitespace-nowrap overflow-hidden text-ellipsis">
+                  ₦{(stats.totalStaked / 100).toLocaleString()}
+                </p>
                 <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">{stats.activeVaults} Active Goals</p>
             </div>
 
@@ -520,7 +549,12 @@ function AdminDashboard() {
                             <div className="p-10 space-y-4">
                               {(auditLog as any[])?.length ? (
                                 (auditLog as any[]).map((row: any) => (
-                                  <div key={row._id} className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                                  <Link
+                                    key={row._id}
+                                    to="/admin/audit/$auditId"
+                                    params={{ auditId: row._id }}
+                                    className="block p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left hover:bg-white/[0.04] hover:border-white/20 transition-all active:scale-[0.99]"
+                                  >
                                     <div className="flex items-center justify-between gap-6">
                                       <p className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/20">
                                         {row.action}
@@ -535,7 +569,7 @@ function AdminDashboard() {
                                     <p className="mt-4 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
                                       {row.admin?.email || 'admin'}
                                     </p>
-                                  </div>
+                                  </Link>
                                 ))
                               ) : (
                                 <div className="text-center py-20 text-white/20 font-black italic uppercase tracking-widest">
@@ -570,8 +604,110 @@ function AdminDashboard() {
 
                           <div className="space-y-3">
                             {userSearch.trim().length === 0 ? (
-                              <div className="text-center py-20 text-white/20 font-black italic uppercase tracking-widest">
-                                Enter a search term.
+                              <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl shadow-2xl overflow-hidden text-left">
+                                <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between">
+                                  <div className="text-left font-black italic uppercase">
+                                    <p className="text-[10px] text-white/20 tracking-widest">All Users</p>
+                                    <p className="mt-2 text-xs text-white/40 tracking-tight">
+                                      Showing {(allUsersPage as any)?.page?.length ?? 0} user(s)
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      type="button"
+                                      disabled={usersCursorStack.length === 0}
+                                      onClick={() => {
+                                        setUsersCursorStack((s) => {
+                                          const next = [...s]
+                                          const prevCursor = next.pop() ?? null
+                                          setUsersCursor(prevCursor)
+                                          return next
+                                        })
+                                      }}
+                                      className="px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/40 font-black uppercase tracking-widest italic text-[10px] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 active:scale-95 transition-all"
+                                    >
+                                      Prev
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={!((allUsersPage as any)?.continueCursor)}
+                                      onClick={() => {
+                                        const nextCursor = (allUsersPage as any)?.continueCursor as string | null
+                                        if (!nextCursor) return
+                                        setUsersCursorStack((s) => [...s, usersCursor])
+                                        setUsersCursor(nextCursor)
+                                      }}
+                                      className="px-5 py-3 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-all"
+                                    >
+                                      Next
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                  <table className="w-full min-w-[900px]">
+                                    <thead>
+                                      <tr className="text-[9px] font-black uppercase tracking-[0.3em] italic text-white/20 border-b border-white/5">
+                                        <th className="px-8 py-5 text-left">Name</th>
+                                        <th className="px-8 py-5 text-left">Email</th>
+                                        <th className="px-8 py-5 text-left">Tier</th>
+                                        <th className="px-8 py-5 text-left">Integrity</th>
+                                        <th className="px-8 py-5 text-left">Balance</th>
+                                        <th className="px-8 py-5 text-left">Joined</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/5">
+                                      {((allUsersPage as any)?.page as any[])?.map((u: any) => (
+                                        <tr
+                                          key={u._id}
+                                          onClick={() => setSelectedUser(u)}
+                                          className="hover:bg-white/[0.03] transition-all cursor-pointer"
+                                        >
+                                          <td className="px-8 py-6">
+                                            <p className="text-white font-black uppercase italic tracking-tight">
+                                              {u.name || 'Anonymous'}
+                                            </p>
+                                          </td>
+                                          <td className="px-8 py-6">
+                                            <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.25em] italic truncate max-w-[320px]">
+                                              {u.email || '—'}
+                                            </p>
+                                          </td>
+                                          <td className="px-8 py-6">
+                                            <span className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest italic text-white/50">
+                                              {u.tier || 'bronze'}
+                                            </span>
+                                          </td>
+                                          <td className="px-8 py-6">
+                                            <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest italic">
+                                              {u.integrityScore}% 
+                                            </p>
+                                          </td>
+                                          <td className="px-8 py-6">
+                                            <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic">
+                                              ₦{((u.balance ?? 0) / 100).toLocaleString()}
+                                            </p>
+                                          </td>
+                                          <td className="px-8 py-6">
+                                            <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                                              {new Date(u._creationTime).toLocaleDateString()}
+                                            </p>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                      {((allUsersPage as any)?.page as any[])?.length === 0 ? (
+                                        <tr>
+                                          <td
+                                            colSpan={6}
+                                            className="px-8 py-16 text-center text-white/20 font-black italic uppercase tracking-widest"
+                                          >
+                                            No users returned.
+                                          </td>
+                                        </tr>
+                                      ) : null}
+                                    </tbody>
+                                  </table>
+                                </div>
                               </div>
                             ) : (searchedUsers as any[])?.length ? (
                               (searchedUsers as any[]).map((u: any) => (
@@ -649,7 +785,11 @@ function AdminDashboard() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setSeedOpen(true)}
+                            onClick={() => {
+                              setSeedFeedback(null)
+                              setSeedRunning(null)
+                              setSeedOpen(true)
+                            }}
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-center active:scale-95 flex items-center justify-center gap-3"
                         >
                             <Database size={16} /> Seed Demo Logs
@@ -705,7 +845,7 @@ function AdminDashboard() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSeedOpen(false)}
+              onClick={() => (seedRunning ? null : setSeedOpen(false))}
               className="fixed inset-0 z-[90] bg-[#050810]/70 backdrop-blur-xl"
             />
             <motion.div
@@ -727,7 +867,7 @@ function AdminDashboard() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => setSeedOpen(false)}
+                    onClick={() => (seedRunning ? null : setSeedOpen(false))}
                     className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
                   >
                     <X size={18} />
@@ -784,11 +924,37 @@ function AdminDashboard() {
                     </div>
                   </div>
 
+                  {seedFeedback ? (
+                    <div
+                      className={`p-6 rounded-[2rem] border text-left ${
+                        seedFeedback.tone === 'success'
+                          ? 'bg-green-600/10 border-green-500/20'
+                          : seedFeedback.tone === 'error'
+                            ? 'bg-red-600/10 border-red-500/20'
+                            : 'bg-white/[0.02] border-white/10'
+                      }`}
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/30">
+                        {seedFeedback.tone === 'success'
+                          ? 'Completed'
+                          : seedFeedback.tone === 'error'
+                            ? 'Failed'
+                            : 'Running'}
+                      </p>
+                      <p className="mt-4 text-xs text-white/50 italic leading-relaxed font-medium">
+                        {seedFeedback.message}
+                      </p>
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-col sm:flex-row gap-4 pt-4">
                     <button
                       type="button"
+                      disabled={seedRunning !== null}
                       onClick={async () => {
                         try {
+                          setSeedRunning('seed')
+                          setSeedFeedback({ tone: 'info', message: 'Generating demo vaults, goals, and historical logs…' })
                           const res = await seedHistory({
                             domain: seedDomain,
                             limit: seedLimit,
@@ -796,38 +962,48 @@ function AdminDashboard() {
                             logsPerGoal: seedLogsPerGoal,
                           })
                           toast.success(res?.message || 'Seed complete.', { title: 'Seed Executed' })
-                          setSeedOpen(false)
+                          setSeedFeedback({ tone: 'success', message: res?.message || 'Seed complete.' })
                         } catch (e: any) {
                           toast.error(e?.message || 'Seed failed.', { title: 'Seed Failed' })
+                          setSeedFeedback({ tone: 'error', message: e?.message || 'Seed failed.' })
+                        } finally {
+                          setSeedRunning(null)
                         }
                       }}
-                      className="flex-1 py-5 rounded-2xl bg-white text-black font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all"
+                      className="flex-1 py-5 rounded-2xl bg-white text-black font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Seed New Logs
+                      {seedRunning === 'seed' ? 'Seeding…' : 'Seed New Logs'}
                     </button>
                     <button
                       type="button"
+                      disabled={seedRunning !== null}
                       onClick={async () => {
                         try {
+                          setSeedRunning('populate')
+                          setSeedFeedback({ tone: 'info', message: 'Populating logs for existing protocols…' })
                           const res = await populateExistingHistory({
                             domain: seedDomain,
                             limit: seedLimit,
                             logsPerGoal: seedLogsPerGoal,
                           })
                           toast.success(res?.message || 'Populate complete.', { title: 'Populate Executed' })
-                          setSeedOpen(false)
+                          setSeedFeedback({ tone: 'success', message: res?.message || 'Populate complete.' })
                         } catch (e: any) {
                           toast.error(e?.message || 'Populate failed.', { title: 'Populate Failed' })
+                          setSeedFeedback({ tone: 'error', message: e?.message || 'Populate failed.' })
+                        } finally {
+                          setSeedRunning(null)
                         }
                       }}
-                      className="flex-1 py-5 rounded-2xl bg-green-500 text-black font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all"
+                      className="flex-1 py-5 rounded-2xl bg-green-500 text-black font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Populate Existing
+                      {seedRunning === 'populate' ? 'Populating…' : 'Populate Existing'}
                     </button>
                     <button
                       type="button"
+                      disabled={seedRunning !== null}
                       onClick={() => setSeedOpen(false)}
-                      className="flex-1 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-[10px] uppercase tracking-[0.3em] italic hover:bg-white/10 active:scale-95 transition-all"
+                      className="flex-1 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-[10px] uppercase tracking-[0.3em] italic hover:bg-white/10 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       Cancel
                     </button>

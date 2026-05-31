@@ -22,6 +22,8 @@ import { Route as IndexImport } from './routes/index'
 import { Route as VaultIdImport } from './routes/vault.$id'
 import { Route as InviteVaultIdImport } from './routes/invite.$vaultId'
 import { Route as AuthCallbackImport } from './routes/auth.callback'
+import { Route as AdminSettingsImport } from './routes/admin.settings'
+import { Route as AdminAuditAuditIdImport } from './routes/admin.audit.$auditId'
 
 // Create/Update Routes
 
@@ -91,6 +93,18 @@ const AuthCallbackRoute = AuthCallbackImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
+const AdminSettingsRoute = AdminSettingsImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const AdminAuditAuditIdRoute = AdminAuditAuditIdImport.update({
+  id: '/audit/$auditId',
+  path: '/audit/$auditId',
+  getParentRoute: () => AdminRoute,
+} as any)
+
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
@@ -151,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyBvnImport
       parentRoute: typeof rootRoute
     }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsImport
+      parentRoute: typeof AdminImport
+    }
     '/auth/callback': {
       id: '/auth/callback'
       path: '/auth/callback'
@@ -172,52 +193,77 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VaultIdImport
       parentRoute: typeof rootRoute
     }
+    '/admin/audit/$auditId': {
+      id: '/admin/audit/$auditId'
+      path: '/audit/$auditId'
+      fullPath: '/admin/audit/$auditId'
+      preLoaderRoute: typeof AdminAuditAuditIdImport
+      parentRoute: typeof AdminImport
+    }
   }
 }
 
 // Create and export the route tree
 
+interface AdminRouteChildren {
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminAuditAuditIdRoute: typeof AdminAuditAuditIdRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminAuditAuditIdRoute: AdminAuditAuditIdRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/leaderboard': typeof LeaderboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
+  '/admin/audit/$auditId': typeof AdminAuditAuditIdRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/leaderboard': typeof LeaderboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
+  '/admin/audit/$auditId': typeof AdminAuditAuditIdRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/leaderboard': typeof LeaderboardRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
   '/verify-bvn': typeof VerifyBvnRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
+  '/admin/audit/$auditId': typeof AdminAuditAuditIdRoute
 }
 
 export interface FileRouteTypes {
@@ -231,9 +277,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
+    | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
     | '/vault/$id'
+    | '/admin/audit/$auditId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -244,9 +292,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
+    | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
     | '/vault/$id'
+    | '/admin/audit/$auditId'
   id:
     | '__root__'
     | '/'
@@ -257,15 +307,17 @@ export interface FileRouteTypes {
     | '/login'
     | '/profile'
     | '/verify-bvn'
+    | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
     | '/vault/$id'
+    | '/admin/audit/$auditId'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CommunityRoute: typeof CommunityRoute
   DashboardRoute: typeof DashboardRoute
   LeaderboardRoute: typeof LeaderboardRoute
@@ -279,7 +331,7 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   CommunityRoute: CommunityRoute,
   DashboardRoute: DashboardRoute,
   LeaderboardRoute: LeaderboardRoute,
@@ -318,7 +370,11 @@ export const routeTree = rootRoute
       "filePath": "index.tsx"
     },
     "/admin": {
-      "filePath": "admin.tsx"
+      "filePath": "admin.tsx",
+      "children": [
+        "/admin/settings",
+        "/admin/audit/$auditId"
+      ]
     },
     "/community": {
       "filePath": "community.tsx"
@@ -338,6 +394,10 @@ export const routeTree = rootRoute
     "/verify-bvn": {
       "filePath": "verify-bvn.tsx"
     },
+    "/admin/settings": {
+      "filePath": "admin.settings.tsx",
+      "parent": "/admin"
+    },
     "/auth/callback": {
       "filePath": "auth.callback.tsx"
     },
@@ -346,6 +406,10 @@ export const routeTree = rootRoute
     },
     "/vault/$id": {
       "filePath": "vault.$id.tsx"
+    },
+    "/admin/audit/$auditId": {
+      "filePath": "admin.audit.$auditId.tsx",
+      "parent": "/admin"
     }
   }
 }
