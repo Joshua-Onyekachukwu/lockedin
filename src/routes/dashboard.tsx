@@ -4,6 +4,7 @@ import { convexQuery } from '@convex-dev/react-query';
 import { useMutation, useAction, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useToast } from '~/components/toast';
+import { toUserMessage } from '~/lib/errors';
 import { AppTopNav } from '~/components/app-top-nav';
 import { 
   Target, 
@@ -74,17 +75,47 @@ function Dashboard() {
 
 function DashboardContent({ user }: { user: any }) {
   const toast = useToast();
-  const { data: vaults } = useSuspenseQuery(convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any);
-  const { data: discoverableVaults } = useSuspenseQuery(convexQuery(api.goals.listDiscoverable, EMPTY_ARGS as any) as any);
-  const { data: pendingVerifications } = useSuspenseQuery(convexQuery(api.verifications.getPendingVerifications, EMPTY_ARGS as any) as any);
-  const { data: incomingRequests } = useSuspenseQuery(convexQuery(api.partners.listIncomingRequests, EMPTY_ARGS as any) as any);
-  const { data: transactions } = useSuspenseQuery(convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any);
   
   const [isCreating, setIsCreating] = useState(false);
   const [isFunding, setIsFunding] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [checkingInGoal, setCheckingInGoal] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'protocols' | 'witnessing' | 'wallet'>('protocols');
+
+  const { data: vaults } = useQuery({
+    ...(convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any),
+    enabled: true,
+    placeholderData: [],
+    staleTime: 1000 * 15,
+  } as any)
+
+  const { data: discoverableVaults } = useQuery({
+    ...(convexQuery(api.goals.listDiscoverable, EMPTY_ARGS as any) as any),
+    enabled: activeTab === 'witnessing',
+    placeholderData: [],
+    staleTime: 1000 * 15,
+  } as any)
+
+  const { data: pendingVerifications } = useQuery({
+    ...(convexQuery(api.verifications.getPendingVerifications, EMPTY_ARGS as any) as any),
+    enabled: activeTab === 'witnessing',
+    placeholderData: [],
+    staleTime: 1000 * 10,
+  } as any)
+
+  const { data: incomingRequests } = useQuery({
+    ...(convexQuery(api.partners.listIncomingRequests, EMPTY_ARGS as any) as any),
+    enabled: activeTab === 'witnessing',
+    placeholderData: [],
+    staleTime: 1000 * 10,
+  } as any)
+
+  const { data: transactions } = useQuery({
+    ...(convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any),
+    enabled: activeTab === 'wallet',
+    placeholderData: [],
+    staleTime: 1000 * 10,
+  } as any)
   
   const verifyLog = useMutation(api.verifications.verifyLog);
   const acceptPartnerRequest = useMutation(api.partners.acceptRequest);
@@ -99,11 +130,7 @@ function DashboardContent({ user }: { user: any }) {
           await requestPartnership({ vaultId, partnerId });
           toast.success('Witness request transmitted.', { title: 'Request Sent' });
       } catch (err: any) {
-          const message =
-            err?.message === 'Authorization Breach: You can only request witnesses for your own protocols.'
-              ? 'Select one of your own protocols to attach to this request.'
-              : err?.message || 'Failed to transmit request.'
-          toast.error(message, { title: 'Request Blocked' });
+          toast.error(toUserMessage(err, 'Failed to transmit request.'), { title: 'Request Blocked' });
       }
   };
 
@@ -307,7 +334,7 @@ function DashboardContent({ user }: { user: any }) {
                                         </div>
 
                                         <button 
-                                            onClick={() => handleRequestWitness(v._id, user._id)}
+                                            onClick={() => handleRequestWitness(v._id, v.userId)}
                                             className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white hover:text-black transition-all font-black text-[9px] uppercase tracking-widest italic"
                                         >
                                             Apply as Witness
@@ -610,14 +637,15 @@ function CreateVaultModal({
             toast.success('Protocol initialized.', { title: 'Protocol Activated' });
             onClose();
         } catch (err: any) {
-            if (err?.message === 'Insufficient capital in wallet') {
-              toast.warning('Insufficient capital in wallet. Top up to proceed.', {
+            const message = toUserMessage(err, 'Failed to initialize protocol.')
+            if (message.includes('Insufficient capital in wallet')) {
+              toast.warning(message, {
                 title: 'Insufficient Capital',
                 action: { label: 'Top Up', onClick: onOpenFundWallet },
-              });
+              })
               return
             }
-            toast.error(err?.message || 'Failed to initialize protocol.', { title: 'Initialization Failed' });
+            toast.error(message, { title: 'Initialization Failed' })
         } finally {
             setLoading(false);
         }
@@ -835,7 +863,7 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
             onClose();
         } catch (err: any) {
             console.error(err);
-            toast.error(err?.message || 'Log transmission failed.', { title: 'Transmission Failed' });
+            toast.error(toUserMessage(err, 'Log transmission failed.'), { title: 'Transmission Failed' });
         } finally {
             setLoading(false);
         }
@@ -938,7 +966,7 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
             if (result.success) {
                 await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
                 await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any).queryKey });
-                await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, EMPTY_ARGS as any) as any).queryKey });
+                await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey });
                 toast.success(result.message, { title: 'Wallet Funded' });
                 setLoading(false);
                 onClose();
@@ -975,7 +1003,7 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
             setShouldOpenPaystack(true);
         } catch (err: any) {
             console.error(err);
-            toast.error(err?.message || 'Failed to initialize deposit.', { title: 'Deposit Failed' });
+            toast.error(toUserMessage(err, 'Failed to initialize deposit.'), { title: 'Deposit Failed' });
             setLoading(false);
         }
     };
@@ -986,7 +1014,8 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
     const { data: depositStatus }: { data: any } = useQuery({
       ...(depositStatusQuery as any),
       enabled: !!pollRef,
-      refetchInterval: 2000,
+      refetchInterval: 5000,
+      refetchIntervalInBackground: false,
     } as any) as any;
 
     useEffect(() => {
@@ -996,7 +1025,7 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
       (async () => {
         await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
         await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any).queryKey });
-        await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, EMPTY_ARGS as any) as any).queryKey });
+        await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey });
         toast.success(`Deposit confirmed. ₦${(depositStatus.amount / 100).toLocaleString()} added to wallet.`, { title: 'Wallet Funded' });
         setLoading(false);
         setPollRef(null);
@@ -1089,17 +1118,17 @@ function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
                 accountName: user.name || 'Account Holder'
             });
             if (!res.success) {
-              toast.error(res.message, { title: 'Withdrawal Failed' });
+              toast.error(toUserMessage(res?.message, 'Withdrawal failed.'), { title: 'Withdrawal Failed' });
               return;
             }
             await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
             await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any).queryKey });
-            await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, EMPTY_ARGS as any) as any).queryKey });
+            await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey });
             toast.success(res.message, { title: 'Withdrawal Requested' });
             onClose();
         } catch (err: any) {
             console.error(err);
-            toast.error(err?.message || 'Extraction failed.', { title: 'Withdrawal Failed' });
+            toast.error(toUserMessage(err, 'Extraction failed.'), { title: 'Withdrawal Failed' });
         } finally {
             setLoading(false);
         }

@@ -1,6 +1,6 @@
 import { convexQuery } from '@convex-dev/react-query'
 import { useAuthActions } from '@convex-dev/auth/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useMutation, useConvexAuth } from 'convex/react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -102,20 +102,23 @@ export function AppTopNav({
     [],
   )
 
-  const { data: currentUser }: { data: any } = useSuspenseQuery({
+  const { data: currentUser }: { data: any } = useQuery({
     ...(userQuery as any),
     enabled: isAuthenticated && !user,
+    staleTime: 1000 * 20,
   } as any)
 
   const effectiveUser = user ?? currentUser
 
   const notificationsQuery = useMemo(
-    () => convexQuery((api as any).notifications.list, EMPTY_ARGS as any) as any,
+    () => convexQuery((api as any).notifications.list, { limit: 50 } as any) as any,
     [],
   )
-  const { data: notifications } = useSuspenseQuery({
+  const { data: notifications } = useQuery({
     ...(notificationsQuery as any),
     enabled: isAuthenticated,
+    placeholderData: [],
+    staleTime: 1000 * 10,
   } as any)
 
   const markRead = useMutation((api as any).notifications.markRead)

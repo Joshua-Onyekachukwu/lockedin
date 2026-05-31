@@ -95,7 +95,30 @@ export const updateProfile = mutation({
       throw new Error("Not authenticated");
     }
 
-    await ctx.db.patch(userId, args);
+    const patch: Record<string, any> = {};
+
+    if ("name" in args) {
+      const value = args.name?.trim();
+      if (value) patch.name = value;
+    }
+    if ("city" in args) {
+      const value = args.city?.trim();
+      if (value) patch.city = value;
+    }
+    if ("bio" in args) {
+      const value = args.bio?.trim();
+      if (value) patch.bio = value;
+    }
+    if ("is_discoverable" in args && typeof args.is_discoverable === "boolean") {
+      patch.is_discoverable = args.is_discoverable;
+    }
+    if ("witness_discoverable" in args && typeof args.witness_discoverable === "boolean") {
+      patch.witness_discoverable = args.witness_discoverable;
+    }
+
+    if (Object.keys(patch).length) {
+      await ctx.db.patch(userId, patch);
+    }
 
     await ctx.db.insert("notifications", {
       userId,
@@ -182,7 +205,7 @@ export const getLeaderboard = query({
     tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
   })),
   handler: async (ctx) => {
-    const tierWeight = (tier: "bronze" | "silver" | "gold") => {
+    const tierWeight = (tier?: "bronze" | "silver" | "gold") => {
       if (tier === "gold") return 3;
       if (tier === "silver") return 2;
       return 1;
@@ -196,10 +219,13 @@ export const getLeaderboard = query({
       .sort((a, b) => {
         const tierDiff = tierWeight(b.tier) - tierWeight(a.tier);
         if (tierDiff !== 0) return tierDiff;
-        if (b.integrityScore !== a.integrityScore) {
-          return b.integrityScore - a.integrityScore;
-        }
-        return b.streak_count - a.streak_count;
+        const integrityDiff = (b.integrityScore ?? 0) - (a.integrityScore ?? 0);
+        if (integrityDiff !== 0) return integrityDiff;
+
+        const goalsDiff = (b.goals_completed ?? 0) - (a.goals_completed ?? 0);
+        if (goalsDiff !== 0) return goalsDiff;
+
+        return (b.streak_count ?? 0) - (a.streak_count ?? 0);
       })
       .slice(0, 50)
       .map((u) => ({

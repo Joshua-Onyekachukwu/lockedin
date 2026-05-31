@@ -3,17 +3,19 @@ import { v } from "convex/values";
 import { auth } from "./auth";
 
 export const list = query({
-  args: {},
+  args: { limit: v.optional(v.number()) },
   returns: v.array(v.any()),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) return [];
+
+    const limit = args.limit ?? 50;
 
     return await ctx.db
       .query("notifications")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
-      .collect();
+      .take(limit);
   },
 });
 

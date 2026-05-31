@@ -27,7 +27,10 @@ function LeaderboardPage() {
     ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
     enabled: isAuthenticated,
   } as any);
-  const { data: leaderboard } = useSuspenseQuery(convexQuery(api.users.getLeaderboard, EMPTY_ARGS as any) as any) as any;
+  const { data: leaderboard } = useSuspenseQuery({
+    ...(convexQuery(api.users.getLeaderboard, EMPTY_ARGS as any) as any),
+    enabled: isAuthenticated,
+  } as any) as any;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {

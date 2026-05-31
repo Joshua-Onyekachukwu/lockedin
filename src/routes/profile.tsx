@@ -4,6 +4,7 @@ import { convexQuery } from '@convex-dev/react-query';
 import { useConvexAuth, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useToast } from '~/components/toast';
+import { toUserMessage } from '~/lib/errors';
 import { 
   User, 
   MapPin, 
@@ -77,10 +78,9 @@ function ProfileSettings() {
       await queryClient.invalidateQueries({ queryKey: userQuery.queryKey });
       toast.success('Identity synchronized.', { title: 'Synchronization Complete' });
       setIsEditing(false);
-      navigate({ to: '/dashboard' });
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message ? err.message : 'Failed to update identity protocol.', {
+      toast.error(toUserMessage(err, 'Failed to update identity protocol.'), {
         title: 'Synchronization Failed',
       });
     } finally {

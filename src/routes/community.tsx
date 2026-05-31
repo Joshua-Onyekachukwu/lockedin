@@ -4,6 +4,7 @@ import { convexQuery } from '@convex-dev/react-query';
 import { useMutation, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useToast } from '~/components/toast';
+import { toUserMessage } from '~/lib/errors';
 import { AppTopNav } from '~/components/app-top-nav';
 import { 
   ChevronDown,
@@ -344,11 +345,7 @@ function VaultPickerModal({ partner, vaults, onClose }: any) {
             onClose();
         } catch (err: any) {
             console.error(err);
-            const message =
-              err?.message === 'Authorization Breach: You can only request witnesses for your own protocols.'
-                ? 'Select one of your own protocols to attach to this request.'
-                : err?.message || 'Failed to transmit request.'
-            toast.error(message, { title: 'Request Blocked' });
+            toast.error(toUserMessage(err, 'Failed to transmit request.'), { title: 'Request Blocked' });
             setSending(null);
         }
     };
