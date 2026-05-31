@@ -898,10 +898,11 @@ export const getBreachCandidates = query({
         const results = [];
         for (const vault of activeVaults) {
             const user = await ctx.db.get(vault.userId);
-            const goal = await ctx.db
+            const goals = await ctx.db
                 .query("goals")
                 .withIndex("by_vault", q => q.eq("vaultId", vault._id))
-                .unique();
+                .collect();
+            const goal = goals[0] ?? null;
             
             // Check if they missed a check-in recently
             // This is just a basic list for now
