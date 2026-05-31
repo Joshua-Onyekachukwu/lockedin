@@ -430,6 +430,55 @@ export const seedDummyUserHistory = action({
   },
 });
 
+export const populateExistingUserHistory = action({
+  args: {
+    domain: v.optional(v.string()),
+    limit: v.optional(v.number()),
+    logsPerGoal: v.optional(v.number()),
+  },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const adminStatus = await ctx.runQuery(api.admin.checkAdminStatus, {});
+    if (!adminStatus?.isAdmin || !adminStatus?.user) {
+      throw new Error("SECURITY ALERT: Administrative privileges required.");
+    }
+
+    const domain = args.domain ?? "protocol.io";
+    const userIds = (await ctx.runQuery(internal.seed.listUsersByEmailDomain, {
+      domain,
+      limit: args.limit,
+    })) as Array<Id<"users">>;
+
+    const logsPerGoal = args.logsPerGoal ?? 14;
+
+    let totalGoals = 0;
+    let totalInserted = 0;
+    let totalSkipped = 0;
+
+    for (const userId of userIds) {
+      const res = (await ctx.runMutation(internal.seed.populateExistingLogsForUser, {
+        userId,
+        logsPerGoal,
+      })) as { goalsProcessed: number; logsInserted: number; logsSkipped: number };
+      totalGoals += res.goalsProcessed;
+      totalInserted += res.logsInserted;
+      totalSkipped += res.logsSkipped;
+    }
+
+    await ctx.runMutation(internal.admin.logAudit, {
+      adminUserId: (adminStatus.user as any)._id as Id<"users">,
+      action: "populate_existing_history",
+      message: `Populated historical logs for ${userIds.length} user(s) @${domain}. Inserted ${totalInserted} log(s), skipped ${totalSkipped} existing log(s) across ${totalGoals} goal(s).`,
+      metadata: { domain, logsPerGoal, users: userIds.length, totalGoals, totalInserted, totalSkipped },
+    });
+
+    return {
+      success: true,
+      message: `Populated existing protocols: ${totalInserted} new log(s) added, ${totalSkipped} already present.`,
+    };
+  },
+});
+
 export const triggerMidnightSweep = mutation({
     args: {},
     returns: v.null(),

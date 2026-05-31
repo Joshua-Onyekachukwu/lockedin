@@ -197,3 +197,92 @@ export const seedHistoryForUser = internalMutation({
         return null;
     },
 });
+
+function toYmd(ts: number) {
+  return new Date(ts).toISOString().split("T")[0];
+}
+
+export const populateExistingLogsForUser = internalMutation({
+  args: {
+    userId: v.id("users"),
+    logsPerGoal: v.optional(v.number()),
+  },
+  returns: v.object({
+    goalsProcessed: v.number(),
+    logsInserted: v.number(),
+    logsSkipped: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const logsPerGoal = args.logsPerGoal ?? 14;
+
+    const vaults = await ctx.db
+      .query("vaults")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    let goalsProcessed = 0;
+    let logsInserted = 0;
+    let logsSkipped = 0;
+
+    for (const vault of vaults) {
+      const goal = await ctx.db
+        .query("goals")
+        .withIndex("by_vault", (q) => q.eq("vaultId", vault._id))
+        .unique();
+      if (!goal) continue;
+
+      goalsProcessed += 1;
+
+      const windowStart = vault.startDate;
+      const windowEnd = Math.min(vault.endDate, now);
+      const rangeDays = Math.max(1, Math.floor((windowEnd - windowStart) / (24 * 60 * 60 * 1000)) + 1);
+      const daysToGenerate = Math.min(logsPerGoal, rangeDays);
+
+      const baseDay = windowEnd - (daysToGenerate - 1) * 24 * 60 * 60 * 1000;
+
+      for (let i = 0; i < daysToGenerate; i++) {
+        const dateTs = baseDay + i * 24 * 60 * 60 * 1000;
+        const dateStr = toYmd(dateTs);
+        const weekNumber = Math.max(
+          1,
+          Math.ceil((dateTs - windowStart) / (7 * 24 * 60 * 60 * 1000)),
+        );
+
+        const existing = await ctx.db
+          .query("goal_logs")
+          .withIndex("by_goal_and_date", (q) => q.eq("goalId", goal._id).eq("date", dateStr))
+          .unique();
+        if (existing) {
+          logsSkipped += 1;
+          continue;
+        }
+
+        const pick = Math.random();
+        const status = pick > 0.9 ? "missed" : pick > 0.82 ? "disputed" : "completed";
+
+        await ctx.db.insert("goal_logs", {
+          goalId: goal._id,
+          week_number: weekNumber,
+          date: dateStr,
+          status: status as any,
+          note:
+            status === "missed"
+              ? `Missed check-in for "${goal.title}".`
+              : status === "disputed"
+                ? `Disputed check-in for "${goal.title}". Evidence under review.`
+                : `Completed check-in for "${goal.title}".`,
+          confirmed_by: status === "completed" && Math.random() > 0.55 ? args.userId : undefined,
+          confirmed_at:
+            status === "completed" && Math.random() > 0.55
+              ? now - Math.floor(Math.random() * 5) * 24 * 60 * 60 * 1000
+              : undefined,
+        });
+
+        logsInserted += 1;
+      }
+    }
+
+    return { goalsProcessed, logsInserted, logsSkipped };
+  },
+});

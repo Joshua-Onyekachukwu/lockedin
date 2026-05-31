@@ -147,6 +147,7 @@ function AdminDashboard() {
   const approveWithdrawal = useAction(api.admin.approveWithdrawal);
   const enforceBreach = useMutation(api.admin.enforceProtocolBreach);
   const seedHistory = useAction((api as any).admin.seedDummyUserHistory);
+  const populateExistingHistory = useAction((api as any).admin.populateExistingUserHistory);
   const previewPaystackTransaction = useAction((api as any).admin.previewPaystackTransaction);
   const recoverPaystackTransaction = useAction((api as any).admin.recoverPaystackTransaction);
 
@@ -721,7 +722,7 @@ function AdminDashboard() {
                       Seed Dummy Historical Logs
                     </p>
                     <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed">
-                      Generates demo vaults, goals, and logs for dummy users (for Vault Specification historical view).
+                      Seed new demo protocols, or populate existing protocols with logs for the Vault Specification historical view.
                     </p>
                   </div>
                   <button
@@ -802,7 +803,26 @@ function AdminDashboard() {
                       }}
                       className="flex-1 py-5 rounded-2xl bg-white text-black font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all"
                     >
-                      Seed Logs
+                      Seed New Logs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const res = await populateExistingHistory({
+                            domain: seedDomain,
+                            limit: seedLimit,
+                            logsPerGoal: seedLogsPerGoal,
+                          })
+                          toast.success(res?.message || 'Populate complete.', { title: 'Populate Executed' })
+                          setSeedOpen(false)
+                        } catch (e: any) {
+                          toast.error(e?.message || 'Populate failed.', { title: 'Populate Failed' })
+                        }
+                      }}
+                      className="flex-1 py-5 rounded-2xl bg-green-500 text-black font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                      Populate Existing
                     </button>
                     <button
                       type="button"

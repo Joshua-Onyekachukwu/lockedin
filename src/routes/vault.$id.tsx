@@ -110,30 +110,61 @@ function VaultPage() {
                                 <p className="text-sm text-white/20 italic font-medium">No behavioral logs recorded for this protocol cycle.</p>
                              </div>
                         ) : (
-                            vault.logs?.map((log: any) => (
-                                <div key={log._id} className="p-8 rounded-[2.5rem] border border-white/5 bg-white/[0.02] group hover:bg-white/[0.04] transition-all text-left shadow-xl">
+                            vault.logs?.map((log: any) => {
+                              const status = log.status as 'completed' | 'missed' | 'disputed' | undefined
+                              const isCompleted = status === 'completed'
+                              const isMissed = status === 'missed'
+                              const dateStr = (log.date as string | undefined) ?? ''
+
+                              const badge = isCompleted
+                                ? {
+                                    label: 'Completed',
+                                    wrap: 'bg-green-600/10 border-green-500/20 text-green-500',
+                                    icon: <CheckCircle2 size={14} />,
+                                    iconWrap: 'bg-green-600/10 text-green-500 border-green-500/20',
+                                  }
+                                : isMissed
+                                  ? {
+                                      label: 'Missed',
+                                      wrap: 'bg-red-600/10 border-red-500/20 text-red-500',
+                                      icon: <AlertTriangle size={14} />,
+                                      iconWrap: 'bg-red-600/10 text-red-500 border-red-500/20',
+                                    }
+                                  : {
+                                      label: 'Disputed',
+                                      wrap: 'bg-yellow-600/10 border-yellow-500/20 text-yellow-500',
+                                      icon: <ShieldCheck size={14} />,
+                                      iconWrap: 'bg-yellow-600/10 text-yellow-500 border-yellow-500/20',
+                                    }
+
+                              return (
+                                <div
+                                  key={log._id}
+                                  className="p-8 rounded-[2.5rem] border border-white/5 bg-white/[0.02] group hover:bg-white/[0.04] transition-all text-left shadow-xl"
+                                >
                                   <div className="flex items-start justify-between gap-6">
                                     <div className="flex items-start gap-6 text-left">
-                                      <div className="h-12 w-12 rounded-2xl bg-blue-600/10 flex items-center justify-center text-blue-500 shadow-xl group-hover:scale-110 transition-transform shrink-0">
-                                        <ShieldCheck size={24} />
+                                      <div
+                                        className={`h-12 w-12 rounded-2xl border flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform shrink-0 ${badge.iconWrap}`}
+                                      >
+                                        {badge.icon}
                                       </div>
                                       <div className="text-left">
-                                        <p className="font-black text-white italic text-left uppercase tracking-tight">Week {log.week_number} Check-in</p>
+                                        <p className="font-black text-white italic text-left uppercase tracking-tight">
+                                          {dateStr ? `Check-in • ${dateStr}` : `Week ${log.week_number} Check-in`}
+                                        </p>
                                         <p className="text-[10px] text-white/30 mt-2 text-left font-black uppercase tracking-widest italic">
-                                          {new Date(log._creationTime).toLocaleDateString()}
+                                          Week {log.week_number}
+                                          {log.confirmed_by ? ' • Verified' : ''}
                                         </p>
                                       </div>
                                     </div>
 
-                                    {log.confirmed_by ? (
-                                      <div className="px-6 py-2 rounded-xl bg-green-600/10 border border-green-500/20 text-green-500 text-[10px] font-black uppercase tracking-widest italic flex items-center gap-2">
-                                        <CheckCircle2 size={14} /> Verified
-                                      </div>
-                                    ) : (
-                                      <div className="px-6 py-2 rounded-xl bg-yellow-600/10 border border-yellow-500/20 text-yellow-500 text-[10px] font-black uppercase tracking-widest italic flex items-center gap-2">
-                                        <AlertTriangle size={14} /> Pending
-                                      </div>
-                                    )}
+                                    <div
+                                      className={`px-6 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest italic flex items-center gap-2 ${badge.wrap}`}
+                                    >
+                                      {badge.icon} {badge.label}
+                                    </div>
                                   </div>
 
                                   {(log.proofUrl || log.note) ? (
@@ -156,7 +187,8 @@ function VaultPage() {
                                     </div>
                                   ) : null}
                                 </div>
-                            ))
+                              )
+                            })
                         )}
                     </div>
                 </div>
