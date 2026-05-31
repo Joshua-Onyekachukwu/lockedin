@@ -1127,3 +1127,37 @@ export const enforceProtocolBreach = mutation({
         return null;
     }
 });
+
+export const markUserEmailVerified = mutation({
+  args: { email: v.string() },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const admin = await checkAdmin(ctx);
+    const email = args.email.trim().toLowerCase();
+    if (!email) return { success: false, message: "Email required." };
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", email))
+      .unique();
+
+    if (!user) return { success: false, message: "User not found." };
+
+    if (user.emailVerificationTime) {
+      return { success: true, message: "User already verified." };
+    }
+
+    await ctx.db.patch(user._id, { emailVerificationTime: Date.now() });
+
+    await ctx.db.insert("admin_audit", {
+      adminUserId: admin._id,
+      action: "mark_user_email_verified",
+      message: `Email verified by admin. User: ${email}`,
+      targetType: "user",
+      targetId: user._id,
+      metadata: { email },
+    });
+
+    return { success: true, message: "User email marked as verified." };
+  },
+});
