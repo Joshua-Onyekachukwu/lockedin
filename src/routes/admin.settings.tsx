@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
-import { useConvexAuth } from 'convex/react'
+import { useConvexAuth, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 const EMPTY_ARGS: Record<string, never> = {}
 
@@ -21,6 +21,11 @@ function AdminSettings() {
     enabled: isAuthenticated,
   } as any)
   const isVerified = !!user?.emailVerificationTime
+
+  const markUserEmailVerified = useMutation((api as any).admin.markUserEmailVerified)
+  const [verifyEmail, setVerifyEmail] = useState('')
+  const [verifyRunning, setVerifyRunning] = useState(false)
+  const [verifyFeedback, setVerifyFeedback] = useState<null | { tone: 'success' | 'error'; message: string }>(null)
 
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, EMPTY_ARGS as any) as any
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
@@ -129,6 +134,58 @@ function AdminSettings() {
               <p>Client: VITE_PAYSTACK_PUBLIC_KEY, VITE_CONVEX_URL</p>
             </div>
           </div>
+        </div>
+
+        <div className="mt-8 rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-10 shadow-2xl text-left">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
+            Testing Tools
+          </p>
+          <p className="mt-4 text-[10px] text-white/40 font-black uppercase tracking-[0.28em] italic leading-relaxed">
+            For testing only. Marks a user’s email as verified in the database.
+          </p>
+
+          <div className="mt-6 flex flex-col md:flex-row gap-4">
+            <input
+              value={verifyEmail}
+              onChange={(e) => setVerifyEmail(e.target.value)}
+              placeholder="USER EMAIL"
+              className="flex-1 bg-white/[0.02] border border-white/10 rounded-2xl px-6 py-4 text-xs font-black italic uppercase tracking-widest text-white/70 outline-none focus:border-blue-500"
+            />
+            <button
+              type="button"
+              disabled={verifyRunning || !verifyEmail.trim()}
+              onClick={async () => {
+                setVerifyRunning(true)
+                setVerifyFeedback(null)
+                try {
+                  const res = await markUserEmailVerified({ email: verifyEmail.trim() })
+                  setVerifyFeedback({
+                    tone: res?.success ? 'success' : 'error',
+                    message: res?.message ?? (res?.success ? 'Verified.' : 'Failed.'),
+                  })
+                } catch (e: any) {
+                  setVerifyFeedback({ tone: 'error', message: e?.message ?? 'Verification failed.' })
+                } finally {
+                  setVerifyRunning(false)
+                }
+              }}
+              className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {verifyRunning ? 'VERIFYING...' : 'MARK VERIFIED'}
+            </button>
+          </div>
+
+          {verifyFeedback ? (
+            <div
+              className={`mt-6 rounded-2xl border px-6 py-4 text-[10px] font-black uppercase tracking-[0.25em] italic ${
+                verifyFeedback.tone === 'success'
+                  ? 'bg-green-500/10 border-green-500/20 text-green-500'
+                  : 'bg-red-500/10 border-red-500/20 text-red-500'
+              }`}
+            >
+              {verifyFeedback.message}
+            </div>
+          ) : null}
         </div>
       </main>
     </div>
