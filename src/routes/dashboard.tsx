@@ -309,8 +309,12 @@ function DashboardContent({ user }: { user: any }) {
                                     <div className="relative z-10">
                                         <div className="flex items-center gap-3 mb-6">
                                             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-blue-600 to-orange-500 p-0.5">
-                                                <div className="h-full w-full rounded-full bg-[#0a0f1a] flex items-center justify-center text-[8px] font-black uppercase italic">
-                                                    {v.user?.name?.[0]}
+                                                <div className="h-full w-full rounded-full bg-[#0a0f1a] flex items-center justify-center text-[8px] font-black uppercase italic overflow-hidden">
+                                                    {v.user?.image ? (
+                                                      <img src={v.user.image} alt="Profile" className="w-full h-full object-cover" />
+                                                    ) : (
+                                                      v.user?.name?.[0]
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="text-left">

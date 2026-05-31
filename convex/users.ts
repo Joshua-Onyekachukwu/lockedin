@@ -26,6 +26,7 @@ export const current = query({
     email: v.optional(v.string()),
     emailVerificationTime: v.optional(v.number()),
     image: v.optional(v.string()),
+    profileImageId: v.optional(v.id("_storage")),
     phone: v.optional(v.string()),
     city: v.optional(v.string()),
     bio: v.optional(v.string()),
@@ -47,7 +48,55 @@ export const current = query({
     if (userId === null) {
       return null;
     }
-    return await ctx.db.get(userId);
+    const user = await ctx.db.get(userId);
+    if (!user) return null;
+
+    const profileUrl = user.profileImageId ? await ctx.storage.getUrl(user.profileImageId) : null;
+
+    return {
+      ...user,
+      image: profileUrl ?? user.image,
+    };
+  },
+});
+
+export const generateProfileImageUploadUrl = mutation({
+  args: {},
+  returns: v.string(),
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Not authenticated");
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const setProfileImage = mutation({
+  args: { storageId: v.id("_storage") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Not authenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+
+    const previous = user.profileImageId;
+    await ctx.db.patch(userId, { profileImageId: args.storageId });
+
+    if (previous) {
+      await ctx.storage.delete(previous);
+    }
+
+    await ctx.db.insert("notifications", {
+      userId,
+      title: "Profile Image Updated",
+      message: "Your identity image has been synchronized.",
+      type: "profile_updated",
+      link: "/profile",
+      read: false,
+    });
+
+    return null;
   },
 });
 
@@ -164,6 +213,7 @@ export const listDiscoverable = query({
     _id: v.id("users"),
     _creationTime: v.number(),
     name: v.optional(v.string()),
+    image: v.optional(v.string()),
     city: v.optional(v.string()),
     bio: v.optional(v.string()),
     streak_count: v.number(),
@@ -177,20 +227,25 @@ export const listDiscoverable = query({
       .query("users")
       .collect();
     
-    return users
-      .filter((u) => u.is_discoverable)
-      .map((u) => ({
-        _id: u._id,
-        _creationTime: u._creationTime,
-        name: u.name,
-        city: u.city,
-        bio: u.bio,
-        streak_count: u.streak_count,
-        goals_completed: u.goals_completed,
-        integrityScore: u.integrityScore,
-        is_discoverable: u.is_discoverable,
-        tier: u.tier,
-      }));
+    const discoverable = users.filter((u) => u.is_discoverable);
+    return await Promise.all(
+      discoverable.map(async (u) => {
+        const profileUrl = u.profileImageId ? await ctx.storage.getUrl(u.profileImageId) : null;
+        return {
+          _id: u._id,
+          _creationTime: u._creationTime,
+          name: u.name,
+          image: profileUrl ?? u.image,
+          city: u.city,
+          bio: u.bio,
+          streak_count: u.streak_count,
+          goals_completed: u.goals_completed,
+          integrityScore: u.integrityScore,
+          is_discoverable: u.is_discoverable,
+          tier: u.tier,
+        };
+      }),
+    );
   },
 });
 
@@ -199,6 +254,7 @@ export const getLeaderboard = query({
   returns: v.array(v.object({
     _id: v.id("users"),
     name: v.optional(v.string()),
+    image: v.optional(v.string()),
     integrityScore: v.number(),
     streak_count: v.number(),
     goals_completed: v.number(),
@@ -215,7 +271,7 @@ export const getLeaderboard = query({
       .query("users")
       .collect();
     
-    return users
+    const sorted = users
       .sort((a, b) => {
         const tierDiff = tierWeight(b.tier) - tierWeight(a.tier);
         if (tierDiff !== 0) return tierDiff;
@@ -227,14 +283,21 @@ export const getLeaderboard = query({
 
         return (b.streak_count ?? 0) - (a.streak_count ?? 0);
       })
-      .slice(0, 50)
-      .map((u) => ({
-        _id: u._id,
-        name: u.name,
-        integrityScore: u.integrityScore,
-        streak_count: u.streak_count,
-        goals_completed: u.goals_completed,
-        tier: u.tier,
-      }));
+      .slice(0, 50);
+
+    return await Promise.all(
+      sorted.map(async (u) => {
+        const profileUrl = u.profileImageId ? await ctx.storage.getUrl(u.profileImageId) : null;
+        return {
+          _id: u._id,
+          name: u.name,
+          image: profileUrl ?? u.image,
+          integrityScore: u.integrityScore,
+          streak_count: u.streak_count,
+          goals_completed: u.goals_completed,
+          tier: u.tier,
+        };
+      }),
+    );
   },
 });

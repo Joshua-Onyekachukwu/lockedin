@@ -17,7 +17,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export const Route = createFileRoute('/profile')({
   component: ProfileSettings,
@@ -34,9 +34,13 @@ function ProfileSettings() {
     enabled: isAuthenticated,
   } as any);
   const updateProfile = useMutation(api.users.updateProfile);
+  const generateUploadUrl = useMutation((api as any).users.generateProfileImageUploadUrl);
+  const setProfileImage = useMutation((api as any).users.setProfileImage);
   
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     name: user?.name || '',
     city: user?.city || '',
@@ -139,14 +143,62 @@ function ProfileSettings() {
             <div className="relative group">
               <div className="absolute inset-0 bg-blue-600 blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
               <div className="relative h-32 w-32 rounded-[3rem] bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5 shadow-2xl">
-                <div className="h-full w-full rounded-[3rem] bg-[#0a0f1a] flex items-center justify-center font-black text-4xl text-white uppercase italic">
-                  {user?.name?.[0] || <User size={40} />}
+                <div className="h-full w-full rounded-[3rem] bg-[#0a0f1a] overflow-hidden flex items-center justify-center font-black text-4xl text-white uppercase italic">
+                  {user?.image ? (
+                    <img src={user.image} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    user?.name?.[0] || <User size={40} />
+                  )}
                 </div>
-                <button type="button" className="absolute -bottom-2 -right-2 h-10 w-10 rounded-xl bg-white text-black flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform border-4 border-[#050810]">
-                  <Camera size={18} />
+                <button
+                  type="button"
+                  disabled={!isEditing || avatarUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-2 -right-2 h-10 w-10 rounded-xl bg-white text-black flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-transform border-4 border-[#050810] disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {avatarUploading ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
                 </button>
               </div>
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                try {
+                  setAvatarUploading(true)
+                  const uploadUrl = await generateUploadUrl({})
+                  const headers: Record<string, string> = {}
+                  if (file.type) headers['Content-Type'] = file.type
+                  const res = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers,
+                    body: file,
+                  })
+                  if (!res.ok) throw new Error('Upload failed.')
+                  let json: any = null
+                  try {
+                    json = await res.json()
+                  } catch {
+                    json = null
+                  }
+                  const storageId = json?.storageId
+                  if (!storageId) throw new Error('Upload failed.')
+                  await setProfileImage({ storageId })
+                  await queryClient.invalidateQueries({ queryKey: userQuery.queryKey })
+                  toast.success('Profile image updated.', { title: 'Synchronization Complete' })
+                } catch (err: any) {
+                  console.error(err)
+                  toast.error(toUserMessage(err, 'Failed to update profile image.'), { title: 'Upload Failed' })
+                } finally {
+                  setAvatarUploading(false)
+                  if (fileInputRef.current) fileInputRef.current.value = ''
+                }
+              }}
+            />
             <h2 className="mt-8 text-3xl font-black italic uppercase tracking-tight">{user?.name}</h2>
             <p className="mt-3 text-[10px] text-white/20 uppercase tracking-[0.3em] font-black italic">{user?.email}</p>
             <div className="mt-4 flex items-center gap-3">

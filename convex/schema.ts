@@ -9,6 +9,7 @@ export default defineSchema({
     email: v.optional(v.string()),
     emailVerificationTime: v.optional(v.number()),
     image: v.optional(v.string()),
+    profileImageId: v.optional(v.id("_storage")),
     phone: v.optional(v.string()),
     city: v.optional(v.string()),
     bio: v.optional(v.string()),

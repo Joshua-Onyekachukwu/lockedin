@@ -235,7 +235,14 @@ export const listDiscoverable = query({
             .filter(q => q.eq(q.field("is_discoverable"), true))
             .collect();
         
-        const userIds = new Set(users.map(u => u._id));
+        const usersWithImages = await Promise.all(
+          users.map(async (u) => {
+            const profileUrl = u.profileImageId ? await ctx.storage.getUrl(u.profileImageId) : null;
+            return { ...u, image: profileUrl ?? u.image };
+          }),
+        );
+        const userById = new Map(usersWithImages.map((u) => [u._id, u]));
+        const userIds = new Set(usersWithImages.map(u => u._id));
         const results = [];
 
         // Get active vaults from these users
@@ -246,11 +253,12 @@ export const listDiscoverable = query({
         
         for (const vault of activeVaults) {
             if (userIds.has(vault.userId)) {
-                const user = users.find(u => u._id === vault.userId);
-                const goal = await ctx.db
+                const user = userById.get(vault.userId);
+                const goals = await ctx.db
                     .query("goals")
                     .withIndex("by_vault", q => q.eq("vaultId", vault._id))
-                    .unique();
+                    .collect();
+                const goal = goals[0] ?? null;
                 if (goal && user) {
                     results.push({ ...vault, goal, user });
                 }

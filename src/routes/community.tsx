@@ -239,8 +239,12 @@ function GoalCard({ goal }: { goal: any }) {
             <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-8">
                     <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5 shadow-lg">
-                        <div className="h-full w-full rounded-xl bg-[#0a0f1a] flex items-center justify-center font-black text-xs text-white uppercase italic">
-                            {goal.user?.name?.[0]}
+                        <div className="h-full w-full rounded-xl bg-[#0a0f1a] flex items-center justify-center font-black text-xs text-white uppercase italic overflow-hidden">
+                            {goal.user?.image ? (
+                              <img src={goal.user.image} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                              goal.user?.name?.[0]
+                            )}
                         </div>
                     </div>
                     <div className="text-left font-black">
@@ -291,8 +295,12 @@ function WitnessCard({ user, onInvite }: { user: any, onInvite: () => void }) {
             <div className="relative z-10">
                 <div className="flex flex-col items-center text-center mb-8">
                     <div className="h-24 w-24 rounded-[2rem] bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5 shadow-2xl mb-6">
-                        <div className="h-full w-full rounded-[2rem] bg-[#0a0f1a] flex items-center justify-center font-black text-3xl text-white uppercase italic">
-                            {user.name?.[0]}
+                        <div className="h-full w-full rounded-[2rem] bg-[#0a0f1a] flex items-center justify-center font-black text-3xl text-white uppercase italic overflow-hidden">
+                            {user.image ? (
+                              <img src={user.image} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                              user.name?.[0]
+                            )}
                         </div>
                     </div>
                     <h3 className="text-2xl font-black italic uppercase tracking-tight text-white mb-1">{user.name}</h3>

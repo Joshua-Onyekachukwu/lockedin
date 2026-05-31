@@ -108,8 +108,12 @@ function LeaderboardPage() {
                         <span className="text-xl font-black text-white/10 italic">#{index + 1}</span>
                       )}
                     </div>
-                    <div className="h-14 w-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center font-black text-lg text-white uppercase italic">
-                      {user.name?.[0] || '?'}
+                    <div className="h-14 w-14 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center font-black text-lg text-white uppercase italic overflow-hidden">
+                      {user.image ? (
+                        <img src={user.image} alt="Profile" className="w-full h-full object-cover" />
+                      ) : (
+                        user.name?.[0] || '?'
+                      )}
                     </div>
                   </div>
 
