@@ -19,6 +19,7 @@ import {
   Search,
   Database,
   ScrollText,
+  ReceiptText,
   X
 } from 'lucide-react';
 import React, { useState, useEffect, Suspense } from 'react';
@@ -151,7 +152,7 @@ function AdminDashboard() {
   const previewPaystackTransaction = useAction((api as any).admin.previewPaystackTransaction);
   const recoverPaystackTransaction = useAction((api as any).admin.recoverPaystackTransaction);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'audit' | 'waitlist' | 'withdrawals' | 'breaches'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'transactions' | 'audit' | 'waitlist' | 'withdrawals' | 'breaches'>('overview');
   const [confirm, setConfirm] = useState<{ open: boolean; title: string; description?: string; tone?: 'primary' | 'danger'; confirmLabel: string; run: (() => Promise<void>) | null }>({ open: false, title: '', confirmLabel: '', run: null });
   const [seedOpen, setSeedOpen] = useState(false);
   const [seedDomain, setSeedDomain] = useState('protocol.io');
@@ -170,6 +171,9 @@ function AdminDashboard() {
   const [usersCursor, setUsersCursor] = useState<string | null>(null);
   const [usersCursorStack, setUsersCursorStack] = useState<Array<string | null>>([]);
   const usersPageSize = 25;
+  const [txCursor, setTxCursor] = useState<string | null>(null);
+  const [txCursorStack, setTxCursorStack] = useState<Array<string | null>>([]);
+  const txPageSize = 25;
 
   const searchUsersQuery = convexQuery((api as any).admin.searchUsers, { q: userSearch, limit: 20 } as any) as any;
   const { data: searchedUsers } = useQuery({
@@ -184,6 +188,16 @@ function AdminDashboard() {
   const { data: allUsersPage } = useQuery({
     ...(allUsersQuery as any),
     enabled: isAuthenticated && isAdmin && userSearch.trim().length === 0,
+    placeholderData: { page: [], isDone: false, continueCursor: null },
+  } as any);
+
+  const transactionsPageQuery = convexQuery(
+    (api as any).admin.listTransactionsPage,
+    { cursor: txCursor, limit: txPageSize } as any,
+  ) as any;
+  const { data: transactionsPage } = useQuery({
+    ...(transactionsPageQuery as any),
+    enabled: isAuthenticated && isAdmin && activeTab === 'transactions',
     placeholderData: { page: [], isDone: false, continueCursor: null },
   } as any);
 
@@ -289,6 +303,7 @@ function AdminDashboard() {
               { key: 'withdrawals', label: 'Extractions', count: pendingWithdrawals?.length || 0 },
               { key: 'breaches', label: 'Breaches', count: breachCandidates?.length || 0 },
               { key: 'users', label: 'Users', count: stats?.totalUsers || 0 },
+              { key: 'transactions', label: 'Transactions', count: null },
               { key: 'audit', label: 'Audit', count: (auditLog?.length || 0) },
               { key: 'waitlist', label: 'Waitlist', count: waitlist?.length || 0 },
             ] as const).map((t) => (
@@ -740,6 +755,116 @@ function AdminDashboard() {
                                 No matches.
                               </div>
                             )}
+                          </div>
+                        </motion.div>
+                    )}
+
+                    {activeTab === 'transactions' && (
+                        <motion.div
+                            key="transactions"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            className="p-10 space-y-8"
+                        >
+                          <div className="flex items-center justify-between gap-6">
+                            <div className="text-left font-black italic uppercase">
+                              <h3 className="text-lg text-white flex items-center gap-3">
+                                <ReceiptText size={18} className="text-green-500" /> Transactions
+                              </h3>
+                              <p className="text-[10px] text-white/20 tracking-widest mt-1">Ledger activity</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                disabled={txCursorStack.length === 0}
+                                onClick={() => {
+                                  setTxCursorStack((s) => {
+                                    const next = [...s]
+                                    const prevCursor = next.pop() ?? null
+                                    setTxCursor(prevCursor)
+                                    return next
+                                  })
+                                }}
+                                className="px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/40 font-black uppercase tracking-widest italic text-[10px] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/10 active:scale-95 transition-all"
+                              >
+                                Prev
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!((transactionsPage as any)?.continueCursor)}
+                                onClick={() => {
+                                  const nextCursor = (transactionsPage as any)?.continueCursor as string | null
+                                  if (!nextCursor) return
+                                  setTxCursorStack((s) => [...s, txCursor])
+                                  setTxCursor(nextCursor)
+                                }}
+                                className="px-5 py-3 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] disabled:opacity-30 disabled:cursor-not-allowed hover:scale-105 active:scale-95 transition-all"
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="rounded-[2.5rem] border border-white/5 bg-white/[0.02] overflow-hidden shadow-2xl">
+                            <div className="overflow-x-auto">
+                              <table className="w-full min-w-[900px]">
+                                <thead>
+                                  <tr className="text-[9px] font-black uppercase tracking-[0.3em] italic text-white/20 border-b border-white/5">
+                                    <th className="px-8 py-5 text-left">Type</th>
+                                    <th className="px-8 py-5 text-left">Amount</th>
+                                    <th className="px-8 py-5 text-left">Status</th>
+                                    <th className="px-8 py-5 text-left">User</th>
+                                    <th className="px-8 py-5 text-left">Date</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                  {(((transactionsPage as any)?.page as any[]) ?? []).map((t: any) => (
+                                    <tr key={t._id} className="hover:bg-white/[0.03] transition-all">
+                                      <td className="px-8 py-6">
+                                        <Link
+                                          to="/admin/tx/$txId"
+                                          params={{ txId: t._id }}
+                                          className="text-white font-black uppercase italic tracking-tight hover:text-blue-500 transition-colors"
+                                        >
+                                          {t.type}
+                                        </Link>
+                                      </td>
+                                      <td className="px-8 py-6">
+                                        <p className="text-[10px] text-white/50 font-black uppercase tracking-widest italic">
+                                          ₦{((t.amount ?? 0) / 100).toLocaleString()}
+                                        </p>
+                                      </td>
+                                      <td className="px-8 py-6">
+                                        <span className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest italic text-white/50">
+                                          {t.status}
+                                        </span>
+                                      </td>
+                                      <td className="px-8 py-6">
+                                        <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.25em] italic truncate max-w-[320px]">
+                                          {t.userEmail || t.userId}
+                                        </p>
+                                      </td>
+                                      <td className="px-8 py-6">
+                                        <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                                          {t._creationTime ? new Date(t._creationTime).toLocaleString() : ''}
+                                        </p>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                  {(((transactionsPage as any)?.page as any[]) ?? []).length === 0 ? (
+                                    <tr>
+                                      <td
+                                        colSpan={5}
+                                        className="px-8 py-16 text-center text-white/20 font-black italic uppercase tracking-widest"
+                                      >
+                                        No transactions returned.
+                                      </td>
+                                    </tr>
+                                  ) : null}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         </motion.div>
                     )}

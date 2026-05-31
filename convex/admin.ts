@@ -217,6 +217,101 @@ export const getAuditById = query({
   },
 });
 
+export const listTransactionsPage = query({
+  args: { cursor: v.optional(v.string()), limit: v.optional(v.number()) },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("transactions"),
+        _creationTime: v.number(),
+        userId: v.id("users"),
+        userEmail: v.optional(v.string()),
+        amount: v.number(),
+        type: v.union(
+          v.literal("deposit"),
+          v.literal("stake"),
+          v.literal("penalty"),
+          v.literal("refund"),
+          v.literal("dividend"),
+          v.literal("platform_fee"),
+        ),
+        status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
+        vaultId: v.optional(v.id("vaults")),
+        description: v.optional(v.string()),
+        metadata: v.optional(v.any()),
+      }),
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.null(), v.string()),
+  }),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const limit = Math.max(1, Math.min(args.limit ?? 25, 100));
+    const result = await (ctx.db.query("transactions").order("desc") as any).paginate({
+      cursor: args.cursor ?? null,
+      numItems: limit,
+    });
+
+    const usersById = new Map<string, any>();
+    for (const tx of result.page as any[]) {
+      const id = String(tx.userId);
+      if (!usersById.has(id)) {
+        usersById.set(id, await ctx.db.get(tx.userId));
+      }
+    }
+
+    return {
+      page: (result.page as any[]).map((t) => ({
+        _id: t._id,
+        _creationTime: t._creationTime,
+        userId: t.userId,
+        userEmail: usersById.get(String(t.userId))?.email,
+        amount: t.amount,
+        type: t.type,
+        status: t.status,
+        vaultId: t.vaultId,
+        description: t.description,
+        metadata: t.metadata,
+      })),
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+    };
+  },
+});
+
+export const getTransactionById = query({
+  args: { transactionId: v.id("transactions") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("transactions"),
+      _creationTime: v.number(),
+      userId: v.id("users"),
+      amount: v.number(),
+      type: v.union(
+        v.literal("deposit"),
+        v.literal("stake"),
+        v.literal("penalty"),
+        v.literal("refund"),
+        v.literal("dividend"),
+        v.literal("platform_fee"),
+      ),
+      vaultId: v.optional(v.id("vaults")),
+      status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
+      description: v.optional(v.string()),
+      metadata: v.optional(v.any()),
+      user: v.optional(v.any()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const row = await ctx.db.get(args.transactionId);
+    if (!row) return null;
+    const user = await ctx.db.get(row.userId);
+    return { ...row, user };
+  },
+});
+
 export const getOverview = query({
   args: {},
   returns: v.object({
