@@ -153,6 +153,42 @@ export default defineSchema({
   }).index("by_reference", ["reference"])
     .index("by_user", ["userId"]),
 
+  paystack_reconciliations: defineTable({
+    reference: v.string(),
+    amount: v.number(),
+    customerEmail: v.optional(v.string()),
+    creditedUserId: v.optional(v.id("users")),
+    depositId: v.optional(v.id("deposits")),
+    source: v.union(
+      v.literal("verify"),
+      v.literal("webhook"),
+      v.literal("admin"),
+      v.literal("cron"),
+    ),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  }).index("by_reference", ["reference"])
+    .index("by_customer_email", ["customerEmail"])
+    .index("by_credited_user", ["creditedUserId"]),
+
+  paystack_unmatched: defineTable({
+    reference: v.string(),
+    amount: v.number(),
+    customerEmail: v.optional(v.string()),
+    source: v.union(
+      v.literal("verify"),
+      v.literal("webhook"),
+      v.literal("admin"),
+      v.literal("cron"),
+    ),
+    reason: v.string(),
+    metadata: v.optional(v.any()),
+    resolved: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_reference", ["reference"])
+    .index("by_customer_email", ["customerEmail"])
+    .index("by_resolved", ["resolved"]),
+
   withdrawals: defineTable({
     userId: v.id("users"),
     amount: v.number(),

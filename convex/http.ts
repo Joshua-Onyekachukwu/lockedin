@@ -69,11 +69,13 @@ http.route({
 
         if (event.event === "charge.success") {
           const { reference, amount } = event.data;
+          const customerEmail = event?.data?.customer?.email as string | undefined;
           
-          // Fulfill the deposit using the internal mutation
-          await ctx.runMutation(internal.payments.fulfillDeposit, {
-            reference: reference,
+          await ctx.runMutation(internal.payments.reconcilePaystackPayment, {
+            reference,
             amountKobo: amount,
+            customerEmail,
+            source: "webhook",
             metadata: event.data,
           });
         }

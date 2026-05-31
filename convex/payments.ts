@@ -1,9 +1,16 @@
-import { mutation, query, action, internalMutation } from "./_generated/server";
+import { mutation, query, action, internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { auth } from "./auth";
 import { internal } from "./_generated/api";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
+
+const PaystackSource = v.union(
+  v.literal("verify"),
+  v.literal("webhook"),
+  v.literal("admin"),
+  v.literal("cron"),
+);
 
 /**
  * Initialize a deposit session
@@ -71,18 +78,25 @@ export const verifyPayment = action({
       if (data.status && data.data.status === "success") {
         // Amount check (Paystack returns amount in Kobo)
         const amountKobo = data.data.amount;
-        
-        try {
-          await ctx.runMutation(internal.payments.fulfillDeposit, {
-            reference: args.reference,
-            amountKobo,
-            metadata: data.data,
-          });
-        } catch (e: any) {
-          return { success: false, message: e?.message || "Deposit reference could not be matched." };
-        }
+        const customerEmail = data?.data?.customer?.email as string | undefined;
+        const result = await ctx.runMutation(internal.payments.reconcilePaystackPayment, {
+          reference: args.reference,
+          amountKobo,
+          customerEmail,
+          source: "verify",
+          metadata: data.data,
+        });
 
-        return { success: true, message: "Payment verified and wallet funded." };
+        if (result.status === "credited") {
+          return { success: true, message: "Payment verified and wallet funded." };
+        }
+        if (result.status === "already_credited") {
+          return { success: true, message: "Payment already credited." };
+        }
+        if (result.status === "unmatched") {
+          return { success: false, message: "Payment received but could not be matched to a wallet yet." };
+        }
+        return { success: false, message: "Payment could not be credited. Please contact support." };
       }
 
       return { success: false, message: data.message || "Payment verification failed." };
@@ -147,6 +161,326 @@ export const fulfillDeposit = internalMutation({
     }
 
     return null;
+  },
+});
+
+export const reconcilePaystackPayment = internalMutation({
+  args: {
+    reference: v.string(),
+    amountKobo: v.number(),
+    customerEmail: v.optional(v.string()),
+    source: PaystackSource,
+    metadata: v.optional(v.any()),
+  },
+  returns: v.object({
+    status: v.union(
+      v.literal("credited"),
+      v.literal("already_credited"),
+      v.literal("unmatched"),
+      v.literal("mismatch"),
+    ),
+    creditedUserId: v.optional(v.id("users")),
+    depositId: v.optional(v.id("deposits")),
+  }),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("paystack_reconciliations")
+      .withIndex("by_reference", (q) => q.eq("reference", args.reference))
+      .unique();
+
+    if (existing) {
+      return {
+        status: "already_credited" as const,
+        creditedUserId: existing.creditedUserId,
+        depositId: existing.depositId,
+      };
+    }
+
+    const deposit = await ctx.db
+      .query("deposits")
+      .withIndex("by_reference", (q) => q.eq("reference", args.reference))
+      .unique();
+
+    const now = Date.now();
+
+    if (deposit) {
+      if (deposit.amount !== args.amountKobo) {
+        await ctx.db.insert("paystack_unmatched", {
+          reference: args.reference,
+          amount: args.amountKobo,
+          customerEmail: args.customerEmail,
+          source: args.source,
+          reason: "amount_mismatch",
+          metadata: args.metadata,
+          resolved: false,
+          createdAt: now,
+        });
+        return { status: "mismatch" as const };
+      }
+
+      const user = await ctx.db.get(deposit.userId);
+      if (!user) {
+        await ctx.db.insert("paystack_unmatched", {
+          reference: args.reference,
+          amount: args.amountKobo,
+          customerEmail: args.customerEmail,
+          source: args.source,
+          reason: "deposit_user_missing",
+          metadata: args.metadata,
+          resolved: false,
+          createdAt: now,
+        });
+        return { status: "unmatched" as const };
+      }
+
+      if (deposit.status !== "completed") {
+        await ctx.db.patch(deposit._id, { status: "completed", metadata: args.metadata });
+        await ctx.db.patch(user._id, {
+          balance: (user.balance || 0) + args.amountKobo,
+        });
+
+        await ctx.db.insert("transactions", {
+          userId: user._id,
+          amount: args.amountKobo,
+          type: "deposit",
+          status: "completed",
+          description: `Paystack deposit: ${args.reference}`,
+        });
+
+        await ctx.db.insert("notifications", {
+          userId: user._id,
+          title: "Wallet Funded",
+          message: `Deposit confirmed. ₦${(args.amountKobo / 100).toLocaleString()} added to wallet.`,
+          type: "wallet_funded",
+          link: "/dashboard",
+          read: false,
+        });
+      }
+
+      const reconciliationId = await ctx.db.insert("paystack_reconciliations", {
+        reference: args.reference,
+        amount: args.amountKobo,
+        customerEmail: args.customerEmail,
+        creditedUserId: user._id,
+        depositId: deposit._id,
+        source: args.source,
+        metadata: args.metadata,
+        createdAt: now,
+      });
+      void reconciliationId;
+
+      return { status: "credited" as const, creditedUserId: user._id, depositId: deposit._id };
+    }
+
+    if (!args.customerEmail) {
+      await ctx.db.insert("paystack_unmatched", {
+        reference: args.reference,
+        amount: args.amountKobo,
+        customerEmail: args.customerEmail,
+        source: args.source,
+        reason: "missing_customer_email",
+        metadata: args.metadata,
+        resolved: false,
+        createdAt: now,
+      });
+      return { status: "unmatched" as const };
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.customerEmail))
+      .unique();
+
+    if (!user) {
+      await ctx.db.insert("paystack_unmatched", {
+        reference: args.reference,
+        amount: args.amountKobo,
+        customerEmail: args.customerEmail,
+        source: args.source,
+        reason: "user_not_found_by_email",
+        metadata: args.metadata,
+        resolved: false,
+        createdAt: now,
+      });
+      return { status: "unmatched" as const };
+    }
+
+    const depositId = await ctx.db.insert("deposits", {
+      userId: user._id,
+      amount: args.amountKobo,
+      status: "completed",
+      reference: args.reference,
+      provider: "paystack",
+      metadata: args.metadata,
+    });
+
+    await ctx.db.patch(user._id, {
+      balance: (user.balance || 0) + args.amountKobo,
+    });
+
+    await ctx.db.insert("transactions", {
+      userId: user._id,
+      amount: args.amountKobo,
+      type: "deposit",
+      status: "completed",
+      description: `Paystack deposit: ${args.reference}`,
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: user._id,
+      title: "Wallet Funded",
+      message: `Deposit confirmed. ₦${(args.amountKobo / 100).toLocaleString()} added to wallet.`,
+      type: "wallet_funded",
+      link: "/dashboard",
+      read: false,
+    });
+
+    await ctx.db.insert("paystack_reconciliations", {
+      reference: args.reference,
+      amount: args.amountKobo,
+      customerEmail: args.customerEmail,
+      creditedUserId: user._id,
+      depositId,
+      source: args.source,
+      metadata: args.metadata,
+      createdAt: now,
+    });
+
+    return { status: "credited" as const, creditedUserId: user._id, depositId };
+  },
+});
+
+export const getPaystackReconciliationByReference = internalQuery({
+  args: { reference: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      reference: v.string(),
+      amount: v.number(),
+      customerEmail: v.optional(v.string()),
+      creditedUserId: v.optional(v.id("users")),
+      depositId: v.optional(v.id("deposits")),
+      source: PaystackSource,
+      createdAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("paystack_reconciliations")
+      .withIndex("by_reference", (q) => q.eq("reference", args.reference))
+      .unique();
+    if (!row) return null;
+    return {
+      reference: row.reference,
+      amount: row.amount,
+      customerEmail: row.customerEmail,
+      creditedUserId: row.creditedUserId,
+      depositId: row.depositId,
+      source: row.source,
+      createdAt: row.createdAt,
+    };
+  },
+});
+
+export const listUnresolvedPaystackUnmatched = internalQuery({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("paystack_unmatched"),
+      reference: v.string(),
+      amount: v.number(),
+      customerEmail: v.optional(v.string()),
+      metadata: v.optional(v.any()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 25;
+    const rows = await ctx.db
+      .query("paystack_unmatched")
+      .withIndex("by_resolved", (q) => q.eq("resolved", false))
+      .order("desc")
+      .take(limit);
+    return rows.map((r) => ({
+      _id: r._id,
+      reference: r.reference,
+      amount: r.amount,
+      customerEmail: r.customerEmail,
+      metadata: r.metadata,
+    }));
+  },
+});
+
+export const markPaystackUnmatchedResolved = internalMutation({
+  args: { unmatchedId: v.id("paystack_unmatched") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.unmatchedId, { resolved: true });
+    return null;
+  },
+});
+
+export const retryUnmatchedPaystackPayments = internalAction({
+  args: { limit: v.optional(v.number()) },
+  returns: v.object({
+    processed: v.number(),
+    credited: v.number(),
+    alreadyCredited: v.number(),
+    stillUnmatched: v.number(),
+    mismatched: v.number(),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    processed: number;
+    credited: number;
+    alreadyCredited: number;
+    stillUnmatched: number;
+    mismatched: number;
+  }> => {
+    const limit = args.limit ?? 25;
+    const rows = (await ctx.runQuery(internal.payments.listUnresolvedPaystackUnmatched, { limit })) as Array<{
+      _id: any;
+      reference: string;
+      amount: number;
+      customerEmail?: string;
+      metadata?: any;
+    }>;
+
+    let credited = 0;
+    let alreadyCredited = 0;
+    let stillUnmatched = 0;
+    let mismatched = 0;
+
+    for (const row of rows) {
+      const result = (await ctx.runMutation(internal.payments.reconcilePaystackPayment, {
+        reference: row.reference,
+        amountKobo: row.amount,
+        customerEmail: row.customerEmail,
+        source: "cron",
+        metadata: row.metadata,
+      })) as { status: "credited" | "already_credited" | "unmatched" | "mismatch" };
+
+      if (result.status === "credited") {
+        credited += 1;
+        await ctx.runMutation(internal.payments.markPaystackUnmatchedResolved, { unmatchedId: row._id });
+      } else if (result.status === "already_credited") {
+        alreadyCredited += 1;
+        await ctx.runMutation(internal.payments.markPaystackUnmatchedResolved, { unmatchedId: row._id });
+      } else if (result.status === "mismatch") {
+        mismatched += 1;
+      } else {
+        stillUnmatched += 1;
+      }
+    }
+
+    return {
+      processed: rows.length,
+      credited,
+      alreadyCredited,
+      stillUnmatched,
+      mismatched,
+    };
   },
 });
 

@@ -147,6 +147,8 @@ function AdminDashboard() {
   const approveWithdrawal = useAction(api.admin.approveWithdrawal);
   const enforceBreach = useMutation(api.admin.enforceProtocolBreach);
   const seedHistory = useAction((api as any).admin.seedDummyUserHistory);
+  const previewPaystackTransaction = useAction((api as any).admin.previewPaystackTransaction);
+  const recoverPaystackTransaction = useAction((api as any).admin.recoverPaystackTransaction);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'audit' | 'waitlist' | 'withdrawals' | 'breaches'>('overview');
   const [confirm, setConfirm] = useState<{ open: boolean; title: string; description?: string; tone?: 'primary' | 'danger'; confirmLabel: string; run: (() => Promise<void>) | null }>({ open: false, title: '', confirmLabel: '', run: null });
@@ -155,6 +157,10 @@ function AdminDashboard() {
   const [seedLimit, setSeedLimit] = useState(20);
   const [seedGoalsPerUser, setSeedGoalsPerUser] = useState(3);
   const [seedLogsPerGoal, setSeedLogsPerGoal] = useState(10);
+  const [paymentsOpen, setPaymentsOpen] = useState(false);
+  const [paystackReference, setPaystackReference] = useState('');
+  const [paystackPreview, setPaystackPreview] = useState<any>(null);
+  const [paystackLoading, setPaystackLoading] = useState(false);
 
   const [userSearch, setUserSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -647,6 +653,17 @@ function AdminDashboard() {
                         >
                             <Database size={16} /> Seed Demo Logs
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                              setPaystackReference('');
+                              setPaystackPreview(null);
+                              setPaymentsOpen(true);
+                            }}
+                            className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-green-600/10 hover:border-green-500/30 transition-all text-center active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <Wallet size={16} /> Payments Recovery
+                        </button>
                         <button className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/20 transition-all text-center border-dashed cursor-not-allowed opacity-60">
                           System Maintenance Mode
                         </button>
@@ -795,6 +812,201 @@ function AdminDashboard() {
                       Cancel
                     </button>
                   </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {paymentsOpen ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => (paystackLoading ? null : setPaymentsOpen(false))}
+              className="fixed inset-0 z-[80] bg-[#050810]/70 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[85] flex items-center justify-center p-6"
+            >
+              <div className="w-full max-w-xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
+                <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6">
+                  <div className="text-left">
+                    <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
+                      Payments Recovery
+                    </p>
+                    <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed">
+                      Paste a Paystack reference, preview the transaction, then credit the wallet if needed.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => (paystackLoading ? null : setPaymentsOpen(false))}
+                    className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="p-10 space-y-6">
+                  <div>
+                    <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic mb-3">
+                      Paystack Reference
+                    </p>
+                    <input
+                      value={paystackReference}
+                      onChange={(e) => setPaystackReference(e.target.value)}
+                      placeholder="E.G. 1780134111263"
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-5 py-4 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-green-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <button
+                      type="button"
+                      disabled={paystackLoading}
+                      onClick={async () => {
+                        const ref = paystackReference.trim()
+                        if (!ref) {
+                          toast.error('Enter a Paystack reference.', { title: 'Missing Reference' })
+                          return
+                        }
+                        try {
+                          setPaystackLoading(true)
+                          const res = await previewPaystackTransaction({ reference: ref })
+                          if (!res?.success) {
+                            setPaystackPreview(null)
+                            toast.error(res?.message || 'Preview failed.', { title: 'Preview Failed' })
+                            return
+                          }
+                          setPaystackPreview(res)
+                        } catch (e: any) {
+                          setPaystackPreview(null)
+                          toast.error(e?.message || 'Preview failed.', { title: 'Preview Failed' })
+                        } finally {
+                          setPaystackLoading(false)
+                        }
+                      }}
+                      className={`flex-1 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all ${
+                        paystackLoading ? 'opacity-60 pointer-events-none' : 'bg-white text-black'
+                      }`}
+                    >
+                      {paystackLoading ? 'Previewing...' : 'Preview'}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={paystackLoading}
+                      onClick={() => (paystackLoading ? null : setPaymentsOpen(false))}
+                      className={`flex-1 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-[10px] uppercase tracking-[0.3em] italic hover:bg-white/10 active:scale-95 transition-all ${
+                        paystackLoading ? 'opacity-60 pointer-events-none' : ''
+                      }`}
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  {paystackPreview ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                          <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                            Status
+                          </p>
+                          <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                            {String(paystackPreview.paystackStatus ?? '')}
+                          </p>
+                        </div>
+                        <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                          <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                            Amount
+                          </p>
+                          <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                            ₦{(((paystackPreview.amountKobo ?? 0) as number) / 100).toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                          <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                            Email
+                          </p>
+                          <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg break-all">
+                            {String(paystackPreview.customerEmail ?? '')}
+                          </p>
+                        </div>
+                        <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                          <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                            Credited
+                          </p>
+                          <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                            {paystackPreview.alreadyCredited ? 'Yes' : 'No'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-4 pt-2">
+                        <button
+                          type="button"
+                          disabled={
+                            paystackLoading ||
+                            paystackPreview.alreadyCredited ||
+                            paystackPreview.paystackStatus !== 'success'
+                          }
+                          onClick={() => {
+                            const ref = paystackReference.trim()
+                            const amountKobo = (paystackPreview.amountKobo ?? 0) as number
+                            const customerEmail = paystackPreview.customerEmail as string | undefined
+                            setConfirm({
+                              open: true,
+                              title: 'Credit wallet?',
+                              description: `Reference ${ref} • ₦${(amountKobo / 100).toLocaleString()} • ${customerEmail || 'Unknown email'}`,
+                              confirmLabel: 'Credit Wallet',
+                              tone: 'primary',
+                              run: async () => {
+                                try {
+                                  const res = await recoverPaystackTransaction({ reference: ref })
+                                  if (res?.success) {
+                                    toast.success(res.message || 'Wallet credited.', { title: 'Recovery Complete' })
+                                    setPaystackPreview((p: any) => (p ? { ...p, alreadyCredited: true } : p))
+                                  } else {
+                                    toast.error(res?.message || 'Recovery failed.', { title: 'Recovery Failed' })
+                                  }
+                                } catch (e: any) {
+                                  toast.error(e?.message || 'Recovery failed.', { title: 'Recovery Failed' })
+                                }
+                              },
+                            })
+                          }}
+                          className={`flex-1 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all ${
+                            paystackPreview.alreadyCredited || paystackPreview.paystackStatus !== 'success'
+                              ? 'bg-white/5 border border-white/10 text-white/30 pointer-events-none'
+                              : 'bg-green-500 text-black shadow-xl shadow-green-900/20'
+                          }`}
+                        >
+                          Credit Wallet
+                        </button>
+                        <button
+                          type="button"
+                          disabled={paystackLoading}
+                          onClick={() => {
+                            setPaystackPreview(null)
+                            setPaystackReference('')
+                          }}
+                          className={`flex-1 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-[10px] uppercase tracking-[0.3em] italic hover:bg-white/10 active:scale-95 transition-all ${
+                            paystackLoading ? 'opacity-60 pointer-events-none' : ''
+                          }`}
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </motion.div>

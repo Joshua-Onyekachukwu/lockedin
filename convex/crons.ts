@@ -19,4 +19,11 @@ crons.cron(
   {}
 );
 
+crons.interval(
+  "paystack unmatched recovery retry",
+  { minutes: 10 },
+  internal.payments.retryUnmatchedPaystackPayments,
+  { limit: 25 },
+);
+
 export default crons;

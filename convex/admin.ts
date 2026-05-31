@@ -12,9 +12,26 @@ const ADMIN_EMAILS = (() => {
     .split(",")
     .map((e) => e.trim())
     .filter(Boolean);
-  if (parsed.length) return parsed;
-  return ["onyekachukwujoshua1@gmail.com", "admin@lockedin.io"];
+  return parsed;
 })();
+
+async function verifyPaystackTransaction(reference: string) {
+  if (!PAYSTACK_SECRET) {
+    return { ok: false, message: "Payment backend not configured." };
+  }
+  const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${PAYSTACK_SECRET}`,
+      "Content-Type": "application/json",
+    },
+  });
+  const json = await response.json();
+  if (!json?.status) {
+    return { ok: false, message: json?.message || "Unable to verify transaction." };
+  }
+  return { ok: true, json };
+}
 
 async function checkAdmin(ctx: any) {
     const userId = await auth.getUserId(ctx);
@@ -182,6 +199,169 @@ export const checkAdminStatus = query({
             return { isAdmin: false };
         }
     }
+});
+
+export const previewPaystackTransaction = action({
+  args: { reference: v.string() },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    reference: v.optional(v.string()),
+    paystackStatus: v.optional(v.string()),
+    amountKobo: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    customerEmail: v.optional(v.string()),
+    paidAt: v.optional(v.string()),
+    channel: v.optional(v.string()),
+    alreadyCredited: v.optional(v.boolean()),
+    creditedUserId: v.optional(v.id("users")),
+    depositId: v.optional(v.id("deposits")),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    reference?: string;
+    paystackStatus?: string;
+    amountKobo?: number;
+    currency?: string;
+    customerEmail?: string;
+    paidAt?: string;
+    channel?: string;
+    alreadyCredited?: boolean;
+    creditedUserId?: Id<"users">;
+    depositId?: Id<"deposits">;
+  }> => {
+    const adminStatus = await ctx.runQuery(api.admin.checkAdminStatus, {});
+    if (!adminStatus?.isAdmin || !adminStatus?.user) {
+      throw new Error("SECURITY ALERT: Administrative privileges required.");
+    }
+
+    const res = await verifyPaystackTransaction(args.reference);
+    if (!res.ok) return { success: false, message: res.message };
+
+    const tx = res.json.data;
+    const customerEmail = tx?.customer?.email as string | undefined;
+    const paystackStatus = tx?.status as string | undefined;
+    const amountKobo = tx?.amount as number | undefined;
+
+    const existing = (await ctx.runQuery(internal.payments.getPaystackReconciliationByReference, {
+      reference: args.reference,
+    })) as
+      | {
+          creditedUserId?: Id<"users">;
+          depositId?: Id<"deposits">;
+        }
+      | null;
+
+    return {
+      success: true,
+      message: `Transaction status: ${paystackStatus ?? "unknown"}`,
+      reference: args.reference,
+      paystackStatus,
+      amountKobo,
+      currency: tx?.currency,
+      customerEmail,
+      paidAt: tx?.paid_at,
+      channel: tx?.channel,
+      alreadyCredited: !!existing,
+      creditedUserId: existing?.creditedUserId,
+      depositId: existing?.depositId,
+    };
+  },
+});
+
+export const recoverPaystackTransaction = action({
+  args: { reference: v.string() },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    resultStatus: v.optional(v.string()),
+    creditedUserId: v.optional(v.id("users")),
+    depositId: v.optional(v.id("deposits")),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    resultStatus?: string;
+    creditedUserId?: Id<"users">;
+    depositId?: Id<"deposits">;
+  }> => {
+    const adminStatus = await ctx.runQuery(api.admin.checkAdminStatus, {});
+    if (!adminStatus?.isAdmin || !adminStatus?.user) {
+      throw new Error("SECURITY ALERT: Administrative privileges required.");
+    }
+
+    const res = await verifyPaystackTransaction(args.reference);
+    if (!res.ok) return { success: false, message: res.message };
+
+    const tx = res.json.data;
+    if (tx?.status !== "success") {
+      return { success: false, message: `Transaction not successful: ${tx?.status || "unknown"}` };
+    }
+
+    const amountKobo = tx?.amount as number;
+    const customerEmail = tx?.customer?.email as string | undefined;
+
+    const result = (await ctx.runMutation(internal.payments.reconcilePaystackPayment, {
+      reference: args.reference,
+      amountKobo,
+      customerEmail,
+      source: "admin",
+      metadata: tx,
+    })) as {
+      status: "credited" | "already_credited" | "unmatched" | "mismatch";
+      creditedUserId?: Id<"users">;
+      depositId?: Id<"deposits">;
+    };
+
+    await ctx.runMutation(internal.admin.logAudit, {
+      adminUserId: (adminStatus.user as any)._id as Id<"users">,
+      action: "paystack_recovery",
+      message: `Recovery attempted for reference ${args.reference}. Result: ${result.status}.`,
+      targetType: "paystack",
+      targetId: args.reference,
+      metadata: { amountKobo, customerEmail, result },
+    });
+
+    if (result.status === "credited") {
+      return {
+        success: true,
+        message: `Wallet credited. ₦${(amountKobo / 100).toLocaleString()} added.`,
+        resultStatus: result.status,
+        creditedUserId: result.creditedUserId,
+        depositId: result.depositId,
+      };
+    }
+
+    if (result.status === "already_credited") {
+      return {
+        success: true,
+        message: "Already credited for this reference.",
+        resultStatus: result.status,
+        creditedUserId: result.creditedUserId,
+        depositId: result.depositId,
+      };
+    }
+
+    const failureMessage =
+      result.status === "mismatch"
+        ? "Amount mismatch between Paystack and stored deposit."
+        : "Unable to match transaction to a user (missing/unknown email).";
+
+    return {
+      success: false,
+      message: failureMessage,
+      resultStatus: result.status,
+      creditedUserId: result.creditedUserId,
+      depositId: result.depositId,
+    };
+  },
 });
 
 export const getSystemStats = query({
