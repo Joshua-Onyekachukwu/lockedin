@@ -152,6 +152,7 @@ function AdminDashboard() {
   const populateExistingHistory = useAction((api as any).admin.populateExistingUserHistory);
   const previewPaystackTransaction = useAction((api as any).admin.previewPaystackTransaction);
   const recoverPaystackTransaction = useAction((api as any).admin.recoverPaystackTransaction);
+  const paymentsExplorerLookup = useAction((api as any).admin.paymentsExplorerLookup);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'transactions' | 'audit' | 'waitlist' | 'withdrawals' | 'breaches'>('overview');
   const [confirm, setConfirm] = useState<{ open: boolean; title: string; description?: string; tone?: 'primary' | 'danger'; confirmLabel: string; run: (() => Promise<void>) | null }>({ open: false, title: '', confirmLabel: '', run: null });
@@ -166,6 +167,10 @@ function AdminDashboard() {
   const [paystackReference, setPaystackReference] = useState('');
   const [paystackPreview, setPaystackPreview] = useState<any>(null);
   const [paystackLoading, setPaystackLoading] = useState(false);
+  const [paymentsExplorerOpen, setPaymentsExplorerOpen] = useState(false);
+  const [paymentsExplorerQuery, setPaymentsExplorerQuery] = useState('');
+  const [paymentsExplorerLoading, setPaymentsExplorerLoading] = useState(false);
+  const [paymentsExplorerResult, setPaymentsExplorerResult] = useState<any>(null);
 
   const [userSearch, setUserSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -931,6 +936,17 @@ function AdminDashboard() {
                         >
                             <Wallet size={16} /> Payments Recovery
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentsExplorerQuery('');
+                              setPaymentsExplorerResult(null);
+                              setPaymentsExplorerOpen(true);
+                            }}
+                            className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-green-600/10 hover:border-green-500/30 transition-all text-center active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <ReceiptText size={16} /> Payments Explorer
+                        </button>
                         <button className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/20 transition-all text-center border-dashed cursor-not-allowed opacity-60">
                           System Maintenance Mode
                         </button>
@@ -1327,6 +1343,271 @@ function AdminDashboard() {
                           Reset
                         </button>
                       </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {paymentsExplorerOpen ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => (paymentsExplorerLoading ? null : setPaymentsExplorerOpen(false))}
+              className="fixed inset-0 z-[70] bg-[#050810]/70 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[75] flex items-center justify-center p-6"
+            >
+              <div className="w-full max-w-3xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
+                <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6">
+                  <div className="text-left">
+                    <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
+                      Payments Explorer
+                    </p>
+                    <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed">
+                      Search by Paystack reference or customer email to inspect verification, reconciliation, and ledger state.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => (paymentsExplorerLoading ? null : setPaymentsExplorerOpen(false))}
+                    className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="p-10 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-8">
+                      <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic mb-3">
+                        Reference or Email
+                      </p>
+                      <input
+                        value={paymentsExplorerQuery}
+                        onChange={(e) => setPaymentsExplorerQuery(e.target.value)}
+                        placeholder="E.G. 1780134111263 OR semekjoshua@gmail.com"
+                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-5 py-4 text-[10px] font-black uppercase tracking-[0.25em] italic text-white/70 outline-none focus:border-green-500"
+                      />
+                    </div>
+                    <div className="md:col-span-4 flex items-end">
+                      <button
+                        type="button"
+                        disabled={paymentsExplorerLoading}
+                        onClick={async () => {
+                          const q = paymentsExplorerQuery.trim()
+                          if (!q) {
+                            toast.error('Enter a reference or email.', { title: 'Missing Query' })
+                            return
+                          }
+                          try {
+                            setPaymentsExplorerLoading(true)
+                            const res = await paymentsExplorerLookup({ query: q })
+                            if (!res?.success) {
+                              setPaymentsExplorerResult(null)
+                              toast.error(res?.message || 'Lookup failed.', { title: 'Lookup Failed' })
+                              return
+                            }
+                            setPaymentsExplorerResult(res)
+                          } catch (e: any) {
+                            setPaymentsExplorerResult(null)
+                            toast.error(e?.message || 'Lookup failed.', { title: 'Lookup Failed' })
+                          } finally {
+                            setPaymentsExplorerLoading(false)
+                          }
+                        }}
+                        className={`w-full py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all ${
+                          paymentsExplorerLoading ? 'opacity-60 pointer-events-none' : 'bg-green-500 text-black'
+                        }`}
+                      >
+                        {paymentsExplorerLoading ? 'Searching…' : 'Search'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {paymentsExplorerResult ? (
+                    <div className="space-y-4">
+                      {paymentsExplorerResult.mode === 'reference' ? (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">Paystack</p>
+                              <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                                {paymentsExplorerResult.paystackOk === false
+                                  ? 'unverified'
+                                  : paymentsExplorerResult.paystack?.status || 'unknown'}
+                              </p>
+                              <p className="mt-3 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black break-all">
+                                {paymentsExplorerResult.paystack?.customer?.email || ''}
+                              </p>
+                              {paymentsExplorerResult.paystackOk === false ? (
+                                <p className="mt-3 text-[10px] text-red-400/70 uppercase tracking-[0.25em] italic font-black">
+                                  {paymentsExplorerResult.paystackMessage || 'Verification failed.'}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">Amount</p>
+                              <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                                ₦{(((paymentsExplorerResult.paystack?.amount ?? paymentsExplorerResult.deposit?.amount ?? 0) as number) / 100).toLocaleString()}
+                              </p>
+                              <p className="mt-3 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black">
+                                {paymentsExplorerResult.paystack?.paid_at || ''}
+                              </p>
+                            </div>
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">Deposit</p>
+                              <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                                {paymentsExplorerResult.deposit?.status || 'none'}
+                              </p>
+                              <p className="mt-3 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black break-all">
+                                {paymentsExplorerResult.deposit?.reference || ''}
+                              </p>
+                            </div>
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">Linked User</p>
+                              <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg break-all">
+                                {paymentsExplorerResult.user?.email || 'unknown'}
+                              </p>
+                              <p className="mt-3 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black">
+                                {paymentsExplorerResult.reconciliation?.status || ''}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                            <div className="flex items-start justify-between gap-6">
+                              <div>
+                                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                                  Reconciliation
+                                </p>
+                                <p className="mt-3 text-xs text-white/50 italic font-medium leading-relaxed">
+                                  {paymentsExplorerResult.reconciliation
+                                    ? 'This reference has a reconciliation record (already credited or recorded).'
+                                    : paymentsExplorerResult.unmatched
+                                      ? `Unmatched (${paymentsExplorerResult.unmatched.reason})`
+                                      : 'No reconciliation record found.'}
+                                </p>
+                              </div>
+
+                              <button
+                                type="button"
+                                disabled={
+                                  paymentsExplorerLoading ||
+                                  paymentsExplorerResult.reconciliation ||
+                                  paymentsExplorerResult.paystackOk === false ||
+                                  paymentsExplorerResult.paystack?.status !== 'success'
+                                }
+                                onClick={() => {
+                                  const ref = paymentsExplorerResult.query as string
+                                  const amountKobo = (paymentsExplorerResult.paystack?.amount ?? 0) as number
+                                  const customerEmail = paymentsExplorerResult.paystack?.customer?.email as string | undefined
+                                  setConfirm({
+                                    open: true,
+                                    title: 'Credit wallet?',
+                                    description: `Reference ${ref} • ₦${(amountKobo / 100).toLocaleString()} • ${customerEmail || 'Unknown email'}`,
+                                    confirmLabel: 'Credit Wallet',
+                                    tone: 'primary',
+                                    run: async () => {
+                                      try {
+                                        const res = await recoverPaystackTransaction({ reference: ref })
+                                        if (res?.success) {
+                                          toast.success(res.message || 'Wallet credited.', { title: 'Recovery Complete' })
+                                          const refreshed = await paymentsExplorerLookup({ query: ref })
+                                          setPaymentsExplorerResult(refreshed)
+                                        } else {
+                                          toast.error(res?.message || 'Recovery failed.', { title: 'Recovery Failed' })
+                                        }
+                                      } catch (e: any) {
+                                        toast.error(e?.message || 'Recovery failed.', { title: 'Recovery Failed' })
+                                      }
+                                    },
+                                  })
+                                }}
+                                className={`px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] italic transition-all ${
+                                  paymentsExplorerResult.reconciliation ||
+                                  paymentsExplorerResult.paystackOk === false ||
+                                  paymentsExplorerResult.paystack?.status !== 'success'
+                                    ? 'bg-white/5 border border-white/10 text-white/30 cursor-not-allowed'
+                                    : 'bg-green-500 text-black hover:scale-105 active:scale-95'
+                                }`}
+                              >
+                                Fix / Credit
+                              </button>
+                            </div>
+                          </div>
+
+                          {Array.isArray(paymentsExplorerResult.recentTransactions) ? (
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                                Recent Ledger Activity
+                              </p>
+                              <div className="mt-4 space-y-2">
+                                {paymentsExplorerResult.recentTransactions.slice(0, 8).map((t: any) => (
+                                  <div key={t._id} className="flex items-center justify-between gap-6">
+                                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic">
+                                      {t.type} • {t.status}
+                                    </p>
+                                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic">
+                                      ₦{((t.amount ?? 0) / 100).toLocaleString()}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                            <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">User</p>
+                            <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg break-all">
+                              {paymentsExplorerResult.user?.email || 'Not found'}
+                            </p>
+                          </div>
+                          <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                            <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">Unmatched</p>
+                            <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                              {(paymentsExplorerResult.unmatchedByEmail?.length ?? 0).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left md:col-span-2">
+                            <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                              Unmatched References
+                            </p>
+                            <div className="mt-4 space-y-2">
+                              {(paymentsExplorerResult.unmatchedByEmail ?? []).slice(0, 8).map((r: any) => (
+                                <button
+                                  key={r._id}
+                                  type="button"
+                                  onClick={() => setPaymentsExplorerQuery(r.reference)}
+                                  className="w-full text-left p-4 rounded-2xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] transition-all"
+                                >
+                                  <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic break-all">
+                                    {r.reference} • ₦{((r.amount ?? 0) / 100).toLocaleString()} • {r.reason}
+                                  </p>
+                                </button>
+                              ))}
+                              {(paymentsExplorerResult.unmatchedByEmail ?? []).length === 0 ? (
+                                <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                                  None.
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : null}
                 </div>

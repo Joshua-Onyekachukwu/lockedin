@@ -382,6 +382,142 @@ export const getPaystackReconciliationByReference = internalQuery({
   },
 });
 
+export const getPaystackUnmatchedByReference = internalQuery({
+  args: { reference: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("paystack_unmatched"),
+      reference: v.string(),
+      amount: v.number(),
+      customerEmail: v.optional(v.string()),
+      reason: v.string(),
+      resolved: v.boolean(),
+      createdAt: v.number(),
+      source: PaystackSource,
+      metadata: v.optional(v.any()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const row = await ctx.db
+      .query("paystack_unmatched")
+      .withIndex("by_reference", (q) => q.eq("reference", args.reference))
+      .unique();
+    if (!row) return null;
+    return {
+      _id: row._id,
+      reference: row.reference,
+      amount: row.amount,
+      customerEmail: row.customerEmail,
+      reason: row.reason,
+      resolved: row.resolved,
+      createdAt: row.createdAt,
+      source: row.source,
+      metadata: row.metadata,
+    };
+  },
+});
+
+export const listPaystackReconciliationsByCustomerEmail = internalQuery({
+  args: { customerEmail: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      reference: v.string(),
+      amount: v.number(),
+      customerEmail: v.optional(v.string()),
+      creditedUserId: v.optional(v.id("users")),
+      depositId: v.optional(v.id("deposits")),
+      source: PaystackSource,
+      createdAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+    const rows = await ctx.db
+      .query("paystack_reconciliations")
+      .withIndex("by_customer_email", (q) => q.eq("customerEmail", args.customerEmail))
+      .order("desc")
+      .take(limit);
+    return rows.map((r) => ({
+      reference: r.reference,
+      amount: r.amount,
+      customerEmail: r.customerEmail,
+      creditedUserId: r.creditedUserId,
+      depositId: r.depositId,
+      source: r.source,
+      createdAt: r.createdAt,
+    }));
+  },
+});
+
+export const listPaystackUnmatchedByCustomerEmail = internalQuery({
+  args: { customerEmail: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("paystack_unmatched"),
+      reference: v.string(),
+      amount: v.number(),
+      customerEmail: v.optional(v.string()),
+      reason: v.string(),
+      resolved: v.boolean(),
+      createdAt: v.number(),
+      source: PaystackSource,
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+    const rows = await ctx.db
+      .query("paystack_unmatched")
+      .withIndex("by_customer_email", (q) => q.eq("customerEmail", args.customerEmail))
+      .order("desc")
+      .take(limit);
+    return rows.map((r) => ({
+      _id: r._id,
+      reference: r.reference,
+      amount: r.amount,
+      customerEmail: r.customerEmail,
+      reason: r.reason,
+      resolved: r.resolved,
+      createdAt: r.createdAt,
+      source: r.source,
+    }));
+  },
+});
+
+export const getDepositByReference = internalQuery({
+  args: { reference: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("deposits"),
+      userId: v.id("users"),
+      amount: v.number(),
+      status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
+      reference: v.string(),
+      provider: v.union(v.literal("paystack"), v.literal("flutterwave")),
+      _creationTime: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("deposits")
+      .withIndex("by_reference", (q) => q.eq("reference", args.reference))
+      .order("desc")
+      .take(1);
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      _id: row._id,
+      userId: row.userId,
+      amount: row.amount,
+      status: row.status,
+      reference: row.reference,
+      provider: row.provider,
+      _creationTime: row._creationTime,
+    };
+  },
+});
+
 export const listUnresolvedPaystackUnmatched = internalQuery({
   args: { limit: v.optional(v.number()) },
   returns: v.array(

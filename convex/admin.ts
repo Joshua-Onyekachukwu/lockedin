@@ -7,30 +7,61 @@ import type { Id } from "./_generated/dataModel";
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 
 const ADMIN_EMAILS = (() => {
-  const env = process.env.ADMIN_EMAIL_ALLOWLIST || "";
-  const parsed = env
+  const env = (process.env.ADMIN_EMAIL_ALLOWLIST || "").trim();
+  if (!env) return [];
+
+  const normalize = (raw: string) =>
+    raw
+      .trim()
+      .replace(/^[\s"'[\]]+/, "")
+      .replace(/[\s"'[\]]+$/, "")
+      .trim();
+
+  if (env.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(env);
+      if (Array.isArray(parsed)) {
+        return parsed.map((e) => normalize(String(e))).filter(Boolean);
+      }
+    } catch {}
+  }
+
+  return env
     .split(",")
-    .map((e) => e.trim())
+    .map((e) => normalize(e))
     .filter(Boolean);
-  return parsed;
 })();
 
 async function verifyPaystackTransaction(reference: string) {
   if (!PAYSTACK_SECRET) {
     return { ok: false, message: "Payment backend not configured." };
   }
-  const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${PAYSTACK_SECRET}`,
-      "Content-Type": "application/json",
-    },
-  });
-  const json = await response.json();
-  if (!json?.status) {
-    return { ok: false, message: json?.message || "Unable to verify transaction." };
+  try {
+    const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${PAYSTACK_SECRET}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    let json: any = null;
+    try {
+      json = await response.json();
+    } catch {
+      json = null;
+    }
+
+    if (!response.ok) {
+      return { ok: false, message: json?.message || "Unable to verify transaction." };
+    }
+    if (!json?.status) {
+      return { ok: false, message: json?.message || "Unable to verify transaction." };
+    }
+    return { ok: true, json };
+  } catch {
+    return { ok: false, message: "Unable to verify transaction." };
   }
-  return { ok: true, json };
 }
 
 async function checkAdmin(ctx: any) {
@@ -71,6 +102,26 @@ export const logAudit = internalMutation({
       metadata: args.metadata,
     });
     return null;
+  },
+});
+
+export const findUserByEmail = internalQuery({
+  args: { email: v.string() },
+  returns: v.union(v.null(), v.any()),
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.eq("email", args.email))
+      .unique();
+    return user ?? null;
+  },
+});
+
+export const getUserByIdUnsafe = internalQuery({
+  args: { userId: v.id("users") },
+  returns: v.union(v.null(), v.any()),
+  handler: async (ctx, args) => {
+    return (await ctx.db.get(args.userId)) ?? null;
   },
 });
 
@@ -568,6 +619,109 @@ export const recoverPaystackTransaction = action({
   },
 });
 
+export const paymentsExplorerLookup = action({
+  args: { query: v.string() },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    mode: v.union(v.literal("reference"), v.literal("email")),
+    query: v.string(),
+    paystackOk: v.optional(v.boolean()),
+    paystackMessage: v.optional(v.string()),
+    paystack: v.optional(v.any()),
+    reconciliation: v.optional(v.any()),
+    unmatched: v.optional(v.any()),
+    deposit: v.optional(v.any()),
+    user: v.optional(v.any()),
+    recentTransactions: v.optional(v.array(v.any())),
+    reconciliationsByEmail: v.optional(v.array(v.any())),
+    unmatchedByEmail: v.optional(v.array(v.any())),
+  }),
+  handler: async (ctx, args): Promise<any> => {
+    const adminStatus = await ctx.runQuery(api.admin.checkAdminStatus, {});
+    if (!adminStatus?.isAdmin || !adminStatus?.user) {
+      throw new Error("SECURITY ALERT: Administrative privileges required.");
+    }
+
+    const q = args.query.trim();
+    if (!q) {
+      return { success: false, message: "Enter a reference or email.", mode: "reference", query: q };
+    }
+
+    const isEmail = q.includes("@");
+    if (isEmail) {
+      const user: any =
+        (await ctx.runQuery(internal.admin.findUserByEmail, { email: q } as any)) ||
+        (await ctx.runQuery(internal.admin.findUserByEmail, { email: q.toLowerCase() } as any));
+
+      const reconciliationsByEmail = (await ctx.runQuery(
+        internal.payments.listPaystackReconciliationsByCustomerEmail,
+        { customerEmail: q, limit: 50 },
+      )) as any[];
+      const unmatchedByEmail = (await ctx.runQuery(internal.payments.listPaystackUnmatchedByCustomerEmail, {
+        customerEmail: q,
+        limit: 50,
+      })) as any[];
+
+      const recentTransactions: any[] = user
+        ? await ctx.runQuery(internal.admin.listRecentTransactionsForUser, { userId: user._id, limit: 25 })
+        : [];
+
+      return {
+        success: true,
+        message: user ? "User located." : "No user found for this email.",
+        mode: "email",
+        query: q,
+        user: user ?? undefined,
+        recentTransactions,
+        reconciliationsByEmail,
+        unmatchedByEmail,
+      };
+    }
+
+    const paystackRes = await verifyPaystackTransaction(q);
+    const paystack = paystackRes.ok ? paystackRes.json?.data : undefined;
+
+    const reconciliation: any = await ctx.runQuery(internal.payments.getPaystackReconciliationByReference, {
+      reference: q,
+    });
+    const unmatched: any = await ctx.runQuery(internal.payments.getPaystackUnmatchedByReference, { reference: q });
+    const deposit: any = await ctx.runQuery(internal.payments.getDepositByReference, { reference: q });
+
+    let creditedUserId: Id<"users"> | undefined = (reconciliation as any)?.creditedUserId;
+    if (!creditedUserId) creditedUserId = (deposit as any)?.userId;
+    if (!creditedUserId) {
+      const email = (paystack as any)?.customer?.email as string | undefined;
+      if (email) {
+        const byEmail = (await ctx.runQuery(internal.admin.findUserByEmail, { email } as any)) as any;
+        creditedUserId = byEmail?._id as Id<"users"> | undefined;
+      }
+    }
+
+    const user: any = creditedUserId
+      ? await ctx.runQuery(internal.admin.getUserByIdUnsafe, { userId: creditedUserId })
+      : null;
+    const recentTransactions: any[] = user
+      ? await ctx.runQuery(internal.admin.listRecentTransactionsForUser, { userId: (user as any)._id, limit: 25 })
+      : [];
+
+    return {
+      success: true,
+      message: paystackRes.ok ? "Paystack verification fetched." : paystackRes.message,
+      mode: "reference",
+      query: q,
+      paystackOk: paystackRes.ok,
+      paystackMessage: paystackRes.ok ? undefined : paystackRes.message,
+      paystack,
+      reconciliation: reconciliation ?? undefined,
+      unmatched: unmatched ?? undefined,
+      deposit: deposit ?? undefined,
+      user: user ?? undefined,
+      recentTransactions,
+    };
+  },
+});
+
 export const getSystemStats = query({
   args: {},
   returns: v.any(),
@@ -587,6 +741,19 @@ export const getSystemStats = query({
       totalStaked,
     };
   }
+});
+
+export const listRecentTransactionsForUser = internalQuery({
+  args: { userId: v.id("users"), limit: v.optional(v.number()) },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 25;
+    return await ctx.db
+      .query("transactions")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .take(limit);
+  },
 });
 
 export const seedDummyUserHistory = action({
