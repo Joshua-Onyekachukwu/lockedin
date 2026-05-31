@@ -5,6 +5,7 @@ import { useMutation, useAction, useConvexAuth } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useToast } from '~/components/toast';
 import { ConfirmModal } from '~/components/confirm-modal';
+import { sanitizeMessage } from '~/lib/errors';
 import { 
   Users, 
   Download, 
@@ -54,7 +55,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
     render() {
         if (this.state.hasError) {
-            const errorMsg = this.state.error?.message || "";
+            const errorMsg = sanitizeMessage(this.state.error?.message || "", "Administrative interface failed to initialize.");
             const isAuthError = errorMsg.includes("UNAUTHORIZED") || errorMsg.includes("ACCESS DENIED") || errorMsg.includes("privileges required");
             
             return (
@@ -68,7 +69,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
                     <p className="text-white/40 font-black italic uppercase text-sm max-w-md leading-relaxed mb-10">
                         {isAuthError 
                             ? "Security Alert: This terminal is restricted to authorized protocol administrators only. Your identity hash has been logged."
-                            : `Technical Breach: The Administrative interface failed to initialize. (${errorMsg.slice(0, 50)}...)`}
+                            : `Technical Breach: ${errorMsg}`}
                     </p>
                     <div className="flex gap-4">
                         <Link to="/login" className="px-10 py-4 rounded-2xl bg-blue-600 text-white font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all">
