@@ -320,6 +320,9 @@ function VaultPage() {
 
                     <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">Witness Protocol</p>
+                        <p className="text-[10px] text-white/30 font-black uppercase tracking-widest italic mb-6">
+                          Max 3 witnesses per goal.
+                        </p>
                         {witnessRows.length === 0 ? (
                             <div className="p-8 rounded-[2.5rem] bg-white/[0.01] border border-white/5">
                                 <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
@@ -342,6 +345,20 @@ function VaultPage() {
                             </div>
                         ) : (
                             <div className="space-y-4">
+                                {isOwner && witnessRows.filter((w) => w.status === 'active').length < 3 ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      navigate({
+                                        to: '/community',
+                                        search: { view: 'witnesses', vaultId } as any,
+                                      })
+                                    }
+                                    className="w-full px-8 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all"
+                                  >
+                                    Request A Witness
+                                  </button>
+                                ) : null}
                                 {witnessRows.map((w) => (
                                     <div key={w._id} className="p-6 rounded-[2.5rem] bg-[#050810]/40 border border-white/5 flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-4 min-w-0">

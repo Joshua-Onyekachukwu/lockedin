@@ -1789,6 +1789,8 @@ export const updateUserVerifications = mutation({
     emailVerified: v.optional(v.boolean()),
     bvn_verified: v.optional(v.boolean()),
     isAdmin: v.optional(v.boolean()),
+    is_discoverable: v.optional(v.boolean()),
+    witness_discoverable: v.optional(v.boolean()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -1808,6 +1810,8 @@ export const updateUserVerifications = mutation({
     }
     if (args.bvn_verified !== undefined) patch.bvn_verified = args.bvn_verified;
     if (args.isAdmin !== undefined) patch.isAdmin = args.isAdmin;
+    if (args.is_discoverable !== undefined) patch.is_discoverable = args.is_discoverable;
+    if (args.witness_discoverable !== undefined) patch.witness_discoverable = args.witness_discoverable;
 
     await ctx.db.patch(user._id, patch);
 
@@ -1823,6 +1827,8 @@ export const updateUserVerifications = mutation({
         emailVerified: args.emailVerified,
         bvn_verified: args.bvn_verified,
         isAdmin: args.isAdmin,
+        is_discoverable: args.is_discoverable,
+        witness_discoverable: args.witness_discoverable,
       },
     });
 
@@ -1843,6 +1849,8 @@ export const searchUsersByEmailPrefix = query({
       emailVerified: v.boolean(),
       bvn_verified: v.boolean(),
       isAdmin: v.optional(v.boolean()),
+      is_discoverable: v.boolean(),
+      witness_discoverable: v.optional(v.boolean()),
     }),
   ),
   handler: async (ctx, args) => {
@@ -1863,6 +1871,8 @@ export const searchUsersByEmailPrefix = query({
       emailVerified: !!u.emailVerificationTime,
       bvn_verified: u.bvn_verified,
       isAdmin: u.isAdmin,
+      is_discoverable: u.is_discoverable,
+      witness_discoverable: u.witness_discoverable,
     }));
   },
 });

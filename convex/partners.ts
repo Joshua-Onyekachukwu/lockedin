@@ -2,6 +2,22 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { auth } from "./auth";
 
+async function countActiveWitnesses(ctx: any, vaultId: any) {
+  const active = await ctx.db
+    .query("accountability_partners")
+    .withIndex("by_vault", (q: any) => q.eq("vaultId", vaultId))
+    .filter((q: any) => q.eq(q.field("status"), "active"))
+    .collect();
+  return active.length;
+}
+
+async function enforceMaxWitnesses(ctx: any, vaultId: any) {
+  const activeCount = await countActiveWitnesses(ctx, vaultId);
+  if (activeCount >= 3) {
+    throw new Error("Request Blocked: Max 3 witnesses per goal.");
+  }
+}
+
 export const join = mutation({
   args: {
     vaultId: v.id("vaults"),
@@ -24,6 +40,8 @@ export const join = mutation({
         .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
         .unique();
     if (!goal) throw new Error("Goal not found");
+
+    await enforceMaxWitnesses(ctx, args.vaultId);
 
     await ctx.db.insert("accountability_partners", {
       vaultId: args.vaultId,
@@ -73,6 +91,8 @@ export const request = mutation({
         .unique();
     
     if (existing) return existing._id;
+
+    await enforceMaxWitnesses(ctx, args.vaultId);
 
     const partnerShipId = await ctx.db.insert("accountability_partners", {
       vaultId: args.vaultId,
@@ -132,6 +152,8 @@ export const applyToWitness = mutation({
 
     if (existing) return existing._id;
 
+    await enforceMaxWitnesses(ctx, args.vaultId);
+
     const partnerShipId = await ctx.db.insert("accountability_partners", {
       vaultId: args.vaultId,
       goalId: goal._id,
@@ -171,6 +193,10 @@ export const acceptRequest = mutation({
             throw new Error("Authorization Breach: You cannot accept this request.");
         }
 
+        if (partnership.status !== "active") {
+          await enforceMaxWitnesses(ctx, partnership.vaultId);
+        }
+
         await ctx.db.patch(args.partnerShipId, {
             status: "active",
             partner_accepted: true
@@ -196,6 +222,8 @@ export const acceptApplication = mutation({
     }
 
     if (partnership.status !== "pending") return null;
+
+    await enforceMaxWitnesses(ctx, partnership.vaultId);
 
     await ctx.db.patch(args.partnerShipId, {
       status: "active",

@@ -822,17 +822,6 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
                     <Camera size={18} /> Execute Log
                 </button>
             )}
-            <Link
-                to="/community"
-                search={{ view: 'witnesses', vaultId: vault._id } as any}
-                className={`w-full py-6 rounded-2xl border transition-all text-center ${
-                  isFailed
-                    ? 'border-red-500/10 text-red-500/40 hover:text-red-500 hover:bg-red-500/5'
-                    : 'border-white/5 text-white/20 hover:text-white hover:bg-white/5'
-                }`}
-            >
-                Request Witness
-            </Link>
             <Link 
                 to="/vault/$id"
                 params={{ id: vault._id }}

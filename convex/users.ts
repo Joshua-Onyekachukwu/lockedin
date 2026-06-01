@@ -265,6 +265,59 @@ export const listDiscoverable = query({
   },
 });
 
+export const listWitnessPool = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(v.object({
+    _id: v.id("users"),
+    _creationTime: v.number(),
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    city: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    streak_count: v.number(),
+    goals_completed: v.number(),
+    integrityScore: v.number(),
+    is_discoverable: v.boolean(),
+    tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
+  })),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) return [];
+    const user = await ctx.db.get(userId);
+    if (!user || !user.emailVerificationTime) return [];
+
+    const limit = Math.max(1, Math.min(args.limit ?? 200, 500));
+
+    const candidates = await ctx.db
+      .query("users")
+      .filter((q) => q.neq(q.field("witness_discoverable"), false))
+      .take(2000);
+
+    const visible = candidates
+      .filter((u) => !!u.emailVerificationTime)
+      .slice(0, limit);
+
+    return await Promise.all(
+      visible.map(async (u) => {
+        const profileUrl = u.profileImageId ? await ctx.storage.getUrl(u.profileImageId) : null;
+        return {
+          _id: u._id,
+          _creationTime: u._creationTime,
+          name: u.name,
+          image: profileUrl ?? u.image,
+          city: u.city,
+          bio: u.bio,
+          streak_count: u.streak_count,
+          goals_completed: u.goals_completed,
+          integrityScore: u.integrityScore,
+          is_discoverable: u.is_discoverable,
+          tier: u.tier,
+        };
+      }),
+    );
+  },
+});
+
 export const getLeaderboard = query({
   args: {},
   returns: v.array(v.object({

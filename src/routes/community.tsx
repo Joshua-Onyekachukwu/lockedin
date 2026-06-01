@@ -56,7 +56,7 @@ function CommunityPage() {
   }, [authLoading, isAuthenticated, navigate, user]);
 
   const isVerified = !!(user as any)?.emailVerificationTime;
-  const discoverableUsersQuery = convexQuery(api.users.listDiscoverable, EMPTY_ARGS as any) as any;
+  const discoverableUsersQuery = convexQuery((api as any).users.listWitnessPool, EMPTY_ARGS as any) as any;
   const { data: discoverableUsers } = useQuery({
     ...discoverableUsersQuery,
     enabled: isAuthenticated && isVerified,
