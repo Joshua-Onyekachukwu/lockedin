@@ -135,6 +135,7 @@ function AdminDashboard() {
     ...waitlistQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
   } as any);
+  const deleteWaitlistEntry = useMutation((api as any).admin.deleteWaitlistEntry);
 
   const pendingWithdrawalsQuery = convexQuery(api.admin.getPendingWithdrawals, EMPTY_ARGS as any) as any;
   const { data: pendingWithdrawals }: { data: any } = useSuspenseQuery({
@@ -170,6 +171,7 @@ function AdminDashboard() {
   const recoverPaystackTransaction = useAction((api as any).admin.recoverPaystackTransaction);
   const paymentsExplorerLookup = useAction((api as any).admin.paymentsExplorerLookup);
   const [confirm, setConfirm] = useState<{ open: boolean; title: string; description?: string; tone?: 'primary' | 'danger'; confirmLabel: string; run: (() => Promise<void>) | null }>({ open: false, title: '', confirmLabel: '', run: null });
+  const [waitlistDetail, setWaitlistDetail] = useState<any>(null);
   const [seedOpen, setSeedOpen] = useState(false);
   const [seedDomain, setSeedDomain] = useState('protocol.io');
   const [seedLimit, setSeedLimit] = useState(20);
@@ -612,7 +614,7 @@ function AdminDashboard() {
                         <motion.div 
                             key="waitlist" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
                         >
-                            <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
+                            <div className="px-4 sm:px-10 py-6 sm:py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
                                 <div className="text-left font-black italic uppercase">
                                     <h3 className="text-lg text-white">Waitlist Protocol</h3>
                                     <p className="text-[10px] text-white/20 tracking-widest mt-1">Pending Citizens</p>
@@ -625,25 +627,37 @@ function AdminDashboard() {
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-white/10 border-b border-white/5">
-                                            <th className="px-10 py-6">Identity</th>
-                                            <th className="px-10 py-6">Anchored At</th>
-                                            <th className="px-10 py-6 text-right">Actions</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6">Identity</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6">Anchored At</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6 text-right">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {waitlist.map((entry: any) => (
                                             <tr key={entry._id} className="group hover:bg-white/[0.01] transition-colors border-b border-white/[0.02]">
-                                                <td className="px-10 py-6">
+                                                <td className="px-4 sm:px-10 py-4 sm:py-6">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="h-10 w-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-500 italic font-black border border-blue-500/10 shadow-xl text-xs">@</div>
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => setWaitlistDetail(entry)}
+                                                          className="h-10 w-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-500 italic font-black border border-blue-500/10 shadow-xl text-xs active:scale-95 transition-all"
+                                                        >
+                                                          @
+                                                        </button>
                                                         <span className="font-bold italic text-white text-sm">{entry.email}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-10 py-6 text-white/30 text-xs font-black italic uppercase">
+                                                <td className="px-4 sm:px-10 py-4 sm:py-6 text-white/30 text-xs font-black italic uppercase">
                                                     {new Date(entry._creationTime).toLocaleDateString()}
                                                 </td>
-                                                <td className="px-10 py-6 text-right">
-                                                    <button className="p-2 text-white/5 hover:text-white transition-all"><MoreVertical size={18} /></button>
+                                                <td className="px-4 sm:px-10 py-4 sm:py-6 text-right">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => setWaitlistDetail(entry)}
+                                                      className="p-2 text-white/30 hover:text-white transition-all active:scale-95"
+                                                    >
+                                                      <MoreVertical size={18} />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -1097,6 +1111,90 @@ function AdminDashboard() {
           setConfirm({ open: false, title: '', confirmLabel: '', run: null })
         }
       />
+
+      <AnimatePresence>
+        {waitlistDetail ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setWaitlistDetail(null)}
+              className="fixed inset-0 z-[90] bg-[#050810]/70 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+            >
+              <div className="w-full max-w-xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
+                <div className="p-6 sm:p-10 border-b border-white/10 flex items-start justify-between gap-6">
+                  <div className="text-left">
+                    <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
+                      Pending Citizen
+                    </p>
+                    <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed">
+                      {waitlistDetail.email}
+                    </p>
+                    <p className="text-[10px] text-white/20 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed">
+                      {waitlistDetail._creationTime
+                        ? new Date(waitlistDetail._creationTime).toLocaleString()
+                        : ''}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setWaitlistDetail(null)}
+                    className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="p-6 sm:p-10 flex flex-col sm:flex-row gap-4">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(waitlistDetail.email)
+                        toast.success('Copied to clipboard.', { title: 'Waitlist' })
+                      } catch {
+                        toast.error('Could not copy email.', { title: 'Waitlist' })
+                      }
+                    }}
+                    className="flex-1 px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all"
+                  >
+                    Copy Email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWaitlistDetail(null)
+                      setConfirm({
+                        open: true,
+                        title: 'Remove from waitlist?',
+                        description: `This will delete ${waitlistDetail.email} from the waitlist.`,
+                        tone: 'danger',
+                        confirmLabel: 'Remove',
+                        run: async () => {
+                          const res = await deleteWaitlistEntry({ waitlistId: waitlistDetail._id } as any)
+                          toast.success(res?.message || 'Removed.', { title: 'Waitlist' })
+                          await queryClient.invalidateQueries()
+                        },
+                      })
+                    }}
+                    className="flex-1 px-10 py-4 rounded-2xl bg-red-500 text-white font-black uppercase tracking-widest text-[10px] italic hover:bg-red-600 active:scale-95 transition-all"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {seedOpen ? (
@@ -1878,7 +1976,7 @@ function AdminDashboard() {
                           Total Revenue
                         </p>
                         <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
-                          ₦{((stats?.revenue ?? 0) / 100).toLocaleString()}
+                          ₦{formatCompact((stats?.revenue ?? 0) / 100)}
                         </p>
                       </div>
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
@@ -1886,7 +1984,7 @@ function AdminDashboard() {
                           Total Penalties
                         </p>
                         <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
-                          ₦{((stats?.totalPenaltiesCollected ?? 0) / 100).toLocaleString()}
+                          ₦{formatCompact((stats?.totalPenaltiesCollected ?? 0) / 100)}
                         </p>
                       </div>
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
@@ -1894,7 +1992,7 @@ function AdminDashboard() {
                           Distributed (30%)
                         </p>
                         <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
-                          ₦{((stats?.distributed ?? 0) / 100).toLocaleString()}
+                          ₦{formatCompact((stats?.distributed ?? 0) / 100)}
                         </p>
                       </div>
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
@@ -1902,7 +2000,7 @@ function AdminDashboard() {
                           Reward Pool Balance
                         </p>
                         <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
-                          ₦{((stats?.rewardPoolBalanceAllTime ?? 0) / 100).toLocaleString()}
+                          ₦{formatCompact((stats?.rewardPoolBalanceAllTime ?? 0) / 100)}
                         </p>
                       </div>
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
@@ -1910,7 +2008,7 @@ function AdminDashboard() {
                           Reward Pool (This Week)
                         </p>
                         <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
-                          ₦{((stats?.rewardPoolWeek ?? 0) / 100).toLocaleString()}
+                          ₦{formatCompact((stats?.rewardPoolWeek ?? 0) / 100)}
                         </p>
                       </div>
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
@@ -1918,7 +2016,7 @@ function AdminDashboard() {
                           Pool Contributed (All Time)
                         </p>
                         <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
-                          ₦{((stats?.totalRewardPoolContributed ?? 0) / 100).toLocaleString()}
+                          ₦{formatCompact((stats?.totalRewardPoolContributed ?? 0) / 100)}
                         </p>
                       </div>
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
@@ -1947,7 +2045,7 @@ function AdminDashboard() {
                           Total Staked
                         </p>
                         <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
-                          ₦{((stats?.totalStaked ?? 0) / 100).toLocaleString()}
+                          ₦{formatCompact((stats?.totalStaked ?? 0) / 100)}
                         </p>
                       </div>
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">

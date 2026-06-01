@@ -75,7 +75,8 @@ export default defineSchema({
     confirmed_by: v.optional(v.id("users")), // accountability partner ID
     confirmed_at: v.optional(v.number()),
   }).index("by_goal", ["goalId"])
-    .index("by_goal_and_date", ["goalId", "date"]),
+    .index("by_goal_and_date", ["goalId", "date"])
+    .index("by_confirmed_by", ["confirmed_by"]),
 
   accountability_partners: defineTable({
     goalId: v.id("goals"),
@@ -87,7 +88,8 @@ export default defineSchema({
     partner_accepted: v.boolean(),
   }).index("by_vault", ["vaultId"])
     .index("by_partner", ["partnerId"])
-    .index("by_partner_and_status", ["partnerId", "status"]),
+    .index("by_partner_and_status", ["partnerId", "status"])
+    .index("by_requester", ["requesterId"]),
 
   reward_pool: defineTable({
     week_number: v.number(),

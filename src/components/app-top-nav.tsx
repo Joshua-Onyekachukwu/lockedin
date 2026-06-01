@@ -155,8 +155,14 @@ export function AppTopNav({
 
   return (
     <>
-      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
-        <div className="flex items-center gap-4 text-left">
+      <nav
+        className={
+          variant === 'dashboard'
+            ? 'border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-4 sm:px-8 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sticky top-0 z-40 text-left shadow-lg'
+            : 'border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg'
+        }
+      >
+        <div className="flex items-center gap-4 text-left w-full sm:w-auto">
           {variant === 'dashboard' ? (
             <div className="relative group text-left">
               <div className="absolute inset-0 bg-blue-600 blur-md opacity-50 group-hover:opacity-100 transition-opacity" />
@@ -189,7 +195,7 @@ export function AppTopNav({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-8 text-left font-bold">
+        <div className="hidden sm:flex items-center gap-3 sm:gap-8 text-left font-bold">
           {contextLinks && contextLinks.length ? (
             <div className="hidden sm:flex items-center gap-6 text-sm font-black uppercase tracking-widest text-white/40 italic">
               {contextLinks.map((l) => (
@@ -206,20 +212,6 @@ export function AppTopNav({
           ) : null}
 
           <div className="h-6 w-px bg-white/10 hidden sm:block" />
-
-          {contextLinks && contextLinks.length ? (
-            <button
-              type="button"
-              onClick={() => {
-                setShowNotifications(false)
-                setShowProfileMenu(false)
-                setShowMobileMenu((v) => !v)
-              }}
-              className="sm:hidden p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/40 hover:text-white active:scale-95"
-            >
-              <Menu size={20} />
-            </button>
-          ) : null}
 
           <button
             type="button"
@@ -281,6 +273,79 @@ export function AppTopNav({
             />
           </button>
         </div>
+
+        {variant === 'dashboard' ? (
+          <div className="sm:hidden flex flex-col items-end gap-2 w-full">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMobileMenu(false)
+                  setShowProfileMenu(false)
+                  setShowNotifications((v) => !v)
+                }}
+                className="relative p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/40 hover:text-white active:scale-95"
+              >
+                <Bell size={20} />
+                {unreadCount > 0 ? (
+                  <span className="absolute top-0 right-0 h-4 w-4 bg-[#ff7a00] rounded-full border-4 border-[#050810] flex items-center justify-center shadow-lg" />
+                ) : null}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (onWalletClick) {
+                    onWalletClick()
+                    return
+                  }
+                  navigate({ to: '/dashboard' })
+                }}
+                className={`p-3 rounded-2xl transition-all active:scale-95 border ${
+                  walletActive
+                    ? 'bg-blue-600/10 border-blue-500 text-white shadow-xl shadow-blue-900/10'
+                    : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
+                }`}
+              >
+                <Wallet size={18} className={walletActive ? 'text-blue-500' : 'text-[#ff7a00]'} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowMobileMenu(false)
+                  setShowNotifications(false)
+                  setShowProfileMenu((v) => !v)
+                }}
+                className="flex items-center gap-2 rounded-full bg-white/5 border border-white/10 p-1.5 hover:bg-white/10 transition-all active:scale-95"
+              >
+                <span className="h-9 w-9 rounded-full bg-gradient-to-tr from-blue-600 to-[#ff7a00] p-0.5 shadow-lg">
+                  <span className="h-full w-full rounded-full bg-[#0a0f1a] flex items-center justify-center text-[10px] font-black uppercase overflow-hidden">
+                    {effectiveUser?.image ? (
+                      <img src={effectiveUser.image} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      effectiveUser?.name?.[0] || 'U'
+                    )}
+                  </span>
+                </span>
+              </button>
+            </div>
+
+            {contextLinks && contextLinks.length ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNotifications(false)
+                  setShowProfileMenu(false)
+                  setShowMobileMenu((v) => !v)
+                }}
+                className="p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/40 hover:text-white active:scale-95"
+              >
+                <Menu size={20} />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </nav>
 
       <AnimatePresence>

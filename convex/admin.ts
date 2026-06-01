@@ -1145,10 +1145,20 @@ export const seedDummyUserHistory = action({
     }
 
     const domain = args.domain ?? "protocol.io";
-    const userIds = (await ctx.runQuery(internal.seed.listUsersByEmailDomain, {
-      domain,
-      limit: args.limit,
-    })) as Array<Id<"users">>;
+    const limit = args.limit ?? 20;
+    const userIds: Array<Id<"users">> = [];
+    let cursor: string | null = null;
+    while (userIds.length < limit) {
+      const scan: any = await ctx.runQuery(internal.seed.scanUsersByEmailDomainPage, {
+        domain,
+        cursor: cursor ?? undefined,
+        numItems: 200,
+      });
+      userIds.push(...(scan.userIds as Array<Id<"users">>));
+      cursor = scan.continueCursor;
+      if (scan.isDone) break;
+    }
+    userIds.splice(limit);
 
     const goalsPerUser = args.goalsPerUser ?? 3;
     const logsPerGoal = args.logsPerGoal ?? 10;
@@ -1189,10 +1199,20 @@ export const populateExistingUserHistory = action({
     }
 
     const domain = args.domain ?? "protocol.io";
-    const userIds = (await ctx.runQuery(internal.seed.listUsersByEmailDomain, {
-      domain,
-      limit: args.limit,
-    })) as Array<Id<"users">>;
+    const limit = args.limit ?? 20;
+    const userIds: Array<Id<"users">> = [];
+    let cursor: string | null = null;
+    while (userIds.length < limit) {
+      const scan: any = await ctx.runQuery(internal.seed.scanUsersByEmailDomainPage, {
+        domain,
+        cursor: cursor ?? undefined,
+        numItems: 200,
+      });
+      userIds.push(...(scan.userIds as Array<Id<"users">>));
+      cursor = scan.continueCursor;
+      if (scan.isDone) break;
+    }
+    userIds.splice(limit);
 
     const logsPerGoal = args.logsPerGoal ?? 14;
 
@@ -1239,11 +1259,68 @@ export const purgeSeedDataByDomain: any = action({
 
     const domain = (args.domain ?? "protocol.io").trim();
     const dryRun = !!args.dryRun;
-    const result: any = await ctx.runMutation(internal.seed.purgeSeedDomain, {
+    const limit = args.limit ?? 200;
+
+    let cursor: string | null = null;
+    let done = false;
+    let remaining = limit;
+
+    const result: any = {
       domain,
-      limit: args.limit,
       dryRun,
-    });
+      usersDeleted: 0,
+      vaultsDeleted: 0,
+      goalsDeleted: 0,
+      goalLogsDeleted: 0,
+      partnersDeleted: 0,
+      transactionsDeleted: 0,
+      notificationsDeleted: 0,
+      depositsDeleted: 0,
+      withdrawalsDeleted: 0,
+      verificationTokensDeleted: 0,
+    };
+
+    while (!done && remaining > 0) {
+      const scan: any = await ctx.runQuery(internal.seed.scanUsersByEmailDomainPage, {
+        domain,
+        cursor: cursor ?? undefined,
+        numItems: 200,
+      });
+
+      cursor = scan.continueCursor;
+      done = scan.isDone;
+
+      if (dryRun) {
+        const takeCount = Math.min(remaining, scan.userIds.length);
+        result.usersDeleted += takeCount;
+        remaining -= takeCount;
+        continue;
+      }
+
+      let ids = scan.userIds;
+      while (ids.length > 0 && remaining > 0) {
+        const chunk = ids.slice(0, Math.min(5, remaining));
+        ids = ids.slice(chunk.length);
+
+        const res = await ctx.runMutation(internal.seed.purgeUsersAndLinkedDataBatch, {
+          userIds: chunk,
+          dryRun: false,
+        });
+
+        result.usersDeleted += res.usersDeleted;
+        result.vaultsDeleted += res.vaultsDeleted;
+        result.goalsDeleted += res.goalsDeleted;
+        result.goalLogsDeleted += res.goalLogsDeleted;
+        result.partnersDeleted += res.partnersDeleted;
+        result.transactionsDeleted += res.transactionsDeleted;
+        result.notificationsDeleted += res.notificationsDeleted;
+        result.depositsDeleted += res.depositsDeleted;
+        result.withdrawalsDeleted += res.withdrawalsDeleted;
+        result.verificationTokensDeleted += res.verificationTokensDeleted;
+
+        remaining -= res.usersDeleted;
+      }
+    }
 
     await ctx.runMutation(internal.admin.logAudit, {
       adminUserId: (adminStatus.user as any)._id as Id<"users">,
@@ -1286,6 +1363,28 @@ export const purgeSeedDataByDomain: any = action({
         : `Deleted ${result.usersDeleted} user(s) (and linked data) for @${domain}.`,
       result,
     };
+  },
+});
+
+export const deleteWaitlistEntry = mutation({
+  args: { waitlistId: v.id("waitlist") },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const admin = await checkAdmin(ctx);
+    const entry = await ctx.db.get(args.waitlistId);
+    if (!entry) return { success: false, message: "Waitlist entry not found." };
+
+    await ctx.db.delete(args.waitlistId);
+    await ctx.db.insert("admin_audit", {
+      adminUserId: admin._id,
+      action: "waitlist_remove",
+      message: `Removed ${entry.email} from waitlist.`,
+      targetType: "waitlist",
+      targetId: args.waitlistId,
+      metadata: { email: entry.email },
+    });
+
+    return { success: true, message: "Removed from waitlist." };
   },
 });
 

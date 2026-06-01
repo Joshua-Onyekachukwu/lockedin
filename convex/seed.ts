@@ -107,23 +107,41 @@ export const createSeedUser = internalMutation({
     }
 });
 
-export const listUsersByEmailDomain = internalQuery({
-    args: { domain: v.string(), limit: v.optional(v.number()) },
-    returns: v.array(v.id("users")),
+export const scanUsersByEmailDomainPage = internalQuery({
+    args: {
+        domain: v.string(),
+        cursor: v.optional(v.string()),
+        numItems: v.optional(v.number()),
+    },
+    returns: v.object({
+        userIds: v.array(v.id("users")),
+        continueCursor: v.union(v.null(), v.string()),
+        isDone: v.boolean(),
+        scanned: v.number(),
+    }),
     handler: async (ctx, args) => {
-        const users = await ctx.db.query("users").collect();
-        const filtered = users
-            .filter((u) => (u.email || "").toLowerCase().endsWith(`@${args.domain.toLowerCase()}`))
-            .slice(0, args.limit ?? users.length)
+        const domain = args.domain.toLowerCase();
+        const page = await ctx.db
+            .query("users")
+            .order("desc")
+            .paginate({ cursor: args.cursor ?? null, numItems: args.numItems ?? 200 });
+
+        const userIds = page.page
+            .filter((u) => (u.email || "").toLowerCase().endsWith(`@${domain}`))
             .map((u) => u._id);
-        return filtered;
+
+        return {
+            userIds,
+            continueCursor: page.continueCursor,
+            isDone: page.isDone,
+            scanned: page.page.length,
+        };
     },
 });
 
-export const purgeSeedDomain = internalMutation({
-    args: { domain: v.string(), limit: v.optional(v.number()), dryRun: v.optional(v.boolean()) },
+export const purgeUsersAndLinkedDataBatch = internalMutation({
+    args: { userIds: v.array(v.id("users")), dryRun: v.optional(v.boolean()) },
     returns: v.object({
-        domain: v.string(),
         dryRun: v.boolean(),
         usersDeleted: v.number(),
         vaultsDeleted: v.number(),
@@ -137,16 +155,7 @@ export const purgeSeedDomain = internalMutation({
         verificationTokensDeleted: v.number(),
     }),
     handler: async (ctx, args) => {
-        const domain = args.domain.toLowerCase();
         const dryRun = !!args.dryRun;
-
-        const users = await ctx.db.query("users").collect();
-        const userIds = users
-            .filter((u) => (u.email || "").toLowerCase().endsWith(`@${domain}`))
-            .slice(0, args.limit ?? users.length)
-            .map((u) => u._id);
-
-        const userIdSet = new Set(userIds.map((id) => id));
 
         let usersDeleted = 0;
         let vaultsDeleted = 0;
@@ -159,120 +168,150 @@ export const purgeSeedDomain = internalMutation({
         let withdrawalsDeleted = 0;
         let verificationTokensDeleted = 0;
 
-        if (userIds.length === 0) {
-            return {
-                domain: args.domain,
-                dryRun,
-                usersDeleted,
-                vaultsDeleted,
-                goalsDeleted,
-                goalLogsDeleted,
-                partnersDeleted,
-                transactionsDeleted,
-                notificationsDeleted,
-                depositsDeleted,
-                withdrawalsDeleted,
-                verificationTokensDeleted,
-            };
-        }
-
-        const allPartners = await ctx.db.query("accountability_partners").collect();
-        for (const p of allPartners) {
-            if (userIdSet.has(p.partnerId) || userIdSet.has(p.requesterId)) {
-                partnersDeleted += 1;
-                if (!dryRun) await ctx.db.delete(p._id);
-            }
-        }
-
-        const allLogs = await ctx.db.query("goal_logs").collect();
-        for (const l of allLogs) {
-            if (l.confirmed_by && userIdSet.has(l.confirmed_by)) {
-                if (!dryRun) await ctx.db.patch(l._id, { confirmed_by: undefined, confirmed_at: undefined });
-            }
-        }
-
-        for (const userId of userIds) {
-            const vaults = await ctx.db
-                .query("vaults")
-                .withIndex("by_user", (q) => q.eq("userId", userId))
-                .collect();
-
-            for (const vlt of vaults) {
-                const vaultPartners = await ctx.db
-                    .query("accountability_partners")
-                    .withIndex("by_vault", (q) => q.eq("vaultId", vlt._id))
-                    .collect();
-                for (const p of vaultPartners) {
-                    partnersDeleted += 1;
-                    if (!dryRun) await ctx.db.delete(p._id);
+        for (const userId of args.userIds) {
+            while (true) {
+                const logs = await ctx.db
+                    .query("goal_logs")
+                    .withIndex("by_confirmed_by", (q) => q.eq("confirmed_by", userId))
+                    .take(200);
+                if (logs.length === 0) break;
+                for (const l of logs) {
+                    if (!dryRun) await ctx.db.patch(l._id, { confirmed_by: undefined, confirmed_at: undefined });
                 }
+            }
 
-                const goals = await ctx.db
-                    .query("goals")
-                    .withIndex("by_vault", (q) => q.eq("vaultId", vlt._id))
-                    .collect();
+            while (true) {
+                const rows = await ctx.db
+                    .query("accountability_partners")
+                    .withIndex("by_partner", (q) => q.eq("partnerId", userId))
+                    .take(200);
+                if (rows.length === 0) break;
+                partnersDeleted += rows.length;
+                if (!dryRun) {
+                    for (const r of rows) await ctx.db.delete(r._id);
+                }
+            }
 
-                for (const g of goals) {
-                    const logs = await ctx.db
-                        .query("goal_logs")
-                        .withIndex("by_goal", (q) => q.eq("goalId", g._id))
-                        .collect();
-                    for (const lg of logs) {
-                        goalLogsDeleted += 1;
-                        if (!dryRun) await ctx.db.delete(lg._id);
+            while (true) {
+                const rows = await ctx.db
+                    .query("accountability_partners")
+                    .withIndex("by_requester", (q) => q.eq("requesterId", userId))
+                    .take(200);
+                if (rows.length === 0) break;
+                partnersDeleted += rows.length;
+                if (!dryRun) {
+                    for (const r of rows) await ctx.db.delete(r._id);
+                }
+            }
+
+            while (true) {
+                const vaults = await ctx.db
+                    .query("vaults")
+                    .withIndex("by_user", (q) => q.eq("userId", userId))
+                    .take(10);
+                if (vaults.length === 0) break;
+
+                for (const vlt of vaults) {
+                    while (true) {
+                        const rows = await ctx.db
+                            .query("accountability_partners")
+                            .withIndex("by_vault", (q) => q.eq("vaultId", vlt._id))
+                            .take(200);
+                        if (rows.length === 0) break;
+                        partnersDeleted += rows.length;
+                        if (!dryRun) {
+                            for (const r of rows) await ctx.db.delete(r._id);
+                        }
                     }
 
-                    goalsDeleted += 1;
-                    if (!dryRun) await ctx.db.delete(g._id);
+                    while (true) {
+                        const goals = await ctx.db
+                            .query("goals")
+                            .withIndex("by_vault", (q) => q.eq("vaultId", vlt._id))
+                            .take(20);
+                        if (goals.length === 0) break;
+
+                        for (const g of goals) {
+                            while (true) {
+                                const logs = await ctx.db
+                                    .query("goal_logs")
+                                    .withIndex("by_goal", (q) => q.eq("goalId", g._id))
+                                    .take(200);
+                                if (logs.length === 0) break;
+                                goalLogsDeleted += logs.length;
+                                if (!dryRun) {
+                                    for (const lg of logs) await ctx.db.delete(lg._id);
+                                }
+                            }
+
+                            goalsDeleted += 1;
+                            if (!dryRun) await ctx.db.delete(g._id);
+                        }
+                    }
+
+                    vaultsDeleted += 1;
+                    if (!dryRun) await ctx.db.delete(vlt._id);
                 }
-
-                vaultsDeleted += 1;
-                if (!dryRun) await ctx.db.delete(vlt._id);
             }
 
-            const transactions = await ctx.db
-                .query("transactions")
-                .withIndex("by_user", (q) => q.eq("userId", userId))
-                .collect();
-            for (const t of transactions) {
-                transactionsDeleted += 1;
-                if (!dryRun) await ctx.db.delete(t._id);
+            while (true) {
+                const rows = await ctx.db
+                    .query("transactions")
+                    .withIndex("by_user", (q) => q.eq("userId", userId))
+                    .take(200);
+                if (rows.length === 0) break;
+                transactionsDeleted += rows.length;
+                if (!dryRun) {
+                    for (const r of rows) await ctx.db.delete(r._id);
+                }
             }
 
-            const notifications = await ctx.db
-                .query("notifications")
-                .withIndex("by_user", (q) => q.eq("userId", userId))
-                .collect();
-            for (const n of notifications) {
-                notificationsDeleted += 1;
-                if (!dryRun) await ctx.db.delete(n._id);
+            while (true) {
+                const rows = await ctx.db
+                    .query("notifications")
+                    .withIndex("by_user", (q) => q.eq("userId", userId))
+                    .take(200);
+                if (rows.length === 0) break;
+                notificationsDeleted += rows.length;
+                if (!dryRun) {
+                    for (const r of rows) await ctx.db.delete(r._id);
+                }
             }
 
-            const deposits = await ctx.db
-                .query("deposits")
-                .withIndex("by_user", (q) => q.eq("userId", userId))
-                .collect();
-            for (const d of deposits) {
-                depositsDeleted += 1;
-                if (!dryRun) await ctx.db.delete(d._id);
+            while (true) {
+                const rows = await ctx.db
+                    .query("deposits")
+                    .withIndex("by_user", (q) => q.eq("userId", userId))
+                    .take(200);
+                if (rows.length === 0) break;
+                depositsDeleted += rows.length;
+                if (!dryRun) {
+                    for (const r of rows) await ctx.db.delete(r._id);
+                }
             }
 
-            const withdrawals = await ctx.db
-                .query("withdrawals")
-                .withIndex("by_user", (q) => q.eq("userId", userId))
-                .collect();
-            for (const w of withdrawals) {
-                withdrawalsDeleted += 1;
-                if (!dryRun) await ctx.db.delete(w._id);
+            while (true) {
+                const rows = await ctx.db
+                    .query("withdrawals")
+                    .withIndex("by_user", (q) => q.eq("userId", userId))
+                    .take(200);
+                if (rows.length === 0) break;
+                withdrawalsDeleted += rows.length;
+                if (!dryRun) {
+                    for (const r of rows) await ctx.db.delete(r._id);
+                }
             }
 
-            const tokens = await ctx.db
-                .query("email_verification_tokens")
-                .withIndex("by_user", (q) => q.eq("userId", userId))
-                .collect();
-            for (const tok of tokens) {
-                verificationTokensDeleted += 1;
-                if (!dryRun) await ctx.db.delete(tok._id);
+            while (true) {
+                const rows = await ctx.db
+                    .query("email_verification_tokens")
+                    .withIndex("by_user", (q) => q.eq("userId", userId))
+                    .take(200);
+                if (rows.length === 0) break;
+                verificationTokensDeleted += rows.length;
+                if (!dryRun) {
+                    for (const r of rows) await ctx.db.delete(r._id);
+                }
             }
 
             usersDeleted += 1;
@@ -280,7 +319,6 @@ export const purgeSeedDomain = internalMutation({
         }
 
         return {
-            domain: args.domain,
             dryRun,
             usersDeleted,
             vaultsDeleted,
