@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ChevronDown,
   LogOut,
+  Menu,
   Target,
   User,
   Users,
@@ -125,6 +126,7 @@ export function AppTopNav({
 
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [activeNotification, setActiveNotification] = useState<any>(null)
 
   useEffect(() => {
@@ -139,6 +141,7 @@ export function AppTopNav({
   const closeAll = () => {
     setShowNotifications(false)
     setShowProfileMenu(false)
+    setShowMobileMenu(false)
   }
 
   const openNotification = async (n: any) => {
@@ -177,7 +180,7 @@ export function AppTopNav({
             </button>
           )}
           <div className="flex flex-col text-left">
-            <span className="font-black tracking-tight text-lg leading-none text-white uppercase italic">
+            <span className="font-black tracking-tight text-base sm:text-lg leading-none text-white uppercase italic">
               {title}
             </span>
             <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] mt-1 font-black italic">
@@ -204,9 +207,24 @@ export function AppTopNav({
 
           <div className="h-6 w-px bg-white/10 hidden sm:block" />
 
+          {contextLinks && contextLinks.length ? (
+            <button
+              type="button"
+              onClick={() => {
+                setShowNotifications(false)
+                setShowProfileMenu(false)
+                setShowMobileMenu((v) => !v)
+              }}
+              className="sm:hidden p-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/40 hover:text-white active:scale-95"
+            >
+              <Menu size={20} />
+            </button>
+          ) : null}
+
           <button
             type="button"
             onClick={() => {
+              setShowMobileMenu(false)
               setShowProfileMenu(false)
               setShowNotifications((v) => !v)
             }}
@@ -242,6 +260,7 @@ export function AppTopNav({
           <button
             type="button"
             onClick={() => {
+              setShowMobileMenu(false)
               setShowNotifications(false)
               setShowProfileMenu((v) => !v)
             }}
@@ -265,6 +284,62 @@ export function AppTopNav({
       </nav>
 
       <AnimatePresence>
+        {showMobileMenu ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileMenu(false)}
+              className="fixed inset-0 z-40 bg-[#050810]/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="fixed top-[84px] left-4 right-4 z-50 rounded-[2.5rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
+            >
+              <div className="p-5 border-b border-white/10 flex items-center justify-between gap-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/40">
+                  Navigation
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileMenu(false)}
+                  className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-4 space-y-2">
+                {(contextLinks ?? []).map((l) => (
+                  <Link
+                    key={l.to}
+                    to={l.to as any}
+                    onClick={() => closeAll()}
+                    className="w-full p-4 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:bg-white/[0.05] transition-all text-left flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="h-10 w-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50">
+                        {l.icon ? l.icon : <Users size={16} />}
+                      </span>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest italic text-white">
+                          {l.label}
+                        </p>
+                        <p className="text-[9px] text-white/30 uppercase tracking-widest mt-1 italic font-black">
+                          Open {l.label.toLowerCase()}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronDown size={14} className="text-white/20 -rotate-90" />
+                  </Link>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+
         {showProfileMenu ? (
           <>
             <motion.div

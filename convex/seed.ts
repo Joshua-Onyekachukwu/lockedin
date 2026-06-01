@@ -120,6 +120,182 @@ export const listUsersByEmailDomain = internalQuery({
     },
 });
 
+export const purgeSeedDomain = internalMutation({
+    args: { domain: v.string(), limit: v.optional(v.number()), dryRun: v.optional(v.boolean()) },
+    returns: v.object({
+        domain: v.string(),
+        dryRun: v.boolean(),
+        usersDeleted: v.number(),
+        vaultsDeleted: v.number(),
+        goalsDeleted: v.number(),
+        goalLogsDeleted: v.number(),
+        partnersDeleted: v.number(),
+        transactionsDeleted: v.number(),
+        notificationsDeleted: v.number(),
+        depositsDeleted: v.number(),
+        withdrawalsDeleted: v.number(),
+        verificationTokensDeleted: v.number(),
+    }),
+    handler: async (ctx, args) => {
+        const domain = args.domain.toLowerCase();
+        const dryRun = !!args.dryRun;
+
+        const users = await ctx.db.query("users").collect();
+        const userIds = users
+            .filter((u) => (u.email || "").toLowerCase().endsWith(`@${domain}`))
+            .slice(0, args.limit ?? users.length)
+            .map((u) => u._id);
+
+        const userIdSet = new Set(userIds.map((id) => id));
+
+        let usersDeleted = 0;
+        let vaultsDeleted = 0;
+        let goalsDeleted = 0;
+        let goalLogsDeleted = 0;
+        let partnersDeleted = 0;
+        let transactionsDeleted = 0;
+        let notificationsDeleted = 0;
+        let depositsDeleted = 0;
+        let withdrawalsDeleted = 0;
+        let verificationTokensDeleted = 0;
+
+        if (userIds.length === 0) {
+            return {
+                domain: args.domain,
+                dryRun,
+                usersDeleted,
+                vaultsDeleted,
+                goalsDeleted,
+                goalLogsDeleted,
+                partnersDeleted,
+                transactionsDeleted,
+                notificationsDeleted,
+                depositsDeleted,
+                withdrawalsDeleted,
+                verificationTokensDeleted,
+            };
+        }
+
+        const allPartners = await ctx.db.query("accountability_partners").collect();
+        for (const p of allPartners) {
+            if (userIdSet.has(p.partnerId) || userIdSet.has(p.requesterId)) {
+                partnersDeleted += 1;
+                if (!dryRun) await ctx.db.delete(p._id);
+            }
+        }
+
+        const allLogs = await ctx.db.query("goal_logs").collect();
+        for (const l of allLogs) {
+            if (l.confirmed_by && userIdSet.has(l.confirmed_by)) {
+                if (!dryRun) await ctx.db.patch(l._id, { confirmed_by: undefined, confirmed_at: undefined });
+            }
+        }
+
+        for (const userId of userIds) {
+            const vaults = await ctx.db
+                .query("vaults")
+                .withIndex("by_user", (q) => q.eq("userId", userId))
+                .collect();
+
+            for (const vlt of vaults) {
+                const vaultPartners = await ctx.db
+                    .query("accountability_partners")
+                    .withIndex("by_vault", (q) => q.eq("vaultId", vlt._id))
+                    .collect();
+                for (const p of vaultPartners) {
+                    partnersDeleted += 1;
+                    if (!dryRun) await ctx.db.delete(p._id);
+                }
+
+                const goals = await ctx.db
+                    .query("goals")
+                    .withIndex("by_vault", (q) => q.eq("vaultId", vlt._id))
+                    .collect();
+
+                for (const g of goals) {
+                    const logs = await ctx.db
+                        .query("goal_logs")
+                        .withIndex("by_goal", (q) => q.eq("goalId", g._id))
+                        .collect();
+                    for (const lg of logs) {
+                        goalLogsDeleted += 1;
+                        if (!dryRun) await ctx.db.delete(lg._id);
+                    }
+
+                    goalsDeleted += 1;
+                    if (!dryRun) await ctx.db.delete(g._id);
+                }
+
+                vaultsDeleted += 1;
+                if (!dryRun) await ctx.db.delete(vlt._id);
+            }
+
+            const transactions = await ctx.db
+                .query("transactions")
+                .withIndex("by_user", (q) => q.eq("userId", userId))
+                .collect();
+            for (const t of transactions) {
+                transactionsDeleted += 1;
+                if (!dryRun) await ctx.db.delete(t._id);
+            }
+
+            const notifications = await ctx.db
+                .query("notifications")
+                .withIndex("by_user", (q) => q.eq("userId", userId))
+                .collect();
+            for (const n of notifications) {
+                notificationsDeleted += 1;
+                if (!dryRun) await ctx.db.delete(n._id);
+            }
+
+            const deposits = await ctx.db
+                .query("deposits")
+                .withIndex("by_user", (q) => q.eq("userId", userId))
+                .collect();
+            for (const d of deposits) {
+                depositsDeleted += 1;
+                if (!dryRun) await ctx.db.delete(d._id);
+            }
+
+            const withdrawals = await ctx.db
+                .query("withdrawals")
+                .withIndex("by_user", (q) => q.eq("userId", userId))
+                .collect();
+            for (const w of withdrawals) {
+                withdrawalsDeleted += 1;
+                if (!dryRun) await ctx.db.delete(w._id);
+            }
+
+            const tokens = await ctx.db
+                .query("email_verification_tokens")
+                .withIndex("by_user", (q) => q.eq("userId", userId))
+                .collect();
+            for (const tok of tokens) {
+                verificationTokensDeleted += 1;
+                if (!dryRun) await ctx.db.delete(tok._id);
+            }
+
+            usersDeleted += 1;
+            if (!dryRun) await ctx.db.delete(userId);
+        }
+
+        return {
+            domain: args.domain,
+            dryRun,
+            usersDeleted,
+            vaultsDeleted,
+            goalsDeleted,
+            goalLogsDeleted,
+            partnersDeleted,
+            transactionsDeleted,
+            notificationsDeleted,
+            depositsDeleted,
+            withdrawalsDeleted,
+            verificationTokensDeleted,
+        };
+    },
+});
+
 export const seedHistoryForUser = internalMutation({
     args: {
         userId: v.id("users"),

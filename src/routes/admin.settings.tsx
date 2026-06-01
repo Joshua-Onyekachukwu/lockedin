@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
-import { useConvexAuth, useMutation } from 'convex/react'
+import { useAction, useConvexAuth, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { ConfirmModal } from '~/components/confirm-modal'
+import { useToast } from '~/components/toast'
 
 const EMPTY_ARGS: Record<string, never> = {}
 
@@ -16,6 +18,7 @@ function AdminSettings() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const toast = useToast()
 
   const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any
   const { data: user, isFetching: userFetching }: { data: any; isFetching: boolean } = useSuspenseQuery({
@@ -30,6 +33,22 @@ function AdminSettings() {
   const [verifyEmail, setVerifyEmail] = useState('')
   const [verifyRunning, setVerifyRunning] = useState(false)
   const [verifyFeedback, setVerifyFeedback] = useState<null | { tone: 'success' | 'error'; message: string }>(null)
+
+  const recomputeSystemAccounting = useMutation((api as any).admin.recomputeSystemAccounting)
+  const [recomputeRunning, setRecomputeRunning] = useState(false)
+
+  const purgeSeedDataByDomain = useAction((api as any).admin.purgeSeedDataByDomain)
+  const [purgeDomain, setPurgeDomain] = useState('protocol.io')
+  const [purgeLimit, setPurgeLimit] = useState('200')
+  const [purgeRunning, setPurgeRunning] = useState(false)
+  const [confirm, setConfirm] = useState<{
+    open: boolean
+    title: string
+    description?: string
+    tone?: 'primary' | 'danger'
+    confirmLabel: string
+    run: (() => Promise<void>) | null
+  }>({ open: false, title: '', confirmLabel: '', run: null })
 
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, EMPTY_ARGS as any) as any
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
@@ -124,6 +143,19 @@ function AdminSettings() {
 
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500">
+      <ConfirmModal
+        open={confirm.open}
+        title={confirm.title}
+        description={confirm.description}
+        tone={confirm.tone}
+        confirmLabel={confirm.confirmLabel}
+        onClose={() => setConfirm({ open: false, title: '', confirmLabel: '', run: null })}
+        onConfirm={async () => {
+          if (!confirm.run) return
+          await confirm.run()
+        }}
+      />
+
       <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
         <div className="flex items-center gap-4 text-left">
           <Link
@@ -200,6 +232,46 @@ function AdminSettings() {
 
         <div className="mt-8 rounded-[2.5rem] sm:rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-6 sm:p-10 shadow-2xl text-left">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
+            Accounting Tools
+          </p>
+          <p className="mt-4 text-[10px] text-white/40 font-black uppercase tracking-[0.28em] italic leading-relaxed">
+            If Protocol Revenue/Pool totals look wrong (e.g. older test data), recompute accounting from existing penalty and pool records.
+          </p>
+          <div className="mt-6 flex flex-col sm:flex-row gap-4">
+            <button
+              type="button"
+              disabled={recomputeRunning}
+              onClick={() =>
+                setConfirm({
+                  open: true,
+                  title: 'Recompute system accounting?',
+                  description:
+                    'This will recalculate revenue (70%), reward pool contributions (30%), and distributions from recorded data.',
+                  tone: 'primary',
+                  confirmLabel: 'Recompute',
+                  run: async () => {
+                    setRecomputeRunning(true)
+                    try {
+                      const res = await recomputeSystemAccounting({})
+                      toast.success(res?.message ?? 'Accounting recomputed.')
+                      await queryClient.invalidateQueries()
+                    } catch (e: any) {
+                      toast.error(e?.message ?? 'Recompute failed.')
+                    } finally {
+                      setRecomputeRunning(false)
+                    }
+                  },
+                })
+              }
+              className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {recomputeRunning ? 'RECOMPUTING...' : 'RECOMPUTE ACCOUNTING'}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-[2.5rem] sm:rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-6 sm:p-10 shadow-2xl text-left">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
             Testing Tools
           </p>
           <p className="mt-4 text-[10px] text-white/40 font-black uppercase tracking-[0.28em] italic leading-relaxed">
@@ -250,6 +322,88 @@ function AdminSettings() {
               {verifyFeedback.message}
             </div>
           ) : null}
+        </div>
+
+        <div className="mt-8 rounded-[2.5rem] sm:rounded-[3rem] border border-red-500/20 bg-red-500/5 backdrop-blur-3xl p-6 sm:p-10 shadow-2xl text-left">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-300 italic">
+            Danger Zone
+          </p>
+          <p className="mt-4 text-[10px] text-red-200/70 font-black uppercase tracking-[0.28em] italic leading-relaxed">
+            Purge seeded dummy users and all linked records for an email domain (e.g. protocol.io). Use dry run first.
+          </p>
+
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input
+              value={purgeDomain}
+              onChange={(e) => setPurgeDomain(e.target.value)}
+              placeholder="DOMAIN (e.g. protocol.io)"
+              className="bg-white/[0.02] border border-red-500/20 rounded-2xl px-6 py-4 text-xs font-black italic uppercase tracking-widest text-white/70 outline-none focus:border-red-400"
+            />
+            <input
+              value={purgeLimit}
+              onChange={(e) => setPurgeLimit(e.target.value)}
+              placeholder="LIMIT (e.g. 200)"
+              className="bg-white/[0.02] border border-red-500/20 rounded-2xl px-6 py-4 text-xs font-black italic uppercase tracking-widest text-white/70 outline-none focus:border-red-400"
+            />
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled={purgeRunning || !purgeDomain.trim()}
+                onClick={async () => {
+                  setPurgeRunning(true)
+                  try {
+                    const limit = purgeLimit.trim() ? Number(purgeLimit) : undefined
+                    const res = await purgeSeedDataByDomain({
+                      domain: purgeDomain.trim(),
+                      limit: Number.isFinite(limit) ? limit : undefined,
+                      dryRun: true,
+                    } as any)
+                    toast.info(res?.message ?? 'Dry run completed.')
+                  } catch (e: any) {
+                    toast.error(e?.message ?? 'Dry run failed.')
+                  } finally {
+                    setPurgeRunning(false)
+                  }
+                }}
+                className="flex-1 px-6 py-4 rounded-2xl bg-white/10 border border-red-500/30 text-red-200 font-black uppercase tracking-widest text-[10px] italic hover:bg-white/15 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {purgeRunning ? 'RUNNING...' : 'DRY RUN'}
+              </button>
+              <button
+                type="button"
+                disabled={purgeRunning || !purgeDomain.trim()}
+                onClick={() =>
+                  setConfirm({
+                    open: true,
+                    title: 'Purge seeded data?',
+                    description: `This will delete seeded users and linked data for @${purgeDomain.trim()}. This cannot be undone.`,
+                    tone: 'danger',
+                    confirmLabel: 'Purge',
+                    run: async () => {
+                      setPurgeRunning(true)
+                      try {
+                        const limit = purgeLimit.trim() ? Number(purgeLimit) : undefined
+                        const res = await purgeSeedDataByDomain({
+                          domain: purgeDomain.trim(),
+                          limit: Number.isFinite(limit) ? limit : undefined,
+                          dryRun: false,
+                        } as any)
+                        toast.success(res?.message ?? 'Purge complete.')
+                        await queryClient.invalidateQueries()
+                      } catch (e: any) {
+                        toast.error(e?.message ?? 'Purge failed.')
+                      } finally {
+                        setPurgeRunning(false)
+                      }
+                    },
+                  })
+                }
+                className="flex-1 px-6 py-4 rounded-2xl bg-red-500 text-white font-black uppercase tracking-widest text-[10px] italic hover:bg-red-600 active:scale-95 transition-all disabled:opacity-50"
+              >
+                Purge
+              </button>
+            </div>
+          </div>
         </div>
       </main>
     </div>

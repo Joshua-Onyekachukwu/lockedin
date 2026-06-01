@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useMutation, useAction, useConvexAuth } from 'convex/react';
@@ -33,6 +33,8 @@ export const Route = createFileRoute('/admin')({
 });
 
 function AdminWrapper() {
+    const pathname = useRouterState({ select: (s) => s.location.pathname });
+    if (pathname !== "/admin") return <Outlet />;
     return (
         <ErrorBoundary>
             <Suspense fallback={<AdminLoading />}>
@@ -1881,10 +1883,42 @@ function AdminDashboard() {
                       </div>
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
                         <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                          Distributed
+                          Total Penalties
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          ₦{((stats?.totalPenaltiesCollected ?? 0) / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Distributed (30%)
                         </p>
                         <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
                           ₦{((stats?.distributed ?? 0) / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Reward Pool Balance
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          ₦{((stats?.rewardPoolBalanceAllTime ?? 0) / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Reward Pool (This Week)
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          ₦{((stats?.rewardPoolWeek ?? 0) / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Pool Contributed (All Time)
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          ₦{((stats?.totalRewardPoolContributed ?? 0) / 100).toLocaleString()}
                         </p>
                       </div>
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">

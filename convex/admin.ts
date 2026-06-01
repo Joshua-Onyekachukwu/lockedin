@@ -110,6 +110,44 @@ export const logAudit = internalMutation({
   },
 });
 
+export const logSystemAudit = internalMutation({
+  args: { action: v.string(), message: v.string(), metadata: v.optional(v.any()) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("system_audit", {
+      action: args.action,
+      message: args.message,
+      metadata: args.metadata,
+      createdAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const insertSeedRun = internalMutation({
+  args: {
+    domain: v.string(),
+    startedAt: v.number(),
+    dryRun: v.boolean(),
+    requestedLimit: v.optional(v.number()),
+    usersDeleted: v.number(),
+    vaultsDeleted: v.number(),
+    goalsDeleted: v.number(),
+    goalLogsDeleted: v.number(),
+    partnersDeleted: v.number(),
+    transactionsDeleted: v.number(),
+    notificationsDeleted: v.number(),
+    depositsDeleted: v.number(),
+    withdrawalsDeleted: v.number(),
+    verificationTokensDeleted: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await ctx.db.insert("seed_runs", args);
+    return null;
+  },
+});
+
 export const findUserByEmail = internalQuery({
   args: { email: v.string() },
   returns: v.union(v.null(), v.any()),
@@ -967,6 +1005,20 @@ export const getSystemStats = query({
     await checkAdmin(ctx);
 
     const stats = await ctx.db.query("system_stats").unique();
+    const weekNumber = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
+    const weekPenaltyEntries = await ctx.db
+      .query("reward_pool")
+      .withIndex("by_week_and_type", (q) => q.eq("week_number", weekNumber).eq("type", "penalty"))
+      .collect();
+    const weekDistributionEntries = await ctx.db
+      .query("reward_pool")
+      .withIndex("by_week_and_type", (q) =>
+        q.eq("week_number", weekNumber).eq("type", "distribution"),
+      )
+      .collect();
+    const rewardPoolWeek =
+      weekPenaltyEntries.reduce((sum, e) => sum + e.amount, 0) +
+      weekDistributionEntries.reduce((sum, e) => sum + e.amount, 0);
     const users = await ctx.db.query("users").order("desc").take(5000);
     const totalUsers = users.length;
     const verifiedUsers = users.filter((u) => !!u.emailVerificationTime).length;
@@ -978,9 +1030,16 @@ export const getSystemStats = query({
       .take(5000);
     const totalStaked = activeVaults.reduce((sum, v) => sum + v.amount, 0);
 
+    const totalRewardPoolContributed = stats?.total_reward_pool_contributed || 0;
+    const totalDistributed = stats?.total_distributed || 0;
+
     return {
       revenue: stats?.total_revenue || 0,
-      distributed: stats?.total_distributed || 0,
+      distributed: totalDistributed,
+      totalPenaltiesCollected: stats?.total_penalties_collected || 0,
+      totalRewardPoolContributed,
+      rewardPoolBalanceAllTime: totalRewardPoolContributed - totalDistributed,
+      rewardPoolWeek,
       totalUsers,
       verifiedUsers,
       unverifiedUsers,
@@ -990,6 +1049,73 @@ export const getSystemStats = query({
     };
   }
 });
+
+export const recomputeSystemAccounting = mutation({
+  args: {},
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    totals: v.any(),
+  }),
+  handler: async (ctx) => {
+    await checkAdmin(ctx);
+
+    const penaltyTxs = await ctx.db
+      .query("transactions")
+      .withIndex("by_type", (q) => q.eq("type", "penalty"))
+      .collect();
+
+    let totalPenaltiesCollected = 0;
+    let totalRevenue = 0;
+    let totalRewardPoolContributed = 0;
+
+    for (const t of penaltyTxs) {
+      const penalty = Math.max(0, -t.amount);
+      if (!penalty) continue;
+      totalPenaltiesCollected += penalty;
+      const platformShare = Math.floor(penalty * 0.7);
+      const rewardShare = penalty - platformShare;
+      totalRevenue += platformShare;
+      totalRewardPoolContributed += rewardShare;
+    }
+
+    const rewardPoolEntries = await ctx.db.query("reward_pool").collect();
+    const totalDistributed = rewardPoolEntries
+      .filter((e) => e.type === "distribution" && e.amount < 0)
+      .reduce((sum, e) => sum + -e.amount, 0);
+
+    const stats = await ctx.db.query("system_stats").unique();
+    const statsId =
+      stats?._id ??
+      (await ctx.db.insert("system_stats", {
+        total_revenue: 0,
+        total_distributed: 0,
+        active_users: 0,
+        total_penalties_collected: 0,
+        total_reward_pool_contributed: 0,
+      }));
+
+    await ctx.db.patch(statsId, {
+      total_revenue: totalRevenue,
+      total_distributed: totalDistributed,
+      total_penalties_collected: totalPenaltiesCollected,
+      total_reward_pool_contributed: totalRewardPoolContributed,
+    });
+
+    return {
+      success: true,
+      message: "System accounting recomputed.",
+      totals: {
+        totalPenaltiesCollected,
+        totalRevenue,
+        totalRewardPoolContributed,
+        totalDistributed,
+        rewardPoolBalanceAllTime: totalRewardPoolContributed - totalDistributed,
+      },
+    };
+  },
+});
+
 
 export const listRecentTransactionsForUser = internalQuery({
   args: { userId: v.id("users"), limit: v.optional(v.number()) },
@@ -1094,6 +1220,71 @@ export const populateExistingUserHistory = action({
     return {
       success: true,
       message: `Populated existing protocols: ${totalInserted} new log(s) added, ${totalSkipped} already present.`,
+    };
+  },
+});
+
+export const purgeSeedDataByDomain: any = action({
+  args: { domain: v.optional(v.string()), limit: v.optional(v.number()), dryRun: v.optional(v.boolean()) },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    result: v.optional(v.any()),
+  }),
+  handler: async (ctx, args): Promise<any> => {
+    const adminStatus = await ctx.runQuery(api.admin.checkAdminStatus, {});
+    if (!adminStatus?.isAdmin || !adminStatus?.user) {
+      throw new Error("SECURITY ALERT: Administrative privileges required.");
+    }
+
+    const domain = (args.domain ?? "protocol.io").trim();
+    const dryRun = !!args.dryRun;
+    const result: any = await ctx.runMutation(internal.seed.purgeSeedDomain, {
+      domain,
+      limit: args.limit,
+      dryRun,
+    });
+
+    await ctx.runMutation(internal.admin.logAudit, {
+      adminUserId: (adminStatus.user as any)._id as Id<"users">,
+      action: "purge_seed_data",
+      message: dryRun
+        ? `Dry-run purge completed for @${domain}.`
+        : `Purged seeded users/data for @${domain}.`,
+      metadata: result,
+    });
+
+    await ctx.runMutation(internal.admin.logSystemAudit, {
+      action: "purge_seed_data",
+      message: dryRun
+        ? `Dry-run purge completed for @${domain}.`
+        : `Purged seeded users/data for @${domain}.`,
+      metadata: result,
+    });
+
+    await ctx.runMutation(internal.admin.insertSeedRun, {
+      domain,
+      startedAt: Date.now(),
+      dryRun,
+      requestedLimit: args.limit,
+      usersDeleted: result.usersDeleted,
+      vaultsDeleted: result.vaultsDeleted,
+      goalsDeleted: result.goalsDeleted,
+      goalLogsDeleted: result.goalLogsDeleted,
+      partnersDeleted: result.partnersDeleted,
+      transactionsDeleted: result.transactionsDeleted,
+      notificationsDeleted: result.notificationsDeleted,
+      depositsDeleted: result.depositsDeleted,
+      withdrawalsDeleted: result.withdrawalsDeleted,
+      verificationTokensDeleted: result.verificationTokensDeleted,
+    });
+
+    return {
+      success: true,
+      message: dryRun
+        ? `Dry run complete. Found ${result.usersDeleted} user(s) to delete for @${domain}.`
+        : `Deleted ${result.usersDeleted} user(s) (and linked data) for @${domain}.`,
+      result,
     };
   },
 });

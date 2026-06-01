@@ -134,12 +134,16 @@ export default defineSchema({
       multiplier: v.optional(v.number()),
       reward_type: v.optional(v.string()),
     })),
-  }).index("by_user", ["userId"]),
+  }).index("by_user", ["userId"])
+    .index("by_type", ["type"])
+    .index("by_type_and_status", ["type", "status"]),
 
   system_stats: defineTable({
     total_revenue: v.number(), // Total fees collected (Kobo)
     total_distributed: v.number(), // Total rewards shared (Kobo)
     active_users: v.number(),
+    total_penalties_collected: v.optional(v.number()),
+    total_reward_pool_contributed: v.optional(v.number()),
   }),
 
   waitlist: defineTable({
@@ -252,6 +256,24 @@ export default defineSchema({
     targetId: v.optional(v.string()),
     metadata: v.optional(v.any()),
   }).index("by_admin", ["adminUserId"]),
+
+  seed_runs: defineTable({
+    domain: v.string(),
+    startedAt: v.number(),
+    dryRun: v.boolean(),
+    requestedLimit: v.optional(v.number()),
+    usersDeleted: v.number(),
+    vaultsDeleted: v.number(),
+    goalsDeleted: v.number(),
+    goalLogsDeleted: v.number(),
+    partnersDeleted: v.number(),
+    transactionsDeleted: v.number(),
+    notificationsDeleted: v.number(),
+    depositsDeleted: v.number(),
+    withdrawalsDeleted: v.number(),
+    verificationTokensDeleted: v.number(),
+  }).index("by_domain", ["domain"])
+    .index("by_started_at", ["startedAt"]),
 
   system_audit: defineTable({
     action: v.string(),

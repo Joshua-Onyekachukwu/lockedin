@@ -55,6 +55,20 @@ export const distributeWeeklyRewards = internalMutation({
             type: "distribution"
         });
 
+        const stats = await ctx.db.query("system_stats").unique();
+        const statsId =
+          stats?._id ??
+          (await ctx.db.insert("system_stats", {
+            total_revenue: 0,
+            total_distributed: 0,
+            active_users: 0,
+            total_penalties_collected: 0,
+            total_reward_pool_contributed: 0,
+          }));
+        await ctx.db.patch(statsId, {
+          total_distributed: (stats?.total_distributed || 0) + totalPool,
+        });
+
         return null;
     }
 });

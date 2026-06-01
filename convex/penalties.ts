@@ -114,11 +114,27 @@ async function applyPain(ctx: any, vault: any, goal: any) {
         const rewardShare = penaltyAmount - platformShare;
 
         const stats = await ctx.db.query("system_stats").unique();
-        if (stats) {
-            await ctx.db.patch(stats._id, {
-                total_revenue: (stats.total_revenue || 0) + platformShare
-            });
-        }
+        const statsId =
+          stats?._id ??
+          (await ctx.db.insert("system_stats", {
+            total_revenue: 0,
+            total_distributed: 0,
+            active_users: 0,
+            total_penalties_collected: 0,
+            total_reward_pool_contributed: 0,
+          }));
+        const current = stats ?? {
+          total_revenue: 0,
+          total_distributed: 0,
+          active_users: 0,
+          total_penalties_collected: 0,
+          total_reward_pool_contributed: 0,
+        };
+        await ctx.db.patch(statsId, {
+          total_revenue: (current.total_revenue || 0) + platformShare,
+          total_penalties_collected: (current.total_penalties_collected || 0) + penaltyAmount,
+          total_reward_pool_contributed: (current.total_reward_pool_contributed || 0) + rewardShare,
+        });
 
         // Fund the Sunday Liquidation pool
         const weekNumber = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
