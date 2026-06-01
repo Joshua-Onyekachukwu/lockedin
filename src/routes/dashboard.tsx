@@ -413,6 +413,13 @@ function DashboardContent({ user }: { user: any }) {
                                 <span className="text-[9px] font-black uppercase tracking-widest text-white/10 italic">Secure Synchronized History</span>
                             </div>
 
+                            <div className="mb-8 p-6 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
+                                <AlertCircle className="text-blue-500 mt-1" size={18} />
+                                <p className="text-[10px] text-blue-500 leading-relaxed font-bold italic tracking-tight uppercase">
+                                    Paystack fees are charged by Paystack and are non-refundable. If a deposit is refunded or reversed, the amount returned may be less than what was deposited.
+                                </p>
+                            </div>
+
                             <div className="space-y-4">
                                 {(transactions as any[]).length === 0 ? (
                                     <div className="py-24 text-center">

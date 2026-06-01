@@ -130,19 +130,84 @@ export const getUserByIdUnsafe = internalQuery({
   },
 });
 
+export const listWithdrawalsByUser = internalQuery({
+  args: { userId: v.id("users"), limit: v.optional(v.number()) },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+    return await ctx.db
+      .query("withdrawals")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .take(limit);
+  },
+});
+
+export const getWithdrawalByPaystackReference = internalQuery({
+  args: { reference: v.string() },
+  returns: v.union(v.null(), v.any()),
+  handler: async (ctx, args) => {
+    return (
+      (await ctx.db
+        .query("withdrawals")
+        .withIndex("by_paystack_reference", (q) => q.eq("paystack_reference", args.reference))
+        .unique()) ?? null
+    );
+  },
+});
+
+export const findWithdrawalByIdentifiers = internalQuery({
+  args: { query: v.string() },
+  returns: v.union(v.null(), v.any()),
+  handler: async (ctx, args) => {
+    const q = args.query.trim();
+    if (!q) return null;
+    const transferId = /^[0-9]+$/.test(q) ? Number(q) : NaN;
+
+    const byReference = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_paystack_reference", (qq) => qq.eq("paystack_reference", q))
+      .unique();
+    if (byReference) return byReference;
+
+    const rows = await ctx.db.query("withdrawals").order("desc").take(2000);
+    return (
+      rows.find((w: any) => w?.paystack_transfer_code === q) ??
+      rows.find((w: any) => typeof transferId === "number" && !Number.isNaN(transferId) && w?.paystack_transfer_id === transferId) ??
+      null
+    );
+  },
+});
+
 export const getAuditLog = query({
   args: { limit: v.optional(v.number()) },
   returns: v.array(v.any()),
   handler: async (ctx, args) => {
     await checkAdmin(ctx);
     const limit = args.limit ?? 100;
-    const rows = await ctx.db.query("admin_audit").order("desc").take(limit);
-    const results = [];
-    for (const row of rows) {
+    const adminRows = await ctx.db.query("admin_audit").order("desc").take(limit);
+    const systemRows = await ctx.db
+      .query("system_audit")
+      .withIndex("by_created_at", (q) => q.gt("createdAt", 0))
+      .order("desc")
+      .take(limit);
+
+    const adminResults = [];
+    for (const row of adminRows) {
       const admin = await ctx.db.get(row.adminUserId);
-      results.push({ ...row, admin });
+      adminResults.push({ ...row, kind: "admin", admin });
     }
-    return results;
+
+    const systemResults = systemRows.map((row) => ({
+      ...row,
+      kind: "system",
+      _creationTime: row._creationTime,
+      admin: null,
+    }));
+
+    return [...adminResults, ...systemResults]
+      .sort((a: any, b: any) => (b._creationTime ?? 0) - (a._creationTime ?? 0))
+      .slice(0, limit);
   },
 });
 
@@ -500,7 +565,15 @@ export const handlePaystackTransferSuccess = internalMutation({
       .withIndex("by_paystack_reference", (q) => q.eq("paystack_reference", args.reference))
       .unique();
 
-    if (!withdrawal) return { ok: true, message: "No matching withdrawal." };
+    if (!withdrawal) {
+      await ctx.db.insert("system_audit", {
+        action: "paystack_transfer_unmatched",
+        message: `Paystack transfer.success received but no matching withdrawal found. reference=${args.reference}`,
+        metadata: { kind: "transfer.success", ...args },
+        createdAt: Date.now(),
+      });
+      return { ok: true, message: "No matching withdrawal." };
+    }
     if (withdrawal.status === "completed") return { ok: true, message: "Already completed." };
 
     await ctx.db.patch(withdrawal._id, {
@@ -547,7 +620,15 @@ export const handlePaystackTransferFailed = internalMutation({
       .withIndex("by_paystack_reference", (q) => q.eq("paystack_reference", args.reference))
       .unique();
 
-    if (!withdrawal) return { ok: true, message: "No matching withdrawal." };
+    if (!withdrawal) {
+      await ctx.db.insert("system_audit", {
+        action: "paystack_transfer_unmatched",
+        message: `Paystack transfer.failed received but no matching withdrawal found. reference=${args.reference}`,
+        metadata: { kind: "transfer.failed", ...args },
+        createdAt: Date.now(),
+      });
+      return { ok: true, message: "No matching withdrawal." };
+    }
     if (withdrawal.status === "completed") return { ok: true, message: "Already completed." };
 
     const user = await ctx.db.get(withdrawal.userId);
@@ -752,7 +833,7 @@ export const paymentsExplorerLookup = action({
   returns: v.object({
     success: v.boolean(),
     message: v.string(),
-    mode: v.union(v.literal("reference"), v.literal("email")),
+    mode: v.union(v.literal("reference"), v.literal("email"), v.literal("payout")),
     query: v.string(),
     paystackOk: v.optional(v.boolean()),
     paystackMessage: v.optional(v.string()),
@@ -764,6 +845,8 @@ export const paymentsExplorerLookup = action({
     recentTransactions: v.optional(v.array(v.any())),
     reconciliationsByEmail: v.optional(v.array(v.any())),
     unmatchedByEmail: v.optional(v.array(v.any())),
+    withdrawal: v.optional(v.any()),
+    withdrawalsByEmail: v.optional(v.array(v.any())),
   }),
   handler: async (ctx, args): Promise<any> => {
     const adminStatus = await ctx.runQuery(api.admin.checkAdminStatus, {});
@@ -790,6 +873,9 @@ export const paymentsExplorerLookup = action({
         customerEmail: q,
         limit: 50,
       })) as any[];
+      const withdrawalsByEmail = user
+        ? await ctx.runQuery(internal.admin.listWithdrawalsByUser, { userId: user._id, limit: 50 })
+        : [];
 
       const recentTransactions: any[] = user
         ? await ctx.runQuery(internal.admin.listRecentTransactionsForUser, { userId: user._id, limit: 25 })
@@ -804,7 +890,29 @@ export const paymentsExplorerLookup = action({
         recentTransactions,
         reconciliationsByEmail,
         unmatchedByEmail,
+        withdrawalsByEmail,
       };
+    }
+
+    const transferCodeMatch = /^TRF_[a-zA-Z0-9]+$/.test(q);
+    const numericMaybe = /^[0-9]+$/.test(q);
+    if (transferCodeMatch || numericMaybe || q.startsWith("ext_")) {
+      const withdrawal = await ctx.runQuery(internal.admin.findWithdrawalByIdentifiers, { query: q });
+      if (withdrawal) {
+        const user = await ctx.runQuery(internal.admin.getUserByIdUnsafe, { userId: withdrawal.userId });
+        const recentTransactions: any[] = user
+          ? await ctx.runQuery(internal.admin.listRecentTransactionsForUser, { userId: (user as any)._id, limit: 25 })
+          : [];
+        return {
+          success: true,
+          message: "Withdrawal located.",
+          mode: "payout",
+          query: q,
+          withdrawal,
+          user: user ?? undefined,
+          recentTransactions,
+        };
+      }
     }
 
     const paystackRes = await verifyPaystackTransaction(q);
@@ -815,6 +923,7 @@ export const paymentsExplorerLookup = action({
     });
     const unmatched: any = await ctx.runQuery(internal.payments.getPaystackUnmatchedByReference, { reference: q });
     const deposit: any = await ctx.runQuery(internal.payments.getDepositByReference, { reference: q });
+    const withdrawalByReference = await ctx.runQuery(internal.admin.getWithdrawalByPaystackReference, { reference: q });
 
     let creditedUserId: Id<"users"> | undefined = (reconciliation as any)?.creditedUserId;
     if (!creditedUserId) creditedUserId = (deposit as any)?.userId;
@@ -844,6 +953,7 @@ export const paymentsExplorerLookup = action({
       reconciliation: reconciliation ?? undefined,
       unmatched: unmatched ?? undefined,
       deposit: deposit ?? undefined,
+      withdrawal: withdrawalByReference ?? undefined,
       user: user ?? undefined,
       recentTransactions,
     };

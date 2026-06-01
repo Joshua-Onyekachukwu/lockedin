@@ -252,4 +252,11 @@ export default defineSchema({
     targetId: v.optional(v.string()),
     metadata: v.optional(v.any()),
   }).index("by_admin", ["adminUserId"]),
+
+  system_audit: defineTable({
+    action: v.string(),
+    message: v.string(),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  }).index("by_created_at", ["createdAt"]),
 });

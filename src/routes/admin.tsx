@@ -637,34 +637,56 @@ function AdminDashboard() {
                             <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
                                 <div className="text-left font-black italic uppercase">
                                     <h3 className="text-lg text-white flex items-center gap-3"><ScrollText size={18} className="text-white/40" /> Audit Log</h3>
-                                    <p className="text-[10px] text-white/20 tracking-widest mt-1">Administrative actions</p>
+                                    <p className="text-[10px] text-white/20 tracking-widest mt-1">Administrative and system events</p>
                                 </div>
                             </div>
                             <div className="p-10 space-y-4">
                               {(auditLog as any[])?.length ? (
-                                (auditLog as any[]).map((row: any) => (
-                                  <Link
-                                    key={row._id}
-                                    to="/admin/audit/$auditId"
-                                    params={{ auditId: row._id }}
-                                    className="block p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left hover:bg-white/[0.04] hover:border-white/20 transition-all active:scale-[0.99]"
-                                  >
-                                    <div className="flex items-center justify-between gap-6">
-                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/20">
-                                        {row.action}
+                                (auditLog as any[]).map((row: any) =>
+                                  row.kind === 'admin' ? (
+                                    <Link
+                                      key={row._id}
+                                      to="/admin/audit/$auditId"
+                                      params={{ auditId: row._id }}
+                                      className="block p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left hover:bg-white/[0.04] hover:border-white/20 transition-all active:scale-[0.99]"
+                                    >
+                                      <div className="flex items-center justify-between gap-6">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/20">
+                                          {row.action}
+                                        </p>
+                                        <p className="text-[9px] font-black uppercase tracking-[0.3em] italic text-white/10">
+                                          {row._creationTime ? new Date(row._creationTime).toLocaleString() : ''}
+                                        </p>
+                                      </div>
+                                      <p className="mt-4 text-xs text-white/40 italic font-medium leading-relaxed">
+                                        {row.message}
                                       </p>
-                                      <p className="text-[9px] font-black uppercase tracking-[0.3em] italic text-white/10">
-                                        {row._creationTime ? new Date(row._creationTime).toLocaleString() : ''}
+                                      <p className="mt-4 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                                        {row.admin?.email || 'admin'}
+                                      </p>
+                                    </Link>
+                                  ) : (
+                                    <div
+                                      key={row._id}
+                                      className="block p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left"
+                                    >
+                                      <div className="flex items-center justify-between gap-6">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/20">
+                                          {row.action}
+                                        </p>
+                                        <p className="text-[9px] font-black uppercase tracking-[0.3em] italic text-white/10">
+                                          {row._creationTime ? new Date(row._creationTime).toLocaleString() : ''}
+                                        </p>
+                                      </div>
+                                      <p className="mt-4 text-xs text-white/40 italic font-medium leading-relaxed">
+                                        {row.message}
+                                      </p>
+                                      <p className="mt-4 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                                        system
                                       </p>
                                     </div>
-                                    <p className="mt-4 text-xs text-white/40 italic font-medium leading-relaxed">
-                                      {row.message}
-                                    </p>
-                                    <p className="mt-4 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                                      {row.admin?.email || 'admin'}
-                                    </p>
-                                  </Link>
-                                ))
+                                  ),
+                                )
                               ) : (
                                 <div className="text-center py-20 text-white/20 font-black italic uppercase tracking-widest">
                                   No audit records.
@@ -1449,7 +1471,7 @@ function AdminDashboard() {
                       Payments Explorer
                     </p>
                     <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed">
-                      Search by Paystack reference or customer email to inspect verification, reconciliation, and ledger state.
+                      Search by Paystack reference, customer email, or payout identifiers (transfer code / transfer ID / transfer reference).
                     </p>
                   </div>
                   <button
@@ -1511,7 +1533,70 @@ function AdminDashboard() {
 
                   {paymentsExplorerResult ? (
                     <div className="space-y-4">
-                      {paymentsExplorerResult.mode === 'reference' ? (
+                      {paymentsExplorerResult.mode === 'payout' ? (
+                        <>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">Payout</p>
+                              <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                                {paymentsExplorerResult.withdrawal?.status || 'unknown'}
+                              </p>
+                              <p className="mt-3 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black break-all">
+                                {paymentsExplorerResult.withdrawal?.paystack_reference || ''}
+                              </p>
+                            </div>
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">Amount</p>
+                              <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                                ₦{(((paymentsExplorerResult.withdrawal?.amount ?? 0) as number) / 100).toLocaleString()}
+                              </p>
+                              <p className="mt-3 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black">
+                                {paymentsExplorerResult.withdrawal?.bank_details?.bank_name || ''}
+                              </p>
+                            </div>
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">Transfer</p>
+                              <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg break-all">
+                                {paymentsExplorerResult.withdrawal?.paystack_transfer_code || '—'}
+                              </p>
+                              <p className="mt-3 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black">
+                                {paymentsExplorerResult.withdrawal?.paystack_transfer_id
+                                  ? String(paymentsExplorerResult.withdrawal?.paystack_transfer_id)
+                                  : ''}
+                              </p>
+                            </div>
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">Linked User</p>
+                              <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg break-all">
+                                {paymentsExplorerResult.user?.email || 'unknown'}
+                              </p>
+                              <p className="mt-3 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black">
+                                {paymentsExplorerResult.withdrawal?.paystack_status || ''}
+                              </p>
+                            </div>
+                          </div>
+
+                          {Array.isArray(paymentsExplorerResult.recentTransactions) ? (
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                                Recent Ledger Activity
+                              </p>
+                              <div className="mt-4 space-y-2">
+                                {paymentsExplorerResult.recentTransactions.slice(0, 8).map((t: any) => (
+                                  <div key={t._id} className="flex items-center justify-between gap-6">
+                                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic">
+                                      {t.type} • {t.status}
+                                    </p>
+                                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic">
+                                      ₦{((t.amount ?? 0) / 100).toLocaleString()}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </>
+                      ) : paymentsExplorerResult.mode === 'reference' ? (
                         <>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left">
@@ -1655,6 +1740,37 @@ function AdminDashboard() {
                               {(paymentsExplorerResult.unmatchedByEmail?.length ?? 0).toLocaleString()}
                             </p>
                           </div>
+                          {Array.isArray(paymentsExplorerResult.withdrawalsByEmail) ? (
+                            <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left md:col-span-2">
+                              <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                                Recent Withdrawals
+                              </p>
+                              <div className="mt-4 space-y-2">
+                                {(paymentsExplorerResult.withdrawalsByEmail ?? []).slice(0, 6).map((w: any) => (
+                                  <button
+                                    key={w._id}
+                                    type="button"
+                                    onClick={() =>
+                                      setPaymentsExplorerQuery(
+                                        w.paystack_reference || w.paystack_transfer_code || String(w.paystack_transfer_id || ''),
+                                      )
+                                    }
+                                    className="w-full text-left p-4 rounded-2xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] transition-all"
+                                  >
+                                    <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic break-all">
+                                      ₦{(((w.amount ?? 0) as number) / 100).toLocaleString()} • {w.status} •{' '}
+                                      {w.paystack_reference || w.paystack_transfer_code || ''}
+                                    </p>
+                                  </button>
+                                ))}
+                                {(paymentsExplorerResult.withdrawalsByEmail ?? []).length === 0 ? (
+                                  <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                                    None.
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          ) : null}
                           <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 text-left md:col-span-2">
                             <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
                               Unmatched References
