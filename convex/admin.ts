@@ -6,7 +6,7 @@ import type { Id } from "./_generated/dataModel";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 
-const ADMIN_EMAILS = (() => {
+function getAdminEmailAllowlist() {
   const env = (process.env.ADMIN_EMAIL_ALLOWLIST || "").trim();
   if (!env) return [];
 
@@ -30,7 +30,7 @@ const ADMIN_EMAILS = (() => {
     .split(",")
     .map((e) => normalize(e))
     .filter(Boolean);
-})();
+}
 
 async function verifyPaystackTransaction(reference: string) {
   if (!PAYSTACK_SECRET) {
@@ -77,7 +77,8 @@ async function checkAdmin(ctx: any) {
         throw new Error("Email verification required.");
     }
     
-    const isEmailAdmin = user.email && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
+    const allowlist = getAdminEmailAllowlist();
+    const isEmailAdmin = user.email && allowlist.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
     const isDbAdmin = user.isAdmin === true;
     
     if (!isDbAdmin && !isEmailAdmin) {
@@ -449,15 +450,138 @@ export const getOverview = query({
  */
 export const checkAdminStatus = query({
     args: {},
-    returns: v.object({ isAdmin: v.boolean(), user: v.optional(v.any()) }),
+    returns: v.object({
+      isAdmin: v.boolean(),
+      user: v.optional(v.any()),
+      reason: v.optional(v.string()),
+      debug: v.optional(
+        v.object({
+          email: v.optional(v.string()),
+          isVerified: v.boolean(),
+          isDbAdmin: v.boolean(),
+          isAllowlistAdmin: v.boolean(),
+        }),
+      ),
+    }),
     handler: async (ctx) => {
         try {
             const user = await checkAdmin(ctx);
             return { isAdmin: true, user };
         } catch (e) {
-            return { isAdmin: false };
+            const userId = await auth.getUserId(ctx);
+            const user = userId ? await ctx.db.get(userId) : null;
+            const allowlist = getAdminEmailAllowlist();
+            const email = (user?.email as string | undefined) ?? undefined;
+            const isAllowlistAdmin =
+              !!email && allowlist.map((x) => x.toLowerCase()).includes(email.toLowerCase());
+            const isDbAdmin = user?.isAdmin === true;
+            const isVerified = !!user?.emailVerificationTime;
+            const reason = e instanceof Error ? e.message : String(e);
+            return {
+              isAdmin: false,
+              reason,
+              debug: { email, isVerified, isDbAdmin, isAllowlistAdmin },
+            };
         }
     }
+});
+
+export const handlePaystackTransferSuccess = internalMutation({
+  args: {
+    reference: v.string(),
+    transferCode: v.optional(v.string()),
+    transferId: v.optional(v.number()),
+    metadata: v.optional(v.any()),
+  },
+  returns: v.object({ ok: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const withdrawal = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_paystack_reference", (q) => q.eq("paystack_reference", args.reference))
+      .unique();
+
+    if (!withdrawal) return { ok: true, message: "No matching withdrawal." };
+    if (withdrawal.status === "completed") return { ok: true, message: "Already completed." };
+
+    await ctx.db.patch(withdrawal._id, {
+      status: "completed",
+      processed_at: Date.now(),
+      paystack_status: "success",
+      paystack_transfer_code: args.transferCode ?? withdrawal.paystack_transfer_code,
+      paystack_transfer_id: args.transferId ?? withdrawal.paystack_transfer_id,
+      metadata: args.metadata,
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: withdrawal.userId,
+      title: "Extraction Protocol Complete",
+      message: `Your capital of ₦${(withdrawal.amount / 100).toLocaleString()} has been dispersed to your bank account.`,
+      type: "verification_needed",
+      read: false,
+    });
+
+    const tx = await ctx.db
+      .query("transactions")
+      .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
+      .filter((q) => q.and(q.eq(q.field("amount"), -withdrawal.amount), q.eq(q.field("status"), "pending")))
+      .first();
+
+    if (tx) {
+      await ctx.db.patch(tx._id, { status: "completed" });
+    }
+
+    return { ok: true, message: "Withdrawal completed." };
+  },
+});
+
+export const handlePaystackTransferFailed = internalMutation({
+  args: {
+    reference: v.string(),
+    reason: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  },
+  returns: v.object({ ok: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const withdrawal = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_paystack_reference", (q) => q.eq("paystack_reference", args.reference))
+      .unique();
+
+    if (!withdrawal) return { ok: true, message: "No matching withdrawal." };
+    if (withdrawal.status === "completed") return { ok: true, message: "Already completed." };
+
+    const user = await ctx.db.get(withdrawal.userId);
+    if (user) {
+      await ctx.db.patch(user._id, { balance: (user.balance || 0) + withdrawal.amount });
+    }
+
+    await ctx.db.patch(withdrawal._id, {
+      status: "failed",
+      processed_at: Date.now(),
+      paystack_status: "failed",
+      metadata: { reason: args.reason, ...(args.metadata ?? {}) },
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: withdrawal.userId,
+      title: "Extraction Failed",
+      message: `Your extraction could not be completed. ₦${(withdrawal.amount / 100).toLocaleString()} has been returned to your wallet.`,
+      type: "wallet_withdrawal",
+      read: false,
+    });
+
+    const tx = await ctx.db
+      .query("transactions")
+      .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
+      .filter((q) => q.and(q.eq(q.field("amount"), -withdrawal.amount), q.eq(q.field("status"), "pending")))
+      .first();
+
+    if (tx) {
+      await ctx.db.patch(tx._id, { status: "failed" });
+    }
+
+    return { ok: true, message: "Withdrawal failed; escrow released." };
+  },
 });
 
 export const previewPaystackTransaction = action({
@@ -892,10 +1016,15 @@ export const getPendingWithdrawals = query({
   returns: v.array(v.any()),
   handler: async (ctx) => {
     await checkAdmin(ctx);
-    const withdrawals = await ctx.db
+    const pending = await ctx.db
       .query("withdrawals")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .take(1000);
+    const processing = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_status", (q) => q.eq("status", "processing"))
+      .take(1000);
+    const withdrawals = [...pending, ...processing];
 
     const results = [];
     for (const w of withdrawals) {
@@ -966,6 +1095,7 @@ export const approveWithdrawal = action({
         const recipientCode = recipientData.data.recipient_code;
 
         // 4. Initiate Transfer
+        const reference = `ext_${args.withdrawalId.slice(0, 8)}_${Date.now()}`;
         const transferRes = await fetch("https://api.paystack.co/transfer", {
             method: "POST",
             headers: {
@@ -977,32 +1107,38 @@ export const approveWithdrawal = action({
                 amount: amount, // amount is already in kobo
                 recipient: recipientCode,
                 reason: "Lockedin Extraction",
-                reference: `EXT-${args.withdrawalId.slice(0, 8)}-${Date.now()}`,
+                reference,
             }),
         });
 
         const transferData = await transferRes.json();
         if (!transferData.status) throw new Error(transferData.message);
 
-        // 5. Update Record via Mutation
-        await ctx.runMutation(internal.admin.finalizeWithdrawal, {
-            withdrawalId: args.withdrawalId,
-            status: "completed",
-            processedAt: Date.now()
-        });
-
         await ctx.runMutation(internal.admin.logAudit, {
           adminUserId: (adminStatus.user as any)._id as Id<"users">,
           action: "approve_withdrawal",
-          message: `Withdrawal approved and transfer initiated. Amount: ₦${(amount / 100).toLocaleString()}.`,
+          message: `Withdrawal approved and transfer queued. Amount: ₦${(amount / 100).toLocaleString()}.`,
           targetType: "withdrawal",
           targetId: args.withdrawalId,
-          metadata: { amount },
+          metadata: { amount, reference, recipientCode, transferData: transferData?.data },
         });
 
-        return { success: true, message: "Capital extraction protocol executed successfully." };
+        await ctx.runMutation(internal.admin.updateWithdrawalPaystackMeta, {
+          withdrawalId: args.withdrawalId,
+          reference,
+          transferCode: transferData?.data?.transfer_code,
+          transferId: transferData?.data?.id,
+          paystackStatus: transferData?.data?.status,
+          metadata: transferData?.data,
+        });
+
+        return { success: true, message: "Capital extraction queued. Awaiting Paystack confirmation." };
 
     } catch (err: any) {
+        await ctx.runMutation(internal.admin.updateWithdrawalPaystackFailure, {
+          withdrawalId: args.withdrawalId,
+          reason: err?.message || "Unknown error",
+        });
         await ctx.runMutation(internal.admin.logAudit, {
           adminUserId: (adminStatus.user as any)._id as Id<"users">,
           action: "approve_withdrawal_failed",
@@ -1013,6 +1149,86 @@ export const approveWithdrawal = action({
         });
         return { success: false, message: `Disbursement Failed: ${err.message}` };
     }
+  },
+});
+
+export const updateWithdrawalPaystackMeta = internalMutation({
+  args: {
+    withdrawalId: v.id("withdrawals"),
+    reference: v.string(),
+    transferCode: v.optional(v.string()),
+    transferId: v.optional(v.number()),
+    paystackStatus: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const withdrawal = await ctx.db.get(args.withdrawalId);
+    if (!withdrawal) return null;
+
+    await ctx.db.patch(args.withdrawalId, {
+      status: "processing",
+      paystack_reference: args.reference,
+      paystack_transfer_code: args.transferCode,
+      paystack_transfer_id: args.transferId,
+      paystack_status: args.paystackStatus,
+      metadata: args.metadata,
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: withdrawal.userId,
+      title: "Extraction Processing",
+      message: "Your extraction has been approved and is being processed by Paystack.",
+      type: "wallet_withdrawal",
+      read: false,
+    });
+
+    return null;
+  },
+});
+
+export const updateWithdrawalPaystackFailure = internalMutation({
+  args: {
+    withdrawalId: v.id("withdrawals"),
+    reason: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const withdrawal = await ctx.db.get(args.withdrawalId);
+    if (!withdrawal) return null;
+    if (withdrawal.status === "completed") return null;
+
+    const user = await ctx.db.get(withdrawal.userId);
+    if (user) {
+      await ctx.db.patch(user._id, { balance: (user.balance || 0) + withdrawal.amount });
+    }
+
+    await ctx.db.patch(args.withdrawalId, {
+      status: "failed",
+      processed_at: Date.now(),
+      paystack_status: "failed",
+      metadata: { reason: args.reason },
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: withdrawal.userId,
+      title: "Extraction Failed",
+      message: `Your extraction could not be completed. ₦${(withdrawal.amount / 100).toLocaleString()} has been returned to your wallet.`,
+      type: "wallet_withdrawal",
+      read: false,
+    });
+
+    const tx = await ctx.db
+      .query("transactions")
+      .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
+      .filter((q) => q.and(q.eq(q.field("amount"), -withdrawal.amount), q.eq(q.field("status"), "pending")))
+      .first();
+
+    if (tx) {
+      await ctx.db.patch(tx._id, { status: "failed" });
+    }
+
+    return null;
   },
 });
 
@@ -1032,26 +1248,24 @@ export const finalizeWithdrawal = internalMutation({
             processed_at: args.processedAt,
         });
 
-        await ctx.db.insert("notifications", {
-            userId: withdrawal.userId,
-            title: "Extraction Protocol Complete",
-            message: `Your capital of ₦${(withdrawal.amount / 100).toLocaleString()} has been dispersed to your bank account.`,
-            type: "verification_needed",
-            read: false,
-        });
+        if (args.status === "completed") {
+            await ctx.db.insert("notifications", {
+                userId: withdrawal.userId,
+                title: "Extraction Protocol Complete",
+                message: `Your capital of ₦${(withdrawal.amount / 100).toLocaleString()} has been dispersed to your bank account.`,
+                type: "verification_needed",
+                read: false,
+            });
 
-        // Update transaction status
-        const tx = await ctx.db
-          .query("transactions")
-          .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
-          .filter((q) => q.and(
-              q.eq(q.field("amount"), -withdrawal.amount),
-              q.eq(q.field("status"), "pending")
-          ))
-          .first();
-        
-        if (tx) {
-            await ctx.db.patch(tx._id, { status: "completed" });
+            const tx = await ctx.db
+              .query("transactions")
+              .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
+              .filter((q) => q.and(q.eq(q.field("amount"), -withdrawal.amount), q.eq(q.field("status"), "pending")))
+              .first();
+            
+            if (tx) {
+                await ctx.db.patch(tx._id, { status: "completed" });
+            }
         }
 
         return null;

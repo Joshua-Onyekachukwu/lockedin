@@ -145,6 +145,58 @@ http.route({
           }
         }
 
+        if (event.event === "refund.failed") {
+          const reference =
+            (event?.data?.transaction?.reference as string | undefined) ||
+            (event?.data?.reference as string | undefined);
+          const refundId = event?.data?.id as string | number | undefined;
+          const amountKobo =
+            (event?.data?.amount as number | undefined) ||
+            (event?.data?.transaction?.amount as number | undefined);
+          const customerEmail =
+            (event?.data?.customer?.email as string | undefined) ||
+            (event?.data?.transaction?.customer?.email as string | undefined);
+
+          if (reference) {
+            await ctx.runMutation(internal.payments.recordPaystackRefundFailed, {
+              refundId,
+              reference,
+              amountKobo,
+              customerEmail,
+              metadata: event.data,
+            });
+          }
+        }
+
+        if (event.event === "transfer.success") {
+          const reference = event?.data?.reference as string | undefined;
+          const transferCode = event?.data?.transfer_code as string | undefined;
+          const transferId = event?.data?.id as number | undefined;
+          if (reference) {
+            await ctx.runMutation(internal.admin.handlePaystackTransferSuccess, {
+              reference,
+              transferCode,
+              transferId,
+              metadata: event.data,
+            });
+          }
+        }
+
+        if (event.event === "transfer.failed" || event.event === "transfer.reversed") {
+          const reference = event?.data?.reference as string | undefined;
+          const reason =
+            (event?.data?.reason as string | undefined) ||
+            (event?.data?.failures as string | undefined) ||
+            (event?.data?.message as string | undefined);
+          if (reference) {
+            await ctx.runMutation(internal.admin.handlePaystackTransferFailed, {
+              reference,
+              reason,
+              metadata: event.data,
+            });
+          }
+        }
+
         return new Response("OK", { status: 200 });
     } catch (err) {
         return new Response("Internal Server Error", { status: 500 });

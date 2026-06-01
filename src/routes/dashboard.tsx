@@ -1107,10 +1107,43 @@ function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
     const [amount, setAmount] = useState('5000');
     const [accountNumber, setAccountNumber] = useState('');
     const [bankName, setBankName] = useState('');
+    const [bankCode, setBankCode] = useState('');
+    const [accountName, setAccountName] = useState('');
     const [loading, setLoading] = useState(false);
     const requestWithdrawal = useMutation(api.payments.requestWithdrawal);
+    const listPaystackBanks = useAction(api.payments.listPaystackBanks);
+    const resolvePaystackAccount = useAction(api.payments.resolvePaystackAccount);
     const queryClient = useQueryClient();
     const toast = useToast();
+
+    const { data: banksRes } = useQuery({
+      queryKey: ['paystackBanks'],
+      queryFn: async () => {
+        const res = await listPaystackBanks({});
+        if (!res?.success) throw new Error(res?.message || 'Unable to load banks.');
+        return res;
+      },
+      staleTime: 1000 * 60 * 60,
+      retry: 1,
+    });
+
+    const banks: Array<{ name: string; code: string }> = (banksRes as any)?.banks ?? [];
+
+    const { data: resolvedRes } = useQuery({
+      queryKey: ['paystackResolve', bankCode, accountNumber],
+      queryFn: async () => {
+        const res = await resolvePaystackAccount({ accountNumber, bankCode });
+        if (!res?.success) throw new Error(res?.message || 'Unable to resolve account.');
+        return res;
+      },
+      enabled: !!bankCode && accountNumber.trim().length === 10,
+      retry: 0,
+    });
+
+    useEffect(() => {
+      const name = (resolvedRes as any)?.accountName as string | undefined;
+      if (name) setAccountName(name);
+    }, [resolvedRes]);
 
     const handleSubmit = async (e: any) => {
         e.preventDefault();
@@ -1123,9 +1156,9 @@ function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
             const res = await requestWithdrawal({
                 amount: parseInt(amount) * 100,
                 accountNumber,
-                bankCode: '000', 
+                bankCode, 
                 bankName,
-                accountName: user.name || 'Account Holder'
+                accountName: accountName || user.name || 'Account Holder'
             });
             if (!res.success) {
               toast.error(toUserMessage(res?.message, 'Withdrawal failed.'), { title: 'Withdrawal Failed' });
@@ -1181,13 +1214,25 @@ function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
                                 <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Destination Bank</label>
                                 <div className="relative">
                                     <Building2 className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" size={16} />
-                                    <input 
+                                    <select
                                         required
-                                        value={bankName}
-                                        onChange={(e) => setBankName(e.target.value)}
-                                        placeholder="e.g. Zenith Bank"
+                                        value={bankCode}
+                                        onChange={(e) => {
+                                            const code = e.target.value;
+                                            const bank = banks.find((b) => b.code === code);
+                                            setBankCode(code);
+                                            setBankName(bank?.name ?? '');
+                                            setAccountName('');
+                                        }}
                                         className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-14 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white uppercase text-xs"
-                                    />
+                                    >
+                                        <option value="" className="bg-[#0a0f1a]">Select Bank</option>
+                                        {banks.map((b) => (
+                                            <option key={b.code} value={b.code} className="bg-[#0a0f1a]">
+                                                {b.name}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                             <div>
@@ -1199,6 +1244,18 @@ function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
                                         value={accountNumber}
                                         onChange={(e) => setAccountNumber(e.target.value)}
                                         placeholder="0123456789"
+                                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-14 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white uppercase text-xs"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Account Name</label>
+                                <div className="relative">
+                                    <User className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" size={16} />
+                                    <input 
+                                        value={accountName}
+                                        onChange={(e) => setAccountName(e.target.value)}
+                                        placeholder="Resolved automatically"
                                         className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-14 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white uppercase text-xs"
                                     />
                                 </div>

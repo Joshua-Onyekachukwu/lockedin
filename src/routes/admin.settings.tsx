@@ -51,15 +51,73 @@ function AdminSettings() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && isVerified && adminStatus && !adminStatus.isAdmin) {
-      navigate({ to: '/login' })
+      return
     }
   }, [adminStatus, authLoading, isAuthenticated, isVerified, navigate])
 
-  if (authLoading || !isAuthenticated || !user || !isVerified || !adminStatus?.isAdmin) {
+  if (authLoading || !isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center text-white/20 italic font-black uppercase tracking-[0.5em]">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full mb-8" />
         Initializing Settings...
+      </div>
+    )
+  }
+
+  if (!isVerified) {
+    return (
+      <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center text-white/20 italic font-black uppercase tracking-[0.5em]">
+        <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full mb-8" />
+        Verification Required...
+      </div>
+    )
+  }
+
+  if (adminStatus && !adminStatus.isAdmin) {
+    return (
+      <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center text-white px-8">
+        <div className="max-w-xl w-full bg-white/5 border border-white/10 rounded-3xl p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <ShieldCheck className="text-blue-500" size={22} />
+            <div className="font-black italic uppercase tracking-[0.2em] text-sm text-white/70">
+              Admin Access Blocked
+            </div>
+          </div>
+          <div className="text-white/40 text-xs font-bold italic uppercase tracking-widest leading-relaxed">
+            Email: <span className="text-white/70">{adminStatus?.debug?.email ?? user?.email ?? '—'}</span>
+          </div>
+          <div className="mt-3 text-white/40 text-xs font-bold italic uppercase tracking-widest leading-relaxed">
+            Reason: <span className="text-white/70">{adminStatus?.reason ?? 'Not authorized'}</span>
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-3 text-[10px] font-black italic uppercase tracking-[0.2em] text-white/40">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              Verified: <span className="text-white/70">{adminStatus?.debug?.isVerified ? 'yes' : 'no'}</span>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              Allowlist: <span className="text-white/70">{adminStatus?.debug?.isAllowlistAdmin ? 'yes' : 'no'}</span>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              DB Admin: <span className="text-white/70">{adminStatus?.debug?.isDbAdmin ? 'yes' : 'no'}</span>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+              Signed In: <span className="text-white/70">{isAuthenticated ? 'yes' : 'no'}</span>
+            </div>
+          </div>
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={() => queryClient.invalidateQueries()}
+              className="flex-1 py-4 rounded-2xl bg-white text-black font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all italic"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={() => navigate({ to: '/dashboard' })}
+              className="flex-1 py-4 rounded-2xl bg-white/10 border border-white/10 text-white/70 font-black text-xs uppercase tracking-[0.2em] hover:text-white transition-all italic"
+            >
+              Back
+            </button>
+          </div>
+        </div>
       </div>
     )
   }

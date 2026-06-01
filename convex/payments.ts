@@ -111,6 +111,76 @@ export const verifyPayment = action({
   },
 });
 
+export const listPaystackBanks = action({
+  args: {},
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    banks: v.array(v.object({ name: v.string(), code: v.string() })),
+  }),
+  handler: async (ctx) => {
+    const user = await ctx.runQuery(api.users.current, {});
+    if (!user || !user.emailVerificationTime) throw new Error("Email verification required.");
+    if (!PAYSTACK_SECRET) return { success: false, message: "Payment backend not configured.", banks: [] };
+
+    try {
+      const res = await fetch("https://api.paystack.co/bank?currency=NGN&country=nigeria", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.status) {
+        return { success: false, message: json?.message || "Unable to load banks.", banks: [] };
+      }
+      const banks = (Array.isArray(json?.data) ? json.data : [])
+        .map((b: any) => ({ name: String(b?.name ?? ""), code: String(b?.code ?? "") }))
+        .filter((b: any) => b.name && b.code);
+      return { success: true, message: "Banks loaded.", banks };
+    } catch {
+      return { success: false, message: "Unable to load banks.", banks: [] };
+    }
+  },
+});
+
+export const resolvePaystackAccount = action({
+  args: { accountNumber: v.string(), bankCode: v.string() },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    accountName: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const user = await ctx.runQuery(api.users.current, {});
+    if (!user || !user.emailVerificationTime) throw new Error("Email verification required.");
+    if (!PAYSTACK_SECRET) return { success: false, message: "Payment backend not configured." };
+
+    const accountNumber = args.accountNumber.trim();
+    const bankCode = args.bankCode.trim();
+    if (!accountNumber || !bankCode) return { success: false, message: "Account number and bank required." };
+
+    try {
+      const url = `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.status) {
+        return { success: false, message: json?.message || "Unable to resolve account." };
+      }
+      return { success: true, message: "Account resolved.", accountName: json?.data?.account_name as string | undefined };
+    } catch {
+      return { success: false, message: "Unable to resolve account." };
+    }
+  },
+});
+
 /**
  * Internal mutation to update user balance and deposit status
  */
@@ -384,6 +454,7 @@ export const handlePaystackRefundProcessed = internalMutation({
       .unique();
 
     const creditedUserId = reconciliation?.creditedUserId;
+    const depositId = reconciliation?.depositId;
     if (!creditedUserId) {
       await ctx.db.insert("paystack_reversals", {
         key,
@@ -421,6 +492,16 @@ export const handlePaystackRefundProcessed = internalMutation({
     const user = await ctx.db.get(creditedUserId);
     if (user) {
       await ctx.db.patch(user._id, { balance: (user.balance || 0) - (hold ? delta : args.amountKobo) });
+    }
+
+    if (depositId) {
+      const deposit = await ctx.db.get(depositId);
+      if (deposit && deposit.status !== "failed") {
+        await ctx.db.patch(depositId, {
+          status: "failed",
+          metadata: { ...(deposit.metadata ?? {}), refundedAt: now, refund: args.metadata },
+        });
+      }
     }
 
     if (user) {
@@ -490,6 +571,51 @@ export const handlePaystackRefundProcessed = internalMutation({
     });
 
     return { ok: true, message: "Refund applied." };
+  },
+});
+
+export const recordPaystackRefundFailed = internalMutation({
+  args: {
+    refundId: v.optional(v.union(v.string(), v.number())),
+    reference: v.string(),
+    amountKobo: v.optional(v.number()),
+    customerEmail: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  },
+  returns: v.object({ ok: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const key = `refund_failed:${String(args.refundId ?? "") || args.reference}`;
+    const existing = await ctx.db
+      .query("paystack_reversals")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (existing) return { ok: true, message: "Refund failure already recorded." };
+
+    const now = Date.now();
+    await ctx.db.insert("paystack_reversals", {
+      key,
+      reference: args.reference,
+      amount: args.amountKobo ?? 0,
+      status: "processed",
+      kind: "refund",
+      customerEmail: args.customerEmail,
+      creditedUserId: undefined,
+      metadata: { failed: true, ...(args.metadata ?? {}) },
+      createdAt: now,
+    });
+
+    await ctx.db.insert("paystack_unmatched", {
+      reference: args.reference,
+      amount: args.amountKobo ?? 0,
+      customerEmail: args.customerEmail,
+      source: "webhook",
+      reason: "refund_failed",
+      metadata: args.metadata,
+      resolved: false,
+      createdAt: now,
+    });
+
+    return { ok: true, message: "Refund failure recorded." };
   },
 });
 
@@ -599,7 +725,7 @@ export const handlePaystackDisputeResolve = internalMutation({
       normalized === "resolved_merchant" ||
       normalized === "merchant_won";
 
-    if (hold && hold.creditedUserId && merchantWon && hold.status !== "processed") {
+    if (hold && hold.creditedUserId && merchantWon) {
       const user = await ctx.db.get(hold.creditedUserId);
       if (user) {
         await ctx.db.patch(user._id, { balance: (user.balance || 0) + hold.amount });
@@ -619,7 +745,12 @@ export const handlePaystackDisputeResolve = internalMutation({
           read: false,
         });
       }
-      await ctx.db.patch(hold._id, { status: "processed", metadata: args.metadata });
+    }
+    if (hold && hold.status !== "processed") {
+      await ctx.db.patch(hold._id, {
+        status: "processed",
+        metadata: { resolution: args.resolution, ...(args.metadata ?? {}) },
+      });
     }
 
     await ctx.db.insert("paystack_reversals", {

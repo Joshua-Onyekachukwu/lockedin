@@ -219,7 +219,14 @@ export default defineSchema({
   withdrawals: defineTable({
     userId: v.id("users"),
     amount: v.number(),
-    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected"), v.literal("completed")),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
     requested_at: v.number(),
     processed_at: v.optional(v.number()),
     bank_details: v.optional(v.object({
@@ -228,7 +235,14 @@ export default defineSchema({
         bank_name: v.string(),
         account_name: v.string(),
     })),
-  }).index("by_user", ["userId"]).index("by_status", ["status"]),
+    paystack_reference: v.optional(v.string()),
+    paystack_transfer_code: v.optional(v.string()),
+    paystack_transfer_id: v.optional(v.number()),
+    paystack_status: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  }).index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_paystack_reference", ["paystack_reference"]),
 
   admin_audit: defineTable({
     adminUserId: v.id("users"),
