@@ -3,6 +3,7 @@ import { useConvexAuth, useAction } from 'convex/react';
 import { convexQuery } from '@convex-dev/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useAuthActions } from '@convex-dev/auth/react';
 import { api } from '../../convex/_generated/api';
 import { ArrowLeft, CheckCircle2, Loader2, Mail, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +16,7 @@ export const Route = createFileRoute('/verify-required')({
 
 function VerifyRequiredPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { signOut } = useAuthActions();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const requestEmailVerification = useAction(api.emailVerification.requestEmailVerification);
@@ -102,6 +104,18 @@ function VerifyRequiredPage() {
         <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
         <span className="text-[10px] font-black uppercase tracking-[0.3em] pr-2 italic">Back</span>
       </Link>
+      {isAuthenticated ? (
+        <button
+          type="button"
+          onClick={async () => {
+            await signOut();
+            navigate({ to: '/login' });
+          }}
+          className="absolute top-10 right-10 px-6 py-3 rounded-full bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-90 z-50 text-[10px] font-black uppercase tracking-[0.3em] italic"
+        >
+          Log Out
+        </button>
+      ) : null}
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md relative z-10">
         <div className="bg-[#0a0f1a]/80 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] p-10 shadow-2xl text-left">
