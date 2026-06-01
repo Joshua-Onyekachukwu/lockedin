@@ -1829,3 +1829,66 @@ export const updateUserVerifications = mutation({
     return { success: true, message: "User updated.", user: updated ?? undefined };
   },
 });
+
+export const searchUsersByEmailPrefix = query({
+  args: {
+    prefix: v.string(),
+    limit: v.optional(v.number()),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id("users"),
+      email: v.optional(v.string()),
+      name: v.optional(v.string()),
+      emailVerified: v.boolean(),
+      bvn_verified: v.boolean(),
+      isAdmin: v.optional(v.boolean()),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const prefix = args.prefix.trim().toLowerCase();
+    if (!prefix) return [];
+    const limit = Math.max(1, Math.min(args.limit ?? 10, 25));
+
+    const page = await ctx.db
+      .query("users")
+      .withIndex("email", (q) => q.gte("email", prefix).lt("email", `${prefix}\uffff`))
+      .take(limit);
+
+    return page.map((u) => ({
+      _id: u._id,
+      email: u.email,
+      name: u.name,
+      emailVerified: !!u.emailVerificationTime,
+      bvn_verified: u.bvn_verified,
+      isAdmin: u.isAdmin,
+    }));
+  },
+});
+
+export const getUserProtocols = query({
+  args: { userId: v.id("users"), limit: v.optional(v.number()) },
+  returns: v.array(v.any()),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
+
+    const vaults = await ctx.db
+      .query("vaults")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .order("desc")
+      .take(limit);
+
+    const results: any[] = [];
+    for (const vault of vaults) {
+      const goal = await ctx.db
+        .query("goals")
+        .withIndex("by_vault", (q) => q.eq("vaultId", vault._id))
+        .first();
+      results.push({ ...vault, goal: goal ?? null });
+    }
+
+    return results;
+  },
+});

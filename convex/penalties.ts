@@ -161,6 +161,12 @@ async function applyPain(ctx: any, vault: any, goal: any) {
 
     await ctx.db.patch(vault.userId, { 
         streak_count: 0,
-        integrityScore: Math.max(0, (user?.integrityScore ?? 100) - 10)
+        integrityScore: Math.max(0, (user?.integrityScore ?? 100) - 10),
+        tier:
+          Math.max(0, (user?.integrityScore ?? 100) - 10) >= 90
+            ? "gold"
+            : Math.max(0, (user?.integrityScore ?? 100) - 10) >= 75
+              ? "silver"
+              : "bronze",
     });
 }

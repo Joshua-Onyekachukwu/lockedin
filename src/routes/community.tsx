@@ -24,12 +24,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 const EMPTY_ARGS: Record<string, never> = {};
 
 export const Route = createFileRoute('/community')({
+  validateSearch: (search: Record<string, unknown>) => {
+    const view = search.view === 'witnesses' ? 'witnesses' : search.view === 'goals' ? 'goals' : undefined
+    const vaultId = typeof search.vaultId === 'string' ? search.vaultId : undefined
+    return { view, vaultId }
+  },
   component: CommunityPage,
 });
 
 function CommunityPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
+  const search = Route.useSearch() as any
   const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any;
   const { data: user }: { data: any } = useSuspenseQuery({
     ...userQuery,
@@ -71,11 +77,16 @@ function CommunityPage() {
     placeholderData: [],
   });
   
-  const [activeView, setActiveView] = useState<'goals' | 'witnesses'>('goals');
+  const [activeView, setActiveView] = useState<'goals' | 'witnesses'>(() =>
+    search?.view === 'witnesses' ? 'witnesses' : 'goals',
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [requestingTo, setRequestingTo] = useState<any>(null);
   const [minIntegrity, setMinIntegrity] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'integrity' | 'missions' | 'streak'>('integrity');
+
+  const sendRequestDirect = useMutation(api.partners.request)
+  const toast = useToast();
 
   if (authLoading || !isAuthenticated || !user || !isVerified) {
     return (
@@ -225,7 +236,23 @@ function CommunityPage() {
                           return (b.integrityScore || 0) - (a.integrityScore || 0);
                         })
                         .map((u: any) => (
-                          <WitnessCard key={u._id} user={u} onInvite={() => setRequestingTo(u)} />
+                          <WitnessCard
+                            key={u._id}
+                            user={u}
+                            onInvite={async () => {
+                              const preferredVaultId = search?.vaultId
+                              if (preferredVaultId) {
+                                try {
+                                  await sendRequestDirect({ partnerId: u._id, vaultId: preferredVaultId } as any)
+                                  toast.success('Witness request transmitted.', { title: 'Request Sent' })
+                                } catch (err: any) {
+                                  toast.error(toUserMessage(err, 'Failed to transmit request.'), { title: 'Request Blocked' })
+                                }
+                                return
+                              }
+                              setRequestingTo(u)
+                            }}
+                          />
                         ))}
                     </div>
                 </motion.div>
@@ -278,15 +305,31 @@ function GoalCard({ goal }: { goal: any }) {
                     {goal.goal?.description}
                 </p>
 
-                <div className="flex items-center justify-between p-6 rounded-2xl bg-white/[0.02] border border-white/5 mb-8 shadow-inner font-black italic">
-                    <div className="text-left">
-                        <p className="text-[9px] text-white/20 uppercase tracking-widest mb-1">Staked</p>
-                        <p className="text-lg text-white">₦{(goal.amount / 100).toLocaleString()}</p>
+                <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/5 mb-8 shadow-inner font-black italic">
+                    <div className="flex items-center justify-between gap-6">
+                        <div className="text-left min-w-0">
+                            <p className="text-[9px] text-white/20 uppercase tracking-widest mb-1">Category</p>
+                            <p className="text-lg text-white uppercase truncate">{goal.goal?.category}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                            <p className="text-[9px] text-blue-500 uppercase tracking-widest mb-1">Status</p>
+                            <p className="text-lg text-blue-500 uppercase">{goal.status}</p>
+                        </div>
                     </div>
-                    <div className="h-8 w-px bg-white/5" />
-                    <div className="text-right">
-                        <p className="text-[9px] text-[#ff7a00] uppercase tracking-widest mb-1">Pain Tier</p>
-                        <p className="text-lg text-[#ff7a00] uppercase">{goal.painTier || 'Serious'}</p>
+                    <div className="mt-6 h-px bg-white/5" />
+                    <div className="mt-6 flex items-center justify-between gap-6">
+                        <div className="text-left min-w-0">
+                            <p className="text-[9px] text-white/20 uppercase tracking-widest mb-1">Frequency</p>
+                            <p className="text-lg text-white uppercase truncate">
+                                {goal.goal?.frequency_type || 'daily'}
+                            </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                            <p className="text-[9px] text-[#ff7a00] uppercase tracking-widest mb-1">Target</p>
+                            <p className="text-lg text-[#ff7a00] uppercase">
+                                {goal.goal?.target_count ?? 1}/period
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

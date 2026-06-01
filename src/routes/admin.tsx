@@ -190,6 +190,10 @@ function AdminDashboard() {
 
   const [userSearch, setUserSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [verifyLookup, setVerifyLookup] = useState('');
+  const [verifyPicked, setVerifyPicked] = useState<any>(null);
+  const [verifyRunning, setVerifyRunning] = useState(false);
+  const [verifyFeedback, setVerifyFeedback] = useState<null | { tone: 'success' | 'error'; message: string }>(null);
   const [usersCursor, setUsersCursor] = useState<string | null>(null);
   const [usersCursorStack, setUsersCursorStack] = useState<Array<string | null>>([]);
   const usersPageSize = 25;
@@ -197,6 +201,7 @@ function AdminDashboard() {
   const [txCursorStack, setTxCursorStack] = useState<Array<string | null>>([]);
   const txPageSize = 25;
   const updateUserVerifications = useMutation((api as any).admin.updateUserVerifications);
+  const markUserEmailVerified = useMutation((api as any).admin.markUserEmailVerified);
   const [userEditRunning, setUserEditRunning] = useState(false);
   const [statsDetail, setStatsDetail] = useState<null | 'revenue' | 'staked' | 'citizens' | 'health'>(null);
 
@@ -224,6 +229,26 @@ function AdminDashboard() {
     ...(transactionsPageQuery as any),
     enabled: isAuthenticated && isVerified && isAdmin && activeTab === 'transactions',
     placeholderData: { page: [], isDone: false, continueCursor: null },
+  } as any);
+
+  const emailPrefixQuery = convexQuery(
+    (api as any).admin.searchUsersByEmailPrefix,
+    { prefix: verifyLookup, limit: 10 } as any,
+  ) as any;
+  const { data: emailPrefixMatches } = useQuery({
+    ...(emailPrefixQuery as any),
+    enabled: isAuthenticated && isVerified && isAdmin && verifyLookup.trim().length > 0,
+    placeholderData: [],
+  } as any);
+
+  const selectedUserProtocolsQuery = convexQuery(
+    (api as any).admin.getUserProtocols,
+    { userId: selectedUser?._id, limit: 50 } as any,
+  ) as any;
+  const { data: selectedUserProtocols } = useQuery({
+    ...(selectedUserProtocolsQuery as any),
+    enabled: isAuthenticated && isVerified && isAdmin && !!selectedUser?._id,
+    placeholderData: [],
   } as any);
 
   useEffect(() => {
@@ -743,6 +768,101 @@ function AdminDashboard() {
                               <h3 className="text-lg text-white flex items-center gap-3"><Users size={18} className="text-blue-500" /> User Terminal</h3>
                               <p className="text-[10px] text-white/20 tracking-widest mt-1">Search and inspect citizens</p>
                             </div>
+                          </div>
+
+                          <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl shadow-2xl p-8 text-left">
+                            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/20 italic">
+                              Testing Tools
+                            </p>
+                            <p className="mt-4 text-[10px] text-white/40 font-black uppercase tracking-[0.28em] italic leading-relaxed">
+                              For testing only. Search by email and mark a user as verified.
+                            </p>
+
+                            <div className="mt-6 relative">
+                              <input
+                                value={verifyLookup}
+                                onChange={(e) => {
+                                  setVerifyLookup(e.target.value)
+                                  setVerifyPicked(null)
+                                  setVerifyFeedback(null)
+                                }}
+                                placeholder="TYPE EMAIL..."
+                                className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] px-6 py-5 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
+                              />
+
+                              {(emailPrefixMatches as any[])?.length ? (
+                                <div className="absolute left-0 right-0 mt-3 rounded-[2rem] border border-white/10 bg-[#0a0f1a] shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden z-20">
+                                  {(emailPrefixMatches as any[]).map((m: any) => (
+                                    <button
+                                      key={m._id}
+                                      type="button"
+                                      onClick={() => {
+                                        setVerifyPicked(m)
+                                        setVerifyLookup(m.email ?? '')
+                                        setVerifyFeedback(null)
+                                      }}
+                                      className="w-full px-6 py-4 text-left hover:bg-white/[0.04] active:bg-white/[0.06] transition-all"
+                                    >
+                                      <p className="text-[10px] text-white font-black uppercase tracking-[0.25em] italic truncate">
+                                        {m.email || '—'}
+                                      </p>
+                                      <p className="mt-2 text-[9px] text-white/30 font-black uppercase tracking-[0.3em] italic truncate">
+                                        {m.name || 'Anonymous'} • {m.emailVerified ? 'Verified' : 'Unverified'} • BVN {m.bvn_verified ? 'Yes' : 'No'}
+                                      </p>
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </div>
+
+                            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                              <button
+                                type="button"
+                                disabled={verifyRunning || !verifyLookup.trim()}
+                                onClick={async () => {
+                                  setVerifyRunning(true)
+                                  setVerifyFeedback(null)
+                                  try {
+                                    const res = await markUserEmailVerified({ email: verifyLookup.trim() } as any)
+                                    setVerifyFeedback({
+                                      tone: res?.success ? 'success' : 'error',
+                                      message: res?.message ?? (res?.success ? 'Verified.' : 'Failed.'),
+                                    })
+                                    await queryClient.invalidateQueries()
+                                  } catch (e: any) {
+                                    setVerifyFeedback({ tone: 'error', message: sanitizeMessage(e?.message ?? '', 'Verification failed.') })
+                                  } finally {
+                                    setVerifyRunning(false)
+                                  }
+                                }}
+                                className="px-8 py-5 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                              >
+                                {verifyRunning ? 'VERIFYING...' : 'MARK VERIFIED'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!verifyPicked}
+                                onClick={() => {
+                                  if (!verifyPicked) return
+                                  setSelectedUser(verifyPicked)
+                                }}
+                                className="px-8 py-5 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
+                              >
+                                Open User
+                              </button>
+                            </div>
+
+                            {verifyFeedback ? (
+                              <div
+                                className={`mt-6 rounded-2xl border px-6 py-4 text-[10px] font-black uppercase tracking-[0.25em] italic ${
+                                  verifyFeedback.tone === 'success'
+                                    ? 'bg-green-500/10 border-green-500/20 text-green-500'
+                                    : 'bg-red-500/10 border-red-500/20 text-red-500'
+                                }`}
+                              >
+                                {verifyFeedback.message}
+                              </div>
+                            ) : null}
                           </div>
 
                           <div className="relative">
@@ -2163,155 +2283,205 @@ function AdminDashboard() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedUser(null)}
-              className="fixed inset-0 bg-[#050810]/60 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-[#050810]/70 backdrop-blur-sm z-40"
             />
             <motion.div
-              initial={{ x: 420 }}
-              animate={{ x: 0 }}
-              exit={{ x: 420 }}
-              className="fixed top-0 right-0 h-full w-full max-w-md bg-[#0a0f1a] border-l border-white/10 z-50 shadow-[0_0_80px_rgba(0,0,0,1)] p-10 overflow-y-auto backdrop-blur-3xl"
+              initial={{ opacity: 0, scale: 0.98, y: 14 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 14 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8"
             >
-              <div className="flex items-center justify-between mb-10">
-                <div className="text-left">
-                  <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                    User Detail
-                  </p>
-                  <p className="mt-2 text-white font-black uppercase italic tracking-tight text-xl">
-                    {selectedUser.name || 'Anonymous'}
-                  </p>
-                  <p className="mt-2 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black truncate">
-                    {selectedUser.email}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedUser(null)}
-                  className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {[
-                  { k: 'Tier', v: selectedUser.tier },
-                  { k: 'Integrity', v: `${selectedUser.integrityScore}%` },
-                  { k: 'Streak', v: `${selectedUser.streak_count}W` },
-                  { k: 'Missions', v: selectedUser.goals_completed },
-                  { k: 'Balance', v: `₦${((selectedUser.balance ?? 0) / 100).toLocaleString()}` },
-                  { k: 'BVN Verified', v: selectedUser.bvn_verified ? 'Yes' : 'No' },
-                  { k: 'Discoverable', v: selectedUser.is_discoverable ? 'Yes' : 'No' },
-                  { k: 'Witness Pool', v: selectedUser.witness_discoverable ? 'Yes' : 'No' },
-                  { k: 'Admin', v: selectedUser.isAdmin ? 'Yes' : 'No' },
-                ].map((row) => (
-                  <div key={row.k} className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+              <div className="w-full max-w-5xl bg-[#0a0f1a] border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_0_120px_rgba(0,0,0,1)] overflow-hidden">
+                <div className="p-6 sm:p-10 border-b border-white/5 flex items-start justify-between gap-6">
+                  <div className="text-left min-w-0">
                     <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                      {row.k}
+                      User Detail
                     </p>
-                    <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
-                      {String(row.v ?? '')}
+                    <p className="mt-2 text-white font-black uppercase italic tracking-tight text-2xl truncate">
+                      {selectedUser.name || 'Anonymous'}
+                    </p>
+                    <p className="mt-2 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black truncate">
+                      {selectedUser.email || '—'}
                     </p>
                   </div>
-                ))}
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUser(null)}
+                    className="h-11 w-11 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90 shrink-0"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
 
-              <div className="mt-10 p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
-                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                  Verification Controls
-                </p>
-                <div className="mt-6 grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    disabled={userEditRunning}
-                    onClick={async () => {
-                      setUserEditRunning(true);
-                      try {
-                        const res = await updateUserVerifications({
-                          userId: selectedUser._id,
-                          emailVerified: true,
-                        });
-                        if (res?.user) setSelectedUser(res.user);
-                        await queryClient.invalidateQueries();
-                        toast.success(res?.message ?? "Updated.");
-                      } catch (e: any) {
-                        toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
-                      } finally {
-                        setUserEditRunning(false);
-                      }
-                    }}
-                    className="px-5 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-40"
-                  >
-                    Mark Email Verified
-                  </button>
-                  <button
-                    type="button"
-                    disabled={userEditRunning}
-                    onClick={async () => {
-                      setUserEditRunning(true);
-                      try {
-                        const res = await updateUserVerifications({
-                          userId: selectedUser._id,
-                          emailVerified: false,
-                        });
-                        if (res?.user) setSelectedUser(res.user);
-                        await queryClient.invalidateQueries();
-                        toast.success(res?.message ?? "Updated.");
-                      } catch (e: any) {
-                        toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
-                      } finally {
-                        setUserEditRunning(false);
-                      }
-                    }}
-                    className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
-                  >
-                    Clear Email Verified
-                  </button>
-                  <button
-                    type="button"
-                    disabled={userEditRunning}
-                    onClick={async () => {
-                      setUserEditRunning(true);
-                      try {
-                        const res = await updateUserVerifications({
-                          userId: selectedUser._id,
-                          bvn_verified: !selectedUser.bvn_verified,
-                        });
-                        if (res?.user) setSelectedUser(res.user);
-                        await queryClient.invalidateQueries();
-                        toast.success(res?.message ?? "Updated.");
-                      } catch (e: any) {
-                        toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
-                      } finally {
-                        setUserEditRunning(false);
-                      }
-                    }}
-                    className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
-                  >
-                    Toggle BVN
-                  </button>
-                  <button
-                    type="button"
-                    disabled={userEditRunning}
-                    onClick={async () => {
-                      setUserEditRunning(true);
-                      try {
-                        const res = await updateUserVerifications({
-                          userId: selectedUser._id,
-                          isAdmin: !selectedUser.isAdmin,
-                        });
-                        if (res?.user) setSelectedUser(res.user);
-                        await queryClient.invalidateQueries();
-                        toast.success(res?.message ?? "Updated.");
-                      } catch (e: any) {
-                        toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
-                      } finally {
-                        setUserEditRunning(false);
-                      }
-                    }}
-                    className="px-5 py-4 rounded-2xl bg-blue-600/10 border border-blue-500/20 text-blue-500 font-black uppercase tracking-widest italic text-[10px] hover:bg-blue-600/20 active:scale-95 transition-all disabled:opacity-40"
-                  >
-                    Toggle Admin
-                  </button>
+                <div className="p-6 sm:p-10 max-h-[75vh] overflow-y-auto">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div className="lg:col-span-5 space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {[
+                          { k: 'Tier', v: selectedUser.tier },
+                          { k: 'Integrity', v: `${selectedUser.integrityScore}%` },
+                          { k: 'Streak', v: `${selectedUser.streak_count}W` },
+                          { k: 'Missions', v: selectedUser.goals_completed },
+                          { k: 'Balance', v: `₦${((selectedUser.balance ?? 0) / 100).toLocaleString()}` },
+                          { k: 'BVN Verified', v: selectedUser.bvn_verified ? 'Yes' : 'No' },
+                          { k: 'Discoverable', v: selectedUser.is_discoverable ? 'Yes' : 'No' },
+                          { k: 'Witness Pool', v: selectedUser.witness_discoverable ? 'Yes' : 'No' },
+                          { k: 'Admin', v: selectedUser.isAdmin ? 'Yes' : 'No' },
+                        ].map((row) => (
+                          <div key={row.k} className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                            <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                              {row.k}
+                            </p>
+                            <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                              {String(row.v ?? '')}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Verification Controls
+                        </p>
+                        <div className="mt-6 grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            disabled={userEditRunning}
+                            onClick={async () => {
+                              setUserEditRunning(true);
+                              try {
+                                const res = await updateUserVerifications({
+                                  userId: selectedUser._id,
+                                  emailVerified: true,
+                                });
+                                if (res?.user) setSelectedUser(res.user);
+                                await queryClient.invalidateQueries();
+                                toast.success(res?.message ?? "Updated.");
+                              } catch (e: any) {
+                                toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
+                              } finally {
+                                setUserEditRunning(false);
+                              }
+                            }}
+                            className="px-5 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-40"
+                          >
+                            Mark Email Verified
+                          </button>
+                          <button
+                            type="button"
+                            disabled={userEditRunning}
+                            onClick={async () => {
+                              setUserEditRunning(true);
+                              try {
+                                const res = await updateUserVerifications({
+                                  userId: selectedUser._id,
+                                  emailVerified: false,
+                                });
+                                if (res?.user) setSelectedUser(res.user);
+                                await queryClient.invalidateQueries();
+                                toast.success(res?.message ?? "Updated.");
+                              } catch (e: any) {
+                                toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
+                              } finally {
+                                setUserEditRunning(false);
+                              }
+                            }}
+                            className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
+                          >
+                            Clear Email Verified
+                          </button>
+                          <button
+                            type="button"
+                            disabled={userEditRunning}
+                            onClick={async () => {
+                              setUserEditRunning(true);
+                              try {
+                                const res = await updateUserVerifications({
+                                  userId: selectedUser._id,
+                                  bvn_verified: !selectedUser.bvn_verified,
+                                });
+                                if (res?.user) setSelectedUser(res.user);
+                                await queryClient.invalidateQueries();
+                                toast.success(res?.message ?? "Updated.");
+                              } catch (e: any) {
+                                toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
+                              } finally {
+                                setUserEditRunning(false);
+                              }
+                            }}
+                            className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
+                          >
+                            Toggle BVN
+                          </button>
+                          <button
+                            type="button"
+                            disabled={userEditRunning}
+                            onClick={async () => {
+                              setUserEditRunning(true);
+                              try {
+                                const res = await updateUserVerifications({
+                                  userId: selectedUser._id,
+                                  isAdmin: !selectedUser.isAdmin,
+                                });
+                                if (res?.user) setSelectedUser(res.user);
+                                await queryClient.invalidateQueries();
+                                toast.success(res?.message ?? "Updated.");
+                              } catch (e: any) {
+                                toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
+                              } finally {
+                                setUserEditRunning(false);
+                              }
+                            }}
+                            className="px-5 py-4 rounded-2xl bg-blue-600/10 border border-blue-500/20 text-blue-500 font-black uppercase tracking-widest italic text-[10px] hover:bg-blue-600/20 active:scale-95 transition-all disabled:opacity-40"
+                          >
+                            Toggle Admin
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="lg:col-span-7">
+                      <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                        User Protocols
+                      </p>
+                      <div className="mt-6 space-y-4">
+                        {(selectedUserProtocols as any[])?.length ? (
+                          (selectedUserProtocols as any[]).map((v: any) => (
+                            <Link
+                              key={v._id}
+                              to="/vault/$id"
+                              params={{ id: v._id }}
+                              className="block p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:border-white/20 transition-all"
+                            >
+                              <div className="flex items-start justify-between gap-6">
+                                <div className="min-w-0">
+                                  <p className="text-white font-black uppercase italic tracking-tight truncate">
+                                    {v.goal?.title || 'Untitled'}
+                                  </p>
+                                  <p className="mt-2 text-[10px] text-white/30 font-black uppercase tracking-[0.25em] italic truncate">
+                                    {v.goal?.category} • {v.goal?.frequency_type || 'daily'} • {v.goal?.target_count ?? 1}/period
+                                  </p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest italic">
+                                    {v.status}
+                                  </p>
+                                  <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                                    ₦{((v.amount ?? 0) / 100).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                            </Link>
+                          ))
+                        ) : (
+                          <div className="p-10 rounded-[2rem] bg-white/[0.01] border border-white/10 text-white/20 font-black uppercase tracking-widest italic text-center">
+                            No protocols found.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>

@@ -72,6 +72,8 @@ export default defineSchema({
     status: v.union(v.literal("completed"), v.literal("missed"), v.literal("disputed")),
     proofImageId: v.optional(v.id("_storage")),
     note: v.optional(v.string()),
+    approvals: v.optional(v.array(v.id("users"))),
+    rejections: v.optional(v.array(v.id("users"))),
     confirmed_by: v.optional(v.id("users")), // accountability partner ID
     confirmed_at: v.optional(v.number()),
   }).index("by_goal", ["goalId"])

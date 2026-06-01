@@ -212,16 +212,38 @@ export const getFullContext = query({
     const partner = await ctx.db
       .query("accountability_partners")
       .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
-      .filter(q => q.eq(q.field("partnerId"), userId))
+      .filter((q) => q.eq(q.field("partnerId"), userId))
       .unique();
 
-    if (vault.userId !== userId && !partner) {
-       // Return limited data for invite preview if not authorized
-       return { 
-           amount: vault.amount, 
-           status: vault.status, 
-           goal: { title: goal.title } 
-       };
+    const isActivePartner = !!partner && partner.status === "active";
+    if (vault.userId !== userId && !isActivePartner) {
+      const owner = await ctx.db.get(vault.userId);
+      const profileUrl = owner?.profileImageId ? await ctx.storage.getUrl(owner.profileImageId) : null;
+      return {
+        access: "preview",
+        _id: vault._id,
+        userId: vault.userId,
+        status: vault.status,
+        startDate: vault.startDate,
+        endDate: vault.endDate,
+        goal: {
+          title: goal.title,
+          description: goal.description,
+          category: goal.category,
+          frequency_type: goal.frequency_type,
+          target_count: goal.target_count,
+        },
+        user: owner
+          ? {
+              _id: owner._id,
+              name: owner.name,
+              image: profileUrl ?? owner.image,
+              integrityScore: owner.integrityScore,
+              tier: owner.tier,
+              city: owner.city,
+            }
+          : null,
+      };
     }
 
     const logs = await ctx.db
@@ -237,8 +259,54 @@ export const getFullContext = query({
         };
     }));
 
-    return { ...vault, goal, logs: logsWithUrls, isPartner: !!partner };
+    return { ...vault, goal, logs: logsWithUrls, isPartner: isActivePartner, access: "full" };
   }
+});
+
+export const getInvitePreview = query({
+  args: { vaultId: v.id("vaults") },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) return null;
+
+    const user = await ctx.db.get(userId);
+    if (!user || !user.emailVerificationTime) return null;
+
+    const vault = await ctx.db.get(args.vaultId);
+    if (!vault) return null;
+
+    const goal = await ctx.db
+      .query("goals")
+      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+      .first();
+    if (!goal) return null;
+
+    const pending = await ctx.db
+      .query("accountability_partners")
+      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+      .filter((q) => q.eq(q.field("partnerId"), userId))
+      .unique();
+
+    if (!pending || pending.status !== "pending") {
+      return { access: "none", _id: vault._id, status: vault.status, goal: { title: goal.title } };
+    }
+
+    return {
+      access: "invite",
+      _id: vault._id,
+      status: vault.status,
+      amount: vault.amount,
+      painTier: vault.painTier,
+      goal: {
+        title: goal.title,
+        description: goal.description,
+        category: goal.category,
+        frequency_type: goal.frequency_type,
+        target_count: goal.target_count,
+      },
+    };
+  },
 });
 
 export const listDiscoverable = query({
@@ -284,7 +352,28 @@ export const listDiscoverable = query({
           const profileUrl = rawUser.profileImageId ? await ctx.storage.getUrl(rawUser.profileImageId) : null;
           const user = { ...rawUser, image: profileUrl ?? rawUser.image };
 
-          results.push({ ...vault, goal, user });
+          results.push({
+            _id: vault._id,
+            userId: vault.userId,
+            status: vault.status,
+            startDate: vault.startDate,
+            endDate: vault.endDate,
+            goal: {
+              title: goal.title,
+              description: goal.description,
+              category: goal.category,
+              frequency_type: goal.frequency_type,
+              target_count: goal.target_count,
+            },
+            user: {
+              _id: user._id,
+              name: user.name,
+              image: user.image,
+              city: user.city,
+              integrityScore: user.integrityScore,
+              tier: user.tier,
+            },
+          });
         }
 
         return results;

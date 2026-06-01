@@ -686,6 +686,8 @@ function DashboardContent({ user }: { user: any }) {
 function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) {
   const isFailed = vault.status === 'failed';
   const [timeLeft, setTimeLeft] = useState<string>('');
+  const principalKoboRaw = Number((vault as any)?.amount)
+  const principalKobo = Number.isFinite(principalKoboRaw) ? principalKoboRaw : 0
 
   useEffect(() => {
     if (isFailed) return;
@@ -767,17 +769,42 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
             {vault.goal.description}
         </p>
 
-        <div className="grid grid-cols-2 gap-6 mb-12 text-left font-black italic">
-          <div className={`p-6 rounded-[2rem] border text-left transition-colors shadow-inner ${isFailed ? 'bg-red-500/5 border-red-500/20' : 'bg-white/[0.02] border-white/5 group-hover:border-blue-500/20'}`}>
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-2 italic">Principal</p>
-            <p className={`text-xl font-black italic tracking-tighter uppercase leading-none ${isFailed ? 'text-red-500 line-through' : 'text-white'}`}>
-                ₦{(vault.amount / 100).toLocaleString()}
+        <div className="space-y-4 mb-12 text-left font-black italic">
+          <div
+            className={`p-6 rounded-[2rem] border text-left transition-colors shadow-inner flex items-center justify-between gap-6 ${
+              isFailed
+                ? 'bg-red-500/5 border-red-500/20'
+                : 'bg-white/[0.02] border-white/5 group-hover:border-blue-500/20'
+            }`}
+          >
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 italic">
+              Principal
+            </p>
+            <p
+              className={`text-xl font-black italic tracking-tighter uppercase leading-none text-right ${
+                isFailed ? 'text-red-500 line-through' : 'text-white'
+              }`}
+            >
+              ₦{(principalKobo / 100).toLocaleString()}
             </p>
           </div>
-          <div className={`p-6 rounded-[2rem] border text-left transition-colors shadow-inner ${isFailed ? 'bg-red-500/5 border-red-500/20' : 'bg-white/[0.02] border-white/5 group-hover:border-[#ff7a00]/20'}`}>
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-2 italic">Pain Tier</p>
-            <p className={`text-sm sm:text-xl font-black italic tracking-tighter uppercase leading-none whitespace-nowrap truncate ${isFailed ? 'text-red-500' : 'text-[#ff7a00]'}`}>
-                {vault.painTier || 'Serious'}
+
+          <div
+            className={`p-6 rounded-[2rem] border text-left transition-colors shadow-inner flex items-center justify-between gap-6 ${
+              isFailed
+                ? 'bg-red-500/5 border-red-500/20'
+                : 'bg-white/[0.02] border-white/5 group-hover:border-[#ff7a00]/20'
+            }`}
+          >
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 italic">
+              Pain Tier
+            </p>
+            <p
+              className={`text-sm sm:text-xl font-black italic tracking-tighter uppercase leading-none text-right ${
+                isFailed ? 'text-red-500' : 'text-[#ff7a00]'
+              }`}
+            >
+              {vault.painTier || 'Serious'}
             </p>
           </div>
         </div>
@@ -795,6 +822,17 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
                     <Camera size={18} /> Execute Log
                 </button>
             )}
+            <Link
+                to="/community"
+                search={{ view: 'witnesses', vaultId: vault._id } as any}
+                className={`w-full py-6 rounded-2xl border transition-all text-center ${
+                  isFailed
+                    ? 'border-red-500/10 text-red-500/40 hover:text-red-500 hover:bg-red-500/5'
+                    : 'border-white/5 text-white/20 hover:text-white hover:bg-white/5'
+                }`}
+            >
+                Request Witness
+            </Link>
             <Link 
                 to="/vault/$id"
                 params={{ id: vault._id }}

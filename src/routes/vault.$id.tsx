@@ -45,7 +45,7 @@ function VaultPage() {
 
   const { data: witnesses } = useQuery({
     ...(convexQuery(api.partners.getPartners as any, { vaultId: vaultId as any }) as any),
-    enabled: isAuthenticated && isVerified,
+    enabled: isAuthenticated && isVerified && vault?.access === 'full',
     placeholderData: [],
     staleTime: 1000 * 15,
   } as any);
@@ -79,6 +79,8 @@ function VaultPage() {
       </div>
     );
   }
+
+  const access = vault?.access === 'full' ? 'full' : 'preview'
 
   const isOwner = vault?.userId === user?._id;
   const witnessRows: any[] = Array.isArray(witnesses) ? witnesses : [];
@@ -142,6 +144,105 @@ function VaultPage() {
     return `${Math.max(0, mins)}m`
   }
 
+  const principalKoboRaw = Number((vault as any)?.amount)
+  const principalKobo = Number.isFinite(principalKoboRaw) ? principalKoboRaw : 0
+
+  if (access !== 'full') {
+    return (
+      <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
+        <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left">
+          <div className="flex items-center gap-4 text-left">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  window.history.back()
+                  return
+                }
+                navigate({ to: '/community' })
+              }}
+              className="relative h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90 shadow-xl"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div className="flex flex-col text-left">
+              <span className="font-bold tracking-tight text-lg leading-none text-white">
+                Vault Specification
+              </span>
+              <span className="text-[10px] text-white/20 uppercase tracking-[0.2em] mt-1 font-black">
+                Preview Only
+              </span>
+            </div>
+          </div>
+        </nav>
+
+        <main className="max-w-4xl mx-auto p-6 lg:p-12 text-left">
+          <header className="mb-12 text-left">
+            <div className="flex items-center gap-4 mb-8 text-left">
+              <span className="px-4 py-1 rounded-full bg-white/5 border border-white/10 text-[10px] font-black text-white/50 uppercase tracking-widest italic">
+                Access Restricted
+              </span>
+              <span className="text-white/10 uppercase tracking-widest text-[10px] font-black">
+                Ref: {vaultId.slice(0, 8)}
+              </span>
+            </div>
+            <h1 className="text-4xl font-bold tracking-tight md:text-5xl text-left text-white leading-tight font-black uppercase italic">
+              {vault.goal?.title}
+            </h1>
+            <p className="mt-6 text-white/40 text-lg leading-relaxed text-left font-medium max-w-2xl">
+              {vault.goal?.description}
+            </p>
+          </header>
+
+          <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left">
+              Visibility Rule
+            </p>
+            <p className="mt-4 text-sm text-white/40 leading-relaxed italic font-medium">
+              Full specification is only visible to the protocol owner and assigned active witnesses.
+            </p>
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Category</p>
+                <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                  {vault.goal?.category}
+                </p>
+              </div>
+              <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Status</p>
+                <p className="mt-3 text-blue-500 font-black uppercase italic tracking-tight text-lg">
+                  {vault.status}
+                </p>
+              </div>
+              <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Frequency</p>
+                <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                  {vault.goal?.frequency_type || 'daily'}
+                </p>
+              </div>
+              <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Target</p>
+                <p className="mt-3 text-[#ff7a00] font-black uppercase italic tracking-tight text-lg">
+                  {vault.goal?.target_count ?? 1}/period
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-10 flex flex-col sm:flex-row gap-4">
+              <button
+                type="button"
+                onClick={() => navigate({ to: '/community' })}
+                className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all"
+              >
+                Back To Community
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
         <ConfirmModal
@@ -195,7 +296,7 @@ function VaultPage() {
                 <div className="lg:col-span-4 space-y-8 text-left">
                     <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">Staked Principal</p>
-                        <p className="text-5xl font-black text-white text-left italic tracking-tighter">₦{(vault.amount / 100).toLocaleString()}</p>
+                        <p className="text-5xl font-black text-white text-left italic tracking-tighter">₦{(principalKobo / 100).toLocaleString()}</p>
                         <div className="mt-8 flex items-center gap-3 text-[#ff7a00] font-black text-[10px] uppercase tracking-widest italic">
                             <ShieldCheck size={18} /> Escrowed in Protocol
                         </div>
@@ -224,6 +325,20 @@ function VaultPage() {
                                 <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
                                     No witnesses attached yet.
                                 </p>
+                                {isOwner ? (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      navigate({
+                                        to: '/community',
+                                        search: { view: 'witnesses', vaultId } as any,
+                                      })
+                                    }
+                                    className="mt-6 px-8 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all"
+                                  >
+                                    Request A Witness
+                                  </button>
+                                ) : null}
                             </div>
                         ) : (
                             <div className="space-y-4">

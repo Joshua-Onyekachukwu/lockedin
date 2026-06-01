@@ -30,7 +30,7 @@ function PartnerInvite() {
   
   const joinAsPartner = useMutation(api.partners.join);
   
-  const vaultQuery = convexQuery(api.goals.getFullContext, {
+  const vaultQuery = convexQuery((api as any).goals.getInvitePreview, {
     vaultId: vaultId as any,
   }) as any;
   const { data: vault }: { data: any } = useSuspenseQuery({
@@ -106,7 +106,7 @@ function PartnerInvite() {
                 </div>
                 <div>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 font-black tracking-widest uppercase">Staked Capital</p>
-                    <p className="text-lg font-bold mt-1 text-[#ff7a00] italic">₦{(vault?.amount / 100)?.toLocaleString()} At Risk</p>
+                    <p className="text-lg font-bold mt-1 text-[#ff7a00] italic">₦{(Number(vault?.amount ?? 0) / 100).toLocaleString()} At Risk</p>
                 </div>
             </div>
             <div className="flex items-start gap-4 text-left font-bold text-white">
