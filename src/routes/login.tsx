@@ -28,7 +28,15 @@ function LoginPage() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      navigate({ to: '/verify-required' });
+      let pending = '';
+      try {
+        pending = localStorage.getItem('pendingEmailVerificationToken') || '';
+      } catch {}
+      if (pending) {
+        navigate({ to: `/verify-email?token=${encodeURIComponent(pending)}` as any });
+      } else {
+        navigate({ to: '/verify-required' });
+      }
     }
   }, [authLoading, isAuthenticated, navigate]);
 

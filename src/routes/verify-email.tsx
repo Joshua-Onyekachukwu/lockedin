@@ -34,6 +34,11 @@ function VerifyEmailPage() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
+      if (token) {
+        try {
+          localStorage.setItem('pendingEmailVerificationToken', token);
+        } catch {}
+      }
       navigate({ to: '/login' });
     }
   }, [authLoading, isAuthenticated, navigate]);
@@ -42,6 +47,9 @@ function VerifyEmailPage() {
     let cancelled = false;
     const run = async () => {
       if (!isAuthenticated) return;
+      try {
+        localStorage.removeItem('pendingEmailVerificationToken');
+      } catch {}
       if (!token) {
         setState('error');
         setMessage('Missing verification token.');

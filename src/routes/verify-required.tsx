@@ -33,6 +33,13 @@ function VerifyRequiredPage() {
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const pendingToken = useMemo(() => {
+    try {
+      return localStorage.getItem('pendingEmailVerificationToken');
+    } catch {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -143,6 +150,14 @@ function VerifyRequiredPage() {
               {status === 'sending' ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
               Send Verification Email
             </button>
+            {pendingToken ? (
+              <button
+                onClick={() => navigate({ to: `/verify-email?token=${encodeURIComponent(pendingToken)}` as any })}
+                className="w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white/5 border border-white/10 text-white py-5 font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
+              >
+                Continue Verification
+              </button>
+            ) : null}
             <button
               onClick={checkAgain}
               disabled={checking}
