@@ -124,7 +124,7 @@ function AdminSettings() {
 
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500">
-      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
+      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
         <div className="flex items-center gap-4 text-left">
           <Link
             to="/admin"
@@ -146,8 +146,8 @@ function AdminSettings() {
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto p-8">
-        <div className="rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-10 shadow-2xl text-left">
+      <main className="max-w-5xl mx-auto p-4 sm:p-8">
+        <div className="rounded-[2.5rem] sm:rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-6 sm:p-10 shadow-2xl text-left">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
             Admin Access
           </p>
@@ -161,7 +161,7 @@ function AdminSettings() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-10 shadow-2xl text-left">
+          <div className="rounded-[2.5rem] sm:rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-6 sm:p-10 shadow-2xl text-left">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
               Operations
             </p>
@@ -184,7 +184,7 @@ function AdminSettings() {
             </div>
           </div>
 
-          <div className="rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-10 shadow-2xl text-left">
+          <div className="rounded-[2.5rem] sm:rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-6 sm:p-10 shadow-2xl text-left">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
               Environment
             </p>
@@ -198,7 +198,7 @@ function AdminSettings() {
           </div>
         </div>
 
-        <div className="mt-8 rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-10 shadow-2xl text-left">
+        <div className="mt-8 rounded-[2.5rem] sm:rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-6 sm:p-10 shadow-2xl text-left">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
             Testing Tools
           </p>
@@ -233,7 +233,7 @@ function AdminSettings() {
                   setVerifyRunning(false)
                 }
               }}
-              className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+              className="px-8 sm:px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
             >
               {verifyRunning ? 'VERIFYING...' : 'MARK VERIFIED'}
             </button>

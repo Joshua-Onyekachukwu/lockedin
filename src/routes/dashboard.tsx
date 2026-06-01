@@ -155,8 +155,8 @@ function DashboardContent({ user }: { user: any }) {
         onWalletClick={() => setActiveTab('wallet')}
       />
 
-      <main className="max-w-7xl mx-auto p-6 lg:p-12 text-left relative z-10">
-        <header className="mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8 text-left">
+      <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-12 text-left relative z-10">
+        <header className="mb-10 sm:mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 text-left">
           <div className="text-left">
             <h1 className="text-4xl font-black tracking-tight md:text-5xl lg:text-7xl text-left text-white leading-tight uppercase italic">
               {activeTab === 'protocols' ? 'Operational ' : activeTab === 'witnessing' ? 'Witness ' : 'Capital '}
@@ -177,7 +177,7 @@ function DashboardContent({ user }: { user: any }) {
                 <button 
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-black shadow-xl' : 'text-white/30 hover:text-white/60'}`}
+                    className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-black shadow-xl' : 'text-white/30 hover:text-white/60'}`}
                 >
                     {tab}
                 </button>
@@ -368,7 +368,7 @@ function DashboardContent({ user }: { user: any }) {
                             </div>
                             <div className="relative z-10">
                                 <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 mb-12 italic">Liquid Capital Position</p>
-                                <h3 className="text-6xl font-black italic tracking-tighter mb-4 text-white">₦{(user?.balance / 100)?.toLocaleString()}</h3>
+                                <h3 className="text-4xl sm:text-6xl font-black italic tracking-tighter mb-4 text-white break-words">₦{(user?.balance / 100)?.toLocaleString()}</h3>
                                 <p className="text-xs text-white/30 font-medium italic uppercase tracking-widest mb-16 italic font-black">Available for behavioral staking</p>
                                 
                                 <div className="flex flex-col gap-4">
@@ -671,13 +671,13 @@ function CreateVaultModal({
     return (
         <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-6"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-4 sm:p-6"
         >
             <motion.div 
                 initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-                className="w-full max-w-4xl bg-[#0a0f1a] border border-white/10 rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col max-h-[90vh]"
+                className="w-full max-w-4xl bg-[#0a0f1a] border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col max-h-[90vh]"
             >
-                <div className="p-12 border-b border-white/5 flex items-center justify-between shrink-0">
+                <div className="p-6 sm:p-12 border-b border-white/5 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-4 text-left">
                         <div className="h-12 w-12 rounded-2xl bg-blue-600/10 text-blue-500 flex items-center justify-center italic font-black border border-blue-500/20 shadow-xl">P</div>
                         <h2 className="text-2xl font-black tracking-tight uppercase italic text-white leading-none">Initialize Protocol</h2>
@@ -699,7 +699,7 @@ function CreateVaultModal({
                     </div>
                 </div>
 
-                <div className="overflow-y-auto p-12 flex-1 custom-scrollbar">
+                <div className="overflow-y-auto p-6 sm:p-12 flex-1 custom-scrollbar">
                     {mode === 'template' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {GOAL_TEMPLATES.map((t) => (
@@ -889,13 +889,13 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
     return (
         <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-6"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-4 sm:p-6"
         >
             <motion.div 
                 initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-                className="w-full max-w-xl bg-[#0a0f1a] border border-white/10 rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+                className="w-full max-w-xl bg-[#0a0f1a] border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
             >
-                <form onSubmit={handleSubmit} className="p-12 text-left font-black italic uppercase">
+                <form onSubmit={handleSubmit} className="p-6 sm:p-12 text-left font-black italic uppercase">
                     <div className="flex items-center justify-between mb-12 text-left">
                         <div className="flex items-center gap-4 text-left">
                             <div className="h-12 w-12 rounded-2xl bg-[#ff7a00]/10 text-[#ff7a00] flex items-center justify-center italic font-black border border-[#ff7a00]/20 shadow-xl">C</div>
@@ -1053,13 +1053,13 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
     return (
         <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-6"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-4 sm:p-6"
         >
             <motion.div 
                 initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-                className="w-full max-w-md bg-[#0a0f1a] border border-white/10 rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+                className="w-full max-w-md bg-[#0a0f1a] border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
             >
-                <div className="p-12 text-left">
+                <div className="p-6 sm:p-12 text-left">
                     <div className="flex items-center justify-between mb-12">
                         <div className="flex items-center gap-4">
                             <div className="h-12 w-12 rounded-2xl bg-[#ff7a00]/10 text-[#ff7a00] flex items-center justify-center italic font-black border border-[#ff7a00]/20 shadow-xl">
@@ -1187,13 +1187,13 @@ function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
     return (
         <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-6"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-4 sm:p-6"
         >
             <motion.div 
                 initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-                className="w-full max-w-md bg-[#0a0f1a] border border-white/10 rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+                className="w-full max-w-md bg-[#0a0f1a] border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
             >
-                <form onSubmit={handleSubmit} className="p-12 text-left">
+                <form onSubmit={handleSubmit} className="p-6 sm:p-12 text-left">
                     <div className="flex items-center justify-between mb-12">
                         <div className="flex items-center gap-4">
                             <div className="h-12 w-12 rounded-2xl bg-white/5 text-white flex items-center justify-center italic font-black border border-white/10 shadow-xl">

@@ -152,7 +152,7 @@ export function AppTopNav({
 
   return (
     <>
-      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
+      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
         <div className="flex items-center gap-4 text-left">
           {variant === 'dashboard' ? (
             <div className="relative group text-left">
@@ -186,7 +186,7 @@ export function AppTopNav({
           </div>
         </div>
 
-        <div className="flex items-center gap-8 text-left font-bold">
+        <div className="flex items-center gap-3 sm:gap-8 text-left font-bold">
           {contextLinks && contextLinks.length ? (
             <div className="hidden sm:flex items-center gap-6 text-sm font-black uppercase tracking-widest text-white/40 italic">
               {contextLinks.map((l) => (
@@ -227,14 +227,14 @@ export function AppTopNav({
               }
               navigate({ to: '/dashboard' })
             }}
-            className={`flex items-center gap-3 px-4 py-2 rounded-2xl transition-all active:scale-95 border ${
+            className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-2xl transition-all active:scale-95 border min-w-0 ${
               walletActive
                 ? 'bg-blue-600/10 border-blue-500 text-white shadow-xl shadow-blue-900/10'
                 : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
             }`}
           >
             <Wallet size={16} className={walletActive ? 'text-blue-500' : 'text-[#ff7a00]'} />
-            <span className="text-sm font-black tracking-tight italic">
+            <span className="text-[11px] sm:text-sm font-black tracking-tight italic truncate max-w-[120px] sm:max-w-none">
               ₦{((effectiveUser?.balance ?? 0) / 100)?.toLocaleString()}
             </span>
           </button>
@@ -278,7 +278,7 @@ export function AppTopNav({
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="fixed top-[88px] right-8 z-50 w-[260px] rounded-[2.5rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
+              className="fixed top-[84px] sm:top-[88px] right-4 sm:right-8 z-50 w-[260px] rounded-[2.5rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.9)] overflow-hidden"
             >
               <div className="p-6 border-b border-white/10">
                 <p className="text-white font-black uppercase italic tracking-tight">
@@ -347,7 +347,7 @@ export function AppTopNav({
               initial={{ x: 400 }}
               animate={{ x: 0 }}
               exit={{ x: 400 }}
-              className="fixed top-0 right-0 h-full w-full max-w-sm bg-[#0a0f1a] border-l border-white/10 z-50 shadow-[0_0_80px_rgba(0,0,0,1)] p-8 overflow-y-auto backdrop-blur-3xl"
+              className="fixed top-0 right-0 h-full w-full max-w-sm bg-[#0a0f1a] border-l border-white/10 z-50 shadow-[0_0_80px_rgba(0,0,0,1)] p-4 sm:p-8 overflow-y-auto backdrop-blur-3xl"
             >
               <div className="flex items-center justify-between mb-10 text-left">
                 <h3 className="font-bold text-xl text-left text-white font-black uppercase tracking-widest italic">

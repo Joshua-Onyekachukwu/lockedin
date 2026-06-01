@@ -37,10 +37,10 @@ export function ConfirmModal({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.98 }}
             transition={{ duration: 0.18 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
           >
             <div className="w-full max-w-xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
-              <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6">
+              <div className="p-6 sm:p-10 border-b border-white/10 flex items-start justify-between gap-6">
                 <div className="text-left">
                   <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
                     {title}
@@ -60,7 +60,7 @@ export function ConfirmModal({
                 </button>
               </div>
 
-              <div className="p-10 flex flex-col sm:flex-row gap-4">
+              <div className="p-6 sm:p-10 flex flex-col sm:flex-row gap-4">
                 <button
                   type="button"
                   disabled={working}
@@ -100,4 +100,3 @@ export function ConfirmModal({
     </AnimatePresence>
   )
 }
-

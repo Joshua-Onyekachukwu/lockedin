@@ -316,7 +316,7 @@ function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500">
-      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
+      <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between sticky top-0 z-40 text-left shadow-lg">
         <div className="flex items-center gap-4 text-left">
           <Link to="/dashboard" className="relative h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90">
             <ArrowLeft size={20} />
@@ -339,7 +339,7 @@ function AdminDashboard() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-8 relative z-10">
+      <main className="max-w-7xl mx-auto p-4 sm:p-8 relative z-10">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             <button
@@ -397,7 +397,7 @@ function AdminDashboard() {
             </button>
         </div>
 
-        <div className="flex flex-wrap gap-4 mb-8">
+        <div className="flex flex-wrap gap-3 sm:gap-4 mb-8">
             {([
               { key: 'overview', label: 'Overview', count: null },
               { key: 'withdrawals', label: 'Extractions', count: pendingWithdrawals?.length || 0 },
@@ -410,7 +410,7 @@ function AdminDashboard() {
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key as any)}
-                className={`px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`px-4 sm:px-8 py-2.5 sm:py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
                   activeTab === (t.key as any)
                     ? 'bg-white text-black shadow-xl'
                     : 'bg-white/5 text-white/40 hover:bg-white/10'
@@ -432,7 +432,7 @@ function AdminDashboard() {
                     {activeTab === 'overview' && (
                         <motion.div 
                             key="overview" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
-                            className="p-10 space-y-8"
+                            className="p-6 sm:p-10 space-y-8"
                         >
                             <div className="text-left">
                               <h3 className="text-lg text-white font-black italic uppercase">Operational Overview</h3>
@@ -484,7 +484,7 @@ function AdminDashboard() {
                         <motion.div 
                             key="withdrawals" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
                         >
-                            <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
+                            <div className="px-4 sm:px-10 py-6 sm:py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
                                 <div className="text-left font-black italic uppercase">
                                     <h3 className="text-lg text-white">Extraction Protocol</h3>
                                     <p className="text-[10px] text-white/20 tracking-widest mt-1">Pending Capital Transfers</p>
@@ -494,28 +494,28 @@ function AdminDashboard() {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-white/10 border-b border-white/5">
-                                            <th className="px-10 py-6">Citizen</th>
-                                            <th className="px-10 py-6">Amount</th>
-                                            <th className="px-10 py-6">Bank Specifications</th>
-                                            <th className="px-10 py-6 text-right">Goal</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6">Citizen</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6">Amount</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6">Bank Specifications</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6 text-right">Goal</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {!pendingWithdrawals || pendingWithdrawals.length === 0 ? (
-                                            <tr><td colSpan={4} className="px-10 py-20 text-center text-white/20 font-black italic uppercase tracking-widest">No pending extractions</td></tr>
+                                            <tr><td colSpan={4} className="px-4 sm:px-10 py-16 sm:py-20 text-center text-white/20 font-black italic uppercase tracking-widest">No pending extractions</td></tr>
                                         ) : (
                                             pendingWithdrawals.map((w: any) => (
                                                 <tr key={w._id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
-                                                    <td className="px-10 py-6">
+                                                    <td className="px-4 sm:px-10 py-4 sm:py-6">
                                                         <p className="font-bold italic text-white text-sm">{w.user?.name}</p>
                                                         <p className="text-[10px] text-white/20 uppercase font-black">{w.user?.email}</p>
                                                     </td>
-                                                    <td className="px-10 py-6 font-black italic text-blue-500 text-lg">₦{(w.amount/100).toLocaleString()}</td>
-                                                    <td className="px-10 py-6">
+                                                    <td className="px-4 sm:px-10 py-4 sm:py-6 font-black italic text-blue-500 text-lg">₦{(w.amount/100).toLocaleString()}</td>
+                                                    <td className="px-4 sm:px-10 py-4 sm:py-6">
                                                         <p className="text-xs text-white italic font-medium uppercase tracking-tight">{w.bank_details?.bank_name}</p>
                                                         <p className="text-[10px] text-white/40 font-black tracking-widest mt-1">{w.bank_details?.account_number}</p>
                                                     </td>
-                                                    <td className="px-10 py-6 text-right">
+                                                    <td className="px-4 sm:px-10 py-4 sm:py-6 text-right">
                                                         <button 
                                                             onClick={() => setConfirm({
                                                               open: true,
@@ -550,7 +550,7 @@ function AdminDashboard() {
                         <motion.div 
                             key="breaches" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
                         >
-                            <div className="px-10 py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
+                            <div className="px-4 sm:px-10 py-6 sm:py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
                                 <div className="text-left font-black italic uppercase">
                                     <h3 className="text-lg text-white">Active Goal Monitor</h3>
                                     <p className="text-[10px] text-white/20 tracking-widest mt-1">High Risk Candidates</p>
@@ -560,27 +560,27 @@ function AdminDashboard() {
                                 <table className="w-full border-collapse">
                                     <thead>
                                         <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-white/10 border-b border-white/5">
-                                            <th className="px-10 py-6">Protocol Identity</th>
-                                            <th className="px-10 py-6">Staked Principal</th>
-                                            <th className="px-10 py-6">Integrity</th>
-                                            <th className="px-10 py-6 text-right">Enforcement</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6">Protocol Identity</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6">Staked Principal</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6">Integrity</th>
+                                            <th className="px-4 sm:px-10 py-4 sm:py-6 text-right">Enforcement</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {breachCandidates.map((b: any) => (
                                             <tr key={b._id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
-                                                <td className="px-10 py-6">
+                                                <td className="px-4 sm:px-10 py-4 sm:py-6">
                                                     <p className="font-bold italic text-white text-sm uppercase">{b.goal?.title}</p>
                                                     <p className="text-[10px] text-white/20 uppercase font-black italic tracking-widest">{b.user?.name}</p>
                                                 </td>
-                                                <td className="px-10 py-6 font-black italic text-white text-lg">₦{(b.amount/100).toLocaleString()}</td>
-                                                <td className="px-10 py-6">
+                                                <td className="px-4 sm:px-10 py-4 sm:py-6 font-black italic text-white text-lg">₦{(b.amount/100).toLocaleString()}</td>
+                                                <td className="px-4 sm:px-10 py-4 sm:py-6">
                                                     <div className="h-1.5 w-24 bg-white/5 rounded-full overflow-hidden">
                                                         <div className="h-full bg-blue-500" style={{ width: `${b.user?.integrityScore || 100}%` }} />
                                                     </div>
                                                     <p className="text-[9px] text-white/20 mt-2 font-black uppercase tracking-widest">{b.user?.integrityScore || 100}% Score</p>
                                                 </td>
-                                                <td className="px-10 py-6 text-right">
+                                                <td className="px-4 sm:px-10 py-4 sm:py-6 text-right">
                                                     <button 
                                                         onClick={() => setConfirm({
                                                           open: true,
@@ -785,12 +785,12 @@ function AdminDashboard() {
                                   <table className="w-full min-w-[900px]">
                                     <thead>
                                       <tr className="text-[9px] font-black uppercase tracking-[0.3em] italic text-white/20 border-b border-white/5">
-                                        <th className="px-8 py-5 text-left">Name</th>
-                                        <th className="px-8 py-5 text-left">Email</th>
-                                        <th className="px-8 py-5 text-left">Tier</th>
-                                        <th className="px-8 py-5 text-left">Integrity</th>
-                                        <th className="px-8 py-5 text-left">Balance</th>
-                                        <th className="px-8 py-5 text-left">Joined</th>
+                                        <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">Name</th>
+                                        <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">Email</th>
+                                        <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">Tier</th>
+                                        <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">Integrity</th>
+                                        <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">Balance</th>
+                                        <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">Joined</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
@@ -800,32 +800,32 @@ function AdminDashboard() {
                                           onClick={() => setSelectedUser(u)}
                                           className="hover:bg-white/[0.03] transition-all cursor-pointer"
                                         >
-                                          <td className="px-8 py-6">
+                                          <td className="px-4 sm:px-8 py-4 sm:py-6">
                                             <p className="text-white font-black uppercase italic tracking-tight">
                                               {u.name || 'Anonymous'}
                                             </p>
                                           </td>
-                                          <td className="px-8 py-6">
+                                          <td className="px-4 sm:px-8 py-4 sm:py-6">
                                             <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.25em] italic truncate max-w-[320px]">
                                               {u.email || '—'}
                                             </p>
                                           </td>
-                                          <td className="px-8 py-6">
+                                          <td className="px-4 sm:px-8 py-4 sm:py-6">
                                             <span className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest italic text-white/50">
                                               {u.tier || 'bronze'}
                                             </span>
                                           </td>
-                                          <td className="px-8 py-6">
+                                          <td className="px-4 sm:px-8 py-4 sm:py-6">
                                             <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest italic">
                                               {u.integrityScore}% 
                                             </p>
                                           </td>
-                                          <td className="px-8 py-6">
+                                          <td className="px-4 sm:px-8 py-4 sm:py-6">
                                             <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic">
                                               ₦{((u.balance ?? 0) / 100).toLocaleString()}
                                             </p>
                                           </td>
-                                          <td className="px-8 py-6">
+                                          <td className="px-4 sm:px-8 py-4 sm:py-6">
                                             <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
                                               {new Date(u._creationTime).toLocaleDateString()}
                                             </p>
@@ -836,7 +836,7 @@ function AdminDashboard() {
                                         <tr>
                                           <td
                                             colSpan={6}
-                                            className="px-8 py-16 text-center text-white/20 font-black italic uppercase tracking-widest"
+                                            className="px-4 sm:px-8 py-16 text-center text-white/20 font-black italic uppercase tracking-widest"
                                           >
                                             No users returned.
                                           </td>
@@ -887,7 +887,7 @@ function AdminDashboard() {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 20 }}
-                            className="p-10 space-y-8"
+                            className="p-6 sm:p-10 space-y-8"
                         >
                           <div className="flex items-center justify-between gap-6">
                             <div className="text-left font-black italic uppercase">
@@ -933,17 +933,17 @@ function AdminDashboard() {
                               <table className="w-full min-w-[900px]">
                                 <thead>
                                   <tr className="text-[9px] font-black uppercase tracking-[0.3em] italic text-white/20 border-b border-white/5">
-                                    <th className="px-8 py-5 text-left">Type</th>
-                                    <th className="px-8 py-5 text-left">Amount</th>
-                                    <th className="px-8 py-5 text-left">Status</th>
-                                    <th className="px-8 py-5 text-left">User</th>
-                                    <th className="px-8 py-5 text-left">Date</th>
+                                    <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">Type</th>
+                                    <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">Amount</th>
+                                    <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">Status</th>
+                                    <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">User</th>
+                                    <th className="px-4 sm:px-8 py-4 sm:py-5 text-left">Date</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
                                   {(((transactionsPage as any)?.page as any[]) ?? []).map((t: any) => (
                                     <tr key={t._id} className="hover:bg-white/[0.03] transition-all">
-                                      <td className="px-8 py-6">
+                                      <td className="px-4 sm:px-8 py-4 sm:py-6">
                                         <Link
                                           to="/admin/tx/$txId"
                                           params={{ txId: t._id }}
@@ -952,22 +952,22 @@ function AdminDashboard() {
                                           {t.type}
                                         </Link>
                                       </td>
-                                      <td className="px-8 py-6">
+                                      <td className="px-4 sm:px-8 py-4 sm:py-6">
                                         <p className="text-[10px] text-white/50 font-black uppercase tracking-widest italic">
                                           ₦{((t.amount ?? 0) / 100).toLocaleString()}
                                         </p>
                                       </td>
-                                      <td className="px-8 py-6">
+                                      <td className="px-4 sm:px-8 py-4 sm:py-6">
                                         <span className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest italic text-white/50">
                                           {t.status}
                                         </span>
                                       </td>
-                                      <td className="px-8 py-6">
+                                      <td className="px-4 sm:px-8 py-4 sm:py-6">
                                         <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.25em] italic truncate max-w-[320px]">
                                           {t.userEmail || t.userId}
                                         </p>
                                       </td>
-                                      <td className="px-8 py-6">
+                                      <td className="px-4 sm:px-8 py-4 sm:py-6">
                                         <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
                                           {t._creationTime ? new Date(t._creationTime).toLocaleString() : ''}
                                         </p>
@@ -978,7 +978,7 @@ function AdminDashboard() {
                                     <tr>
                                       <td
                                         colSpan={5}
-                                        className="px-8 py-16 text-center text-white/20 font-black italic uppercase tracking-widest"
+                                        className="px-4 sm:px-8 py-16 text-center text-white/20 font-black italic uppercase tracking-widest"
                                       >
                                         No transactions returned.
                                       </td>
@@ -995,7 +995,7 @@ function AdminDashboard() {
 
             {/* Quick Actions Sidebar */}
             <div className="lg:col-span-4 space-y-8">
-                 <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                 <div className="p-6 sm:p-10 rounded-[2.5rem] sm:rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-8 italic">Manual Overrides</p>
                     <div className="space-y-4 font-black uppercase italic tracking-widest text-[10px]">
                         <button 
