@@ -100,16 +100,19 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const toast = useToast();
 
-  const { data: user }: { data: any } = useSuspenseQuery({
-    ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
+  const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any;
+  const { data: user, isFetching: userFetching }: { data: any; isFetching: boolean } = useSuspenseQuery({
+    ...(userQuery as any),
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
   } as any);
   const isVerified = !!user?.emailVerificationTime;
   
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, EMPTY_ARGS as any) as any;
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
     ...adminStatusQuery,
-    enabled: isAuthenticated && isVerified,
+    enabled: isAuthenticated,
   } as any);
 
   const isAdmin = !!adminStatus?.isAdmin;
@@ -227,10 +230,10 @@ function AdminDashboard() {
   }, [isAuthenticated, authLoading, navigate]);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user && !isVerified) {
+    if (!authLoading && isAuthenticated && user && !userFetching && !isVerified) {
       navigate({ to: '/verify-required' });
     }
-  }, [authLoading, isAuthenticated, isVerified, navigate, user]);
+  }, [authLoading, isAuthenticated, isVerified, navigate, user, userFetching]);
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && isVerified && adminStatus && !adminStatus.isAdmin) {

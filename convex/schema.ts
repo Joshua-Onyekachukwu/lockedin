@@ -192,6 +192,20 @@ export default defineSchema({
     .index("by_customer_email", ["customerEmail"])
     .index("by_resolved", ["resolved"]),
 
+  paystack_reversals: defineTable({
+    key: v.string(),
+    reference: v.string(),
+    amount: v.number(),
+    status: v.union(v.literal("pending"), v.literal("processed")),
+    kind: v.union(v.literal("refund"), v.literal("dispute_hold"), v.literal("dispute_resolve")),
+    customerEmail: v.optional(v.string()),
+    creditedUserId: v.optional(v.id("users")),
+    metadata: v.optional(v.any()),
+    createdAt: v.number(),
+  }).index("by_key", ["key"])
+    .index("by_reference", ["reference"])
+    .index("by_credited_user", ["creditedUserId"]),
+
   email_verification_tokens: defineTable({
     userId: v.id("users"),
     tokenHash: v.string(),

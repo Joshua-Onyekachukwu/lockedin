@@ -15,16 +15,19 @@ function AuditDetail() {
   const navigate = useNavigate()
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
 
-  const { data: user }: { data: any } = useSuspenseQuery({
-    ...(convexQuery(api.users.current, {} as any) as any),
+  const userQuery = convexQuery(api.users.current, {} as any) as any
+  const { data: user, isFetching: userFetching }: { data: any; isFetching: boolean } = useSuspenseQuery({
+    ...(userQuery as any),
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
   } as any)
   const isVerified = !!user?.emailVerificationTime
 
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, {} as any) as any
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
     ...adminStatusQuery,
-    enabled: isAuthenticated && isVerified,
+    enabled: isAuthenticated,
   } as any)
 
   const auditQuery = convexQuery((api as any).admin.getAuditById, { auditId } as any) as any
@@ -40,10 +43,10 @@ function AuditDetail() {
   }, [authLoading, isAuthenticated, navigate])
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user && !isVerified) {
+    if (!authLoading && isAuthenticated && user && !userFetching && !isVerified) {
       navigate({ to: '/verify-required' })
     }
-  }, [authLoading, isAuthenticated, isVerified, navigate, user])
+  }, [authLoading, isAuthenticated, isVerified, navigate, user, userFetching])
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && isVerified && adminStatus && !adminStatus.isAdmin) {

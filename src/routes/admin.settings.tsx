@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
 import { useConvexAuth, useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -15,10 +15,14 @@ export const Route = createFileRoute('/admin/settings')({
 function AdminSettings() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
-  const { data: user }: { data: any } = useSuspenseQuery({
-    ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
+  const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any
+  const { data: user, isFetching: userFetching }: { data: any; isFetching: boolean } = useSuspenseQuery({
+    ...(userQuery as any),
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
   } as any)
   const isVerified = !!user?.emailVerificationTime
 
@@ -30,7 +34,7 @@ function AdminSettings() {
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, EMPTY_ARGS as any) as any
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
     ...adminStatusQuery,
-    enabled: isAuthenticated && isVerified,
+    enabled: isAuthenticated,
   } as any)
 
   useEffect(() => {
@@ -40,10 +44,10 @@ function AdminSettings() {
   }, [authLoading, isAuthenticated, navigate])
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user && !isVerified) {
+    if (!authLoading && isAuthenticated && user && !userFetching && !isVerified) {
       navigate({ to: '/verify-required' })
     }
-  }, [authLoading, isAuthenticated, isVerified, navigate, user])
+  }, [authLoading, isAuthenticated, isVerified, navigate, user, userFetching])
 
   useEffect(() => {
     if (!authLoading && isAuthenticated && isVerified && adminStatus && !adminStatus.isAdmin) {
@@ -159,6 +163,8 @@ function AdminSettings() {
                 setVerifyFeedback(null)
                 try {
                   const res = await markUserEmailVerified({ email: verifyEmail.trim() })
+                  await queryClient.invalidateQueries({ queryKey: userQuery.queryKey as any })
+                  await queryClient.invalidateQueries({ queryKey: adminStatusQuery.queryKey as any })
                   setVerifyFeedback({
                     tone: res?.success ? 'success' : 'error',
                     message: res?.message ?? (res?.success ? 'Verified.' : 'Failed.'),

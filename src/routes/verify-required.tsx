@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useConvexAuth, useAction } from 'convex/react';
 import { convexQuery } from '@convex-dev/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { api } from '../../convex/_generated/api';
 import { ArrowLeft, CheckCircle2, Loader2, Mail, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,6 +16,7 @@ export const Route = createFileRoute('/verify-required')({
 function VerifyRequiredPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const requestEmailVerification = useAction(api.emailVerification.requestEmailVerification);
 
   const userQuery = useMemo(
@@ -25,10 +26,13 @@ function VerifyRequiredPage() {
   const { data: user }: { data: any } = useSuspenseQuery({
     ...userQuery,
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -52,6 +56,27 @@ function VerifyRequiredPage() {
     } catch (e: any) {
       setStatus('error');
       setMessage(e?.message ?? 'Failed to send verification email.');
+    }
+  };
+
+  const checkAgain = async () => {
+    setChecking(true);
+    setMessage(null);
+    try {
+      await queryClient.invalidateQueries({ queryKey: userQuery.queryKey as any });
+      await queryClient.refetchQueries({ queryKey: userQuery.queryKey as any, exact: true } as any);
+      const refreshed = queryClient.getQueryData(userQuery.queryKey as any) as any;
+      if (refreshed?.emailVerificationTime) {
+        navigate({ to: '/dashboard' });
+        return;
+      }
+      setStatus('error');
+      setMessage('Still unverified. If you just clicked the email link, wait a moment and try again.');
+    } catch (e: any) {
+      setStatus('error');
+      setMessage(e?.message ?? 'Failed to refresh verification status.');
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -112,18 +137,19 @@ function VerifyRequiredPage() {
           <div className="flex flex-col gap-3">
             <button
               onClick={send}
-              disabled={status === 'sending'}
+              disabled={status === 'sending' || checking}
               className="w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white text-black py-5 font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/5 disabled:opacity-60"
             >
               {status === 'sending' ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
               Send Verification Email
             </button>
             <button
-              onClick={() => window.location.reload()}
-              className="w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white/5 border border-white/10 text-white py-5 font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
+              onClick={checkAgain}
+              disabled={checking}
+              className="w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white/5 border border-white/10 text-white py-5 font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all disabled:opacity-60"
             >
-              <RefreshCw size={18} />
-              I Already Verified
+              {checking ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+              {checking ? 'Checking…' : 'I Already Verified'}
             </button>
           </div>
         </div>
@@ -131,4 +157,3 @@ function VerifyRequiredPage() {
     </div>
   );
 }
-

@@ -1085,7 +1085,7 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
                         <div className="p-6 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
                             <CreditCard className="text-blue-500 mt-1" size={20} />
                             <p className="text-[10px] text-blue-500 leading-relaxed font-bold italic tracking-tight uppercase">
-                                Secured via Paystack. Funds are instantly available for protocol staking.
+                                Secured via Paystack. Funds are instantly available for protocol staking. Paystack fees are charged by Paystack and are not refundable (refunds may return less than deposited).
                             </p>
                         </div>
                     </div>
@@ -1209,6 +1209,13 @@ function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
                             <User className="text-white/20 mt-1" size={18} />
                             <p className="text-[10px] text-white/40 leading-relaxed font-bold italic tracking-tight uppercase">
                                 Funds will be sent to the legal name: <span className="text-white font-black">{user.name}</span>.
+                            </p>
+                        </div>
+
+                        <div className="p-6 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
+                            <AlertCircle className="text-blue-500 mt-1" size={18} />
+                            <p className="text-[10px] text-blue-500 leading-relaxed font-bold italic tracking-tight uppercase">
+                                Transfers are processed via Paystack/banks. Any processor or bank charges are applied by them and are outside Lockedin’s control.
                             </p>
                         </div>
                     </div>

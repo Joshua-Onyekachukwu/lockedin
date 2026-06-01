@@ -80,6 +80,71 @@ http.route({
           });
         }
 
+        if (event.event === "refund.processed") {
+          const reference =
+            (event?.data?.transaction?.reference as string | undefined) ||
+            (event?.data?.reference as string | undefined);
+          const amountKobo =
+            (event?.data?.amount as number | undefined) ||
+            (event?.data?.transaction?.amount as number | undefined);
+          const refundId = event?.data?.id as string | number | undefined;
+          const customerEmail =
+            (event?.data?.customer?.email as string | undefined) ||
+            (event?.data?.transaction?.customer?.email as string | undefined);
+
+          if (reference && typeof amountKobo === "number") {
+            await ctx.runMutation(internal.payments.handlePaystackRefundProcessed, {
+              refundId,
+              reference,
+              amountKobo,
+              customerEmail,
+              metadata: event.data,
+            });
+          }
+        }
+
+        if (event.event === "charge.dispute.create") {
+          const reference =
+            (event?.data?.transaction?.reference as string | undefined) ||
+            (event?.data?.reference as string | undefined);
+          const amountKobo =
+            (event?.data?.transaction?.amount as number | undefined) ||
+            (event?.data?.amount as number | undefined);
+          const disputeId = event?.data?.id as string | number | undefined;
+          const customerEmail =
+            (event?.data?.transaction?.customer?.email as string | undefined) ||
+            (event?.data?.customer?.email as string | undefined);
+
+          if (reference && typeof amountKobo === "number") {
+            await ctx.runMutation(internal.payments.handlePaystackDisputeCreate, {
+              disputeId,
+              reference,
+              amountKobo,
+              customerEmail,
+              metadata: event.data,
+            });
+          }
+        }
+
+        if (event.event === "charge.dispute.resolve") {
+          const reference =
+            (event?.data?.transaction?.reference as string | undefined) ||
+            (event?.data?.reference as string | undefined);
+          const disputeId = event?.data?.id as string | number | undefined;
+          const resolution =
+            (event?.data?.resolution as string | undefined) ||
+            (event?.data?.status as string | undefined);
+
+          if (reference) {
+            await ctx.runMutation(internal.payments.handlePaystackDisputeResolve, {
+              disputeId,
+              reference,
+              resolution,
+              metadata: event.data,
+            });
+          }
+        }
+
         return new Response("OK", { status: 200 });
     } catch (err) {
         return new Response("Internal Server Error", { status: 500 });

@@ -354,6 +354,290 @@ export const reconcilePaystackPayment = internalMutation({
   },
 });
 
+function normalizeResolution(raw: unknown) {
+  const s = String(raw ?? "").trim().toLowerCase();
+  if (!s) return null;
+  return s;
+}
+
+export const handlePaystackRefundProcessed = internalMutation({
+  args: {
+    refundId: v.optional(v.union(v.string(), v.number())),
+    reference: v.string(),
+    amountKobo: v.number(),
+    customerEmail: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  },
+  returns: v.object({ ok: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const key = `refund:${String(args.refundId ?? "") || args.reference}`;
+    const existing = await ctx.db
+      .query("paystack_reversals")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (existing) return { ok: true, message: "Refund already processed." };
+
+    const now = Date.now();
+    const reconciliation = await ctx.db
+      .query("paystack_reconciliations")
+      .withIndex("by_reference", (q) => q.eq("reference", args.reference))
+      .unique();
+
+    const creditedUserId = reconciliation?.creditedUserId;
+    if (!creditedUserId) {
+      await ctx.db.insert("paystack_reversals", {
+        key,
+        reference: args.reference,
+        amount: args.amountKobo,
+        status: "processed",
+        kind: "refund",
+        customerEmail: args.customerEmail,
+        creditedUserId: undefined,
+        metadata: args.metadata,
+        createdAt: now,
+      });
+      await ctx.db.insert("paystack_unmatched", {
+        reference: args.reference,
+        amount: args.amountKobo,
+        customerEmail: args.customerEmail,
+        source: "webhook",
+        reason: "refund_processed_no_reconciliation",
+        metadata: args.metadata,
+        resolved: false,
+        createdAt: now,
+      });
+      return { ok: true, message: "Refund recorded (no credited user found)." };
+    }
+
+    const holdKey = `dispute_hold:${args.reference}`;
+    const hold = await ctx.db
+      .query("paystack_reversals")
+      .withIndex("by_key", (q) => q.eq("key", holdKey))
+      .unique();
+
+    const holdAmount = hold?.amount ?? 0;
+    const delta = args.amountKobo - holdAmount;
+
+    const user = await ctx.db.get(creditedUserId);
+    if (user) {
+      await ctx.db.patch(user._id, { balance: (user.balance || 0) - (hold ? delta : args.amountKobo) });
+    }
+
+    if (user) {
+      if (hold) {
+        const recent = await ctx.db
+          .query("transactions")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .order("desc")
+          .take(100);
+        const pendingHold = recent.find(
+          (t: any) =>
+            t.type === "refund" &&
+            t.status === "pending" &&
+            typeof t.description === "string" &&
+            t.description.includes(args.reference),
+        );
+        if (pendingHold) {
+          await ctx.db.patch(pendingHold._id, {
+            status: "completed",
+            description: `Paystack refund processed: ${args.reference}`,
+          });
+        }
+
+        if (delta !== 0) {
+          await ctx.db.insert("transactions", {
+            userId: user._id,
+            amount: -delta,
+            type: "refund",
+            status: "completed",
+            description: `Paystack refund adjustment: ${args.reference}`,
+          });
+        }
+      } else {
+        await ctx.db.insert("transactions", {
+          userId: user._id,
+          amount: -args.amountKobo,
+          type: "refund",
+          status: "completed",
+          description: `Paystack refund processed: ${args.reference}`,
+        });
+      }
+
+      await ctx.db.insert("notifications", {
+        userId: user._id,
+        title: "Payment Reversed",
+        message: `A Paystack refund was processed for ₦${(args.amountKobo / 100).toLocaleString()}. Your wallet has been updated accordingly.`,
+        type: "wallet_withdrawal",
+        link: "/dashboard",
+        read: false,
+      });
+    }
+
+    if (hold && hold.status !== "processed") {
+      await ctx.db.patch(hold._id, { status: "processed", metadata: args.metadata });
+    }
+
+    await ctx.db.insert("paystack_reversals", {
+      key,
+      reference: args.reference,
+      amount: args.amountKobo,
+      status: "processed",
+      kind: "refund",
+      customerEmail: args.customerEmail,
+      creditedUserId,
+      metadata: args.metadata,
+      createdAt: now,
+    });
+
+    return { ok: true, message: "Refund applied." };
+  },
+});
+
+export const handlePaystackDisputeCreate = internalMutation({
+  args: {
+    disputeId: v.optional(v.union(v.string(), v.number())),
+    reference: v.string(),
+    amountKobo: v.number(),
+    customerEmail: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  },
+  returns: v.object({ ok: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const key = `dispute_hold:${args.reference}`;
+    const existing = await ctx.db
+      .query("paystack_reversals")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (existing) return { ok: true, message: "Dispute hold already exists." };
+
+    const reconciliation = await ctx.db
+      .query("paystack_reconciliations")
+      .withIndex("by_reference", (q) => q.eq("reference", args.reference))
+      .unique();
+
+    const creditedUserId = reconciliation?.creditedUserId;
+    const now = Date.now();
+
+    await ctx.db.insert("paystack_reversals", {
+      key,
+      reference: args.reference,
+      amount: args.amountKobo,
+      status: "pending",
+      kind: "dispute_hold",
+      customerEmail: args.customerEmail,
+      creditedUserId,
+      metadata: { disputeId: args.disputeId, ...(args.metadata ?? {}) },
+      createdAt: now,
+    });
+
+    if (!creditedUserId) {
+      await ctx.db.insert("paystack_unmatched", {
+        reference: args.reference,
+        amount: args.amountKobo,
+        customerEmail: args.customerEmail,
+        source: "webhook",
+        reason: "dispute_create_no_reconciliation",
+        metadata: args.metadata,
+        resolved: false,
+        createdAt: now,
+      });
+      return { ok: true, message: "Dispute recorded (no credited user found)." };
+    }
+
+    const user = await ctx.db.get(creditedUserId);
+    if (!user) return { ok: true, message: "Dispute recorded (user missing)." };
+
+    await ctx.db.patch(user._id, { balance: (user.balance || 0) - args.amountKobo });
+    await ctx.db.insert("transactions", {
+      userId: user._id,
+      amount: -args.amountKobo,
+      type: "refund",
+      status: "pending",
+      description: `Paystack dispute opened (funds held): ${args.reference}`,
+    });
+    await ctx.db.insert("notifications", {
+      userId: user._id,
+      title: "Dispute Opened",
+      message: `A Paystack dispute was opened. ₦${(args.amountKobo / 100).toLocaleString()} has been held from your wallet pending resolution.`,
+      type: "wallet_withdrawal",
+      link: "/dashboard",
+      read: false,
+    });
+
+    return { ok: true, message: "Dispute hold applied." };
+  },
+});
+
+export const handlePaystackDisputeResolve = internalMutation({
+  args: {
+    disputeId: v.optional(v.union(v.string(), v.number())),
+    reference: v.string(),
+    resolution: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+  },
+  returns: v.object({ ok: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const key = `dispute_resolve:${String(args.disputeId ?? "") || args.reference}`;
+    const existing = await ctx.db
+      .query("paystack_reversals")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (existing) return { ok: true, message: "Dispute resolution already recorded." };
+
+    const holdKey = `dispute_hold:${args.reference}`;
+    const hold = await ctx.db
+      .query("paystack_reversals")
+      .withIndex("by_key", (q) => q.eq("key", holdKey))
+      .unique();
+
+    const now = Date.now();
+    const normalized = normalizeResolution(args.resolution);
+    const merchantWon =
+      normalized === "merchant" ||
+      normalized === "won" ||
+      normalized === "win" ||
+      normalized === "resolved_merchant" ||
+      normalized === "merchant_won";
+
+    if (hold && hold.creditedUserId && merchantWon && hold.status !== "processed") {
+      const user = await ctx.db.get(hold.creditedUserId);
+      if (user) {
+        await ctx.db.patch(user._id, { balance: (user.balance || 0) + hold.amount });
+        await ctx.db.insert("transactions", {
+          userId: user._id,
+          amount: hold.amount,
+          type: "refund",
+          status: "completed",
+          description: `Paystack dispute resolved (hold released): ${args.reference}`,
+        });
+        await ctx.db.insert("notifications", {
+          userId: user._id,
+          title: "Dispute Resolved",
+          message: `A Paystack dispute was resolved in your favor. ₦${(hold.amount / 100).toLocaleString()} has been released back to your wallet.`,
+          type: "wallet_funded",
+          link: "/dashboard",
+          read: false,
+        });
+      }
+      await ctx.db.patch(hold._id, { status: "processed", metadata: args.metadata });
+    }
+
+    await ctx.db.insert("paystack_reversals", {
+      key,
+      reference: args.reference,
+      amount: hold?.amount ?? 0,
+      status: "processed",
+      kind: "dispute_resolve",
+      customerEmail: hold?.customerEmail,
+      creditedUserId: hold?.creditedUserId,
+      metadata: { resolution: args.resolution, ...(args.metadata ?? {}) },
+      createdAt: now,
+    });
+
+    return { ok: true, message: "Dispute resolution recorded." };
+  },
+});
+
 export const getPaystackReconciliationByReference = internalQuery({
   args: { reference: v.string() },
   returns: v.union(
