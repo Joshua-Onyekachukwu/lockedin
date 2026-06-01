@@ -215,6 +215,41 @@ export const acceptApplication = mutation({
   },
 });
 
+export const removeWitness = mutation({
+  args: { partnerShipId: v.id("accountability_partners") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
+
+    const partnership = await ctx.db.get(args.partnerShipId);
+    if (!partnership || partnership.requesterId !== userId) {
+      throw new Error("Authorization Breach: You cannot remove this witness.");
+    }
+
+    if (partnership.status === "ended") return null;
+
+    await ctx.db.patch(args.partnerShipId, {
+      status: "ended",
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: partnership.partnerId,
+      title: "Witness Role Ended",
+      message: "Your witness role on a protocol was ended by the protocol owner.",
+      type: "partner_request",
+      link: `/vault/${partnership.vaultId}`,
+      read: false,
+    });
+
+    return null;
+  },
+});
+
 export const listIncomingRequests = query({
     args: {},
     returns: v.array(v.any()),
@@ -331,6 +366,23 @@ export const getPartners = query({
     args: { vaultId: v.id("vaults") },
     returns: v.array(v.any()),
     handler: async (ctx, args) => {
+        const userId = await auth.getUserId(ctx);
+        if (userId === null) return [];
+
+        const user = await ctx.db.get(userId);
+        if (!user || !user.emailVerificationTime) return [];
+
+        const vault = await ctx.db.get(args.vaultId);
+        if (!vault) return [];
+
+        const partner = await ctx.db
+          .query("accountability_partners")
+          .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+          .filter((q) => q.eq(q.field("partnerId"), userId))
+          .unique();
+
+        if (vault.userId !== userId && !partner) return [];
+
         const partners = await ctx.db
             .query("accountability_partners")
             .withIndex("by_vault", q => q.eq("vaultId", args.vaultId))
@@ -339,7 +391,8 @@ export const getPartners = query({
         const results = [];
         for (const p of partners) {
             const user = await ctx.db.get(p.partnerId);
-            results.push({ ...p, user });
+            const profileUrl = user?.profileImageId ? await ctx.storage.getUrl(user.profileImageId) : null;
+            results.push({ ...p, user: user ? { ...user, image: profileUrl ?? user.image } : null });
         }
         return results;
     }

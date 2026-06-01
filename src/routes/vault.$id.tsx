@@ -1,16 +1,20 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
-import { useConvexAuth } from 'convex/react';
+import { useConvexAuth, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { 
   ArrowLeft,
   CheckCircle2,
   AlertTriangle,
   ShieldCheck, 
-  Clock
+  Clock,
+  Users,
+  X
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { ConfirmModal } from '~/components/confirm-modal';
+import { useToast } from '~/components/toast';
 
 const EMPTY_ARGS: Record<string, never> = {};
 
@@ -22,6 +26,8 @@ function VaultPage() {
   const { id: vaultId } = Route.useParams();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const toast = useToast();
 
   const { data: user }: { data: any } = useSuspenseQuery({
     ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
@@ -36,6 +42,23 @@ function VaultPage() {
     ...vaultQuery,
     enabled: isAuthenticated && isVerified,
   });
+
+  const { data: witnesses } = useQuery({
+    ...(convexQuery(api.partners.getPartners as any, { vaultId: vaultId as any }) as any),
+    enabled: isAuthenticated && isVerified,
+    placeholderData: [],
+    staleTime: 1000 * 15,
+  } as any);
+
+  const removeWitness = useMutation((api as any).partners.removeWitness);
+  const [confirm, setConfirm] = useState<{
+    open: boolean;
+    title: string;
+    description?: string;
+    tone?: 'primary' | 'danger';
+    confirmLabel: string;
+    run: null | (() => Promise<void>);
+  }>({ open: false, title: '', confirmLabel: '', run: null });
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -56,6 +79,9 @@ function VaultPage() {
       </div>
     );
   }
+
+  const isOwner = vault?.userId === user?._id;
+  const witnessRows: any[] = Array.isArray(witnesses) ? witnesses : [];
 
   const frequency = (vault.goal?.frequency_type as 'daily' | 'weekly' | 'monthly' | undefined) ?? 'daily'
   const targetCount = Number(vault.goal?.target_count ?? 1) || 1
@@ -118,6 +144,19 @@ function VaultPage() {
 
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
+        <ConfirmModal
+            open={confirm.open}
+            title={confirm.title}
+            description={confirm.description}
+            tone={confirm.tone}
+            confirmLabel={confirm.confirmLabel}
+            onClose={() => setConfirm({ open: false, title: '', confirmLabel: '', run: null })}
+            onConfirm={async () => {
+                if (!confirm.run) return
+                await confirm.run()
+            }}
+        />
+
         <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left">
             <div className="flex items-center gap-4 text-left">
                 <button
@@ -176,6 +215,68 @@ function VaultPage() {
                         <p className="text-[10px] text-white/20 mt-3 uppercase tracking-widest font-black italic">
                           Deadline: {new Date(deadline).toLocaleString()}
                         </p>
+                    </div>
+
+                    <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">Witness Protocol</p>
+                        {witnessRows.length === 0 ? (
+                            <div className="p-8 rounded-[2.5rem] bg-white/[0.01] border border-white/5">
+                                <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                                    No witnesses attached yet.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {witnessRows.map((w) => (
+                                    <div key={w._id} className="p-6 rounded-[2.5rem] bg-[#050810]/40 border border-white/5 flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-4 min-w-0">
+                                            <div className="h-10 w-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                                                {w.user?.image ? (
+                                                    <img src={w.user.image} alt="Witness" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Users size={18} className="text-white/30" />
+                                                )}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] text-white font-black uppercase tracking-widest italic truncate">
+                                                    {w.user?.name || 'Unknown'}
+                                                </p>
+                                                <p className="text-[9px] text-white/30 font-black uppercase tracking-widest italic truncate mt-2">
+                                                    {w.user?.city ? `${w.user.city} • ` : ''}Integrity: {w.user?.integrityScore ?? 0}%
+                                                </p>
+                                                <p className="text-[9px] text-white/20 font-black uppercase tracking-widest italic mt-2">
+                                                    Status: {w.status}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {isOwner && w.status === 'active' ? (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setConfirm({
+                                                        open: true,
+                                                        title: 'Remove witness?',
+                                                        description: `This will end witness access for ${w.user?.name || 'this user'}.`,
+                                                        tone: 'danger',
+                                                        confirmLabel: 'Remove',
+                                                        run: async () => {
+                                                            await removeWitness({ partnerShipId: w._id } as any)
+                                                            toast.success('Witness removed.', { title: 'Witness Protocol' })
+                                                            await queryClient.invalidateQueries({ queryKey: vaultQuery.queryKey })
+                                                            await queryClient.invalidateQueries()
+                                                        },
+                                                    })
+                                                }
+                                                className="h-10 w-10 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500/15 active:scale-95 transition-all shrink-0"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">

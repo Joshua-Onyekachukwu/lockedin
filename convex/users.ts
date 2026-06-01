@@ -241,6 +241,7 @@ export const listDiscoverable = query({
     const discoverable = await ctx.db
       .query("users")
       .withIndex("by_is_discoverable", (q) => q.eq("is_discoverable", true))
+      .filter((q) => q.neq(q.field("witness_discoverable"), false))
       .take(limit);
 
     return await Promise.all(
@@ -289,7 +290,7 @@ export const getLeaderboard = query({
 
     const users = await ctx.db
       .query("users")
-      .order("desc")
+      .withIndex("by_is_discoverable", (q) => q.eq("is_discoverable", true))
       .take(5000);
     
     const sorted = users

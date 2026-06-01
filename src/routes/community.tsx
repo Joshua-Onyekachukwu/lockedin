@@ -200,9 +200,9 @@ function CommunityPage() {
                             onChange={(e) => setSortBy(e.target.value as any)}
                             className="appearance-none bg-white/[0.02] border border-white/10 rounded-2xl pl-6 pr-14 py-4 text-[10px] font-black uppercase tracking-widest italic text-white/70 outline-none focus:border-blue-500"
                           >
-                            <option value="integrity">Integrity</option>
-                            <option value="missions">Missions</option>
-                            <option value="streak">Streak</option>
+                            <option className="bg-[#0a0f1a] text-white" value="integrity">Integrity</option>
+                            <option className="bg-[#0a0f1a] text-white" value="missions">Missions</option>
+                            <option className="bg-[#0a0f1a] text-white" value="streak">Streak</option>
                           </select>
                         </div>
                       </div>

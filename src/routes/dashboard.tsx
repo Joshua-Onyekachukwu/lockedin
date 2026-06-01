@@ -88,6 +88,7 @@ function DashboardContent({ user }: { user: any }) {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [checkingInGoal, setCheckingInGoal] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'protocols' | 'witnessing' | 'wallet'>('protocols');
+  const [activeEvidenceLog, setActiveEvidenceLog] = useState<any>(null);
   const [txCursor, setTxCursor] = useState<string | null>(null)
   const [txCursorStack, setTxCursorStack] = useState<Array<string | null>>([])
   const txPageSize = 12
@@ -246,6 +247,94 @@ function DashboardContent({ user }: { user: any }) {
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                     className="space-y-16"
                 >
+                    <AnimatePresence>
+                        {activeEvidenceLog ? (
+                            <>
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => setActiveEvidenceLog(null)}
+                                    className="fixed inset-0 z-[90] bg-[#050810]/70 backdrop-blur-xl"
+                                />
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 20, scale: 0.98 }}
+                                    transition={{ duration: 0.18 }}
+                                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
+                                >
+                                    <div className="w-full max-w-2xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
+                                        <div className="p-6 sm:p-10 border-b border-white/10 flex items-start justify-between gap-6">
+                                            <div className="text-left">
+                                                <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
+                                                    Evidence Log
+                                                </p>
+                                                <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed">
+                                                    Participant: {activeEvidenceLog.userName}
+                                                </p>
+                                                <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-2 leading-relaxed">
+                                                    Goal: {activeEvidenceLog.goalTitle}
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveEvidenceLog(null)}
+                                                className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                                            >
+                                                <X size={18} />
+                                            </button>
+                                        </div>
+
+                                        <div className="p-6 sm:p-10 space-y-6">
+                                            {activeEvidenceLog.proofUrl ? (
+                                                <div className="w-full rounded-[2.5rem] overflow-hidden border border-white/10 bg-black shadow-inner">
+                                                    <img
+                                                        src={activeEvidenceLog.proofUrl}
+                                                        className="w-full max-h-[520px] object-contain"
+                                                        alt="Execution Evidence"
+                                                    />
+                                                </div>
+                                            ) : null}
+
+                                            <div className="p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/10">
+                                                <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                                                    Log Note
+                                                </p>
+                                                <p className="mt-4 text-xs text-white/50 italic font-medium leading-relaxed">
+                                                    {activeEvidenceLog.note || 'No specification provided with this log.'}
+                                                </p>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        await handleVerify(activeEvidenceLog._id, 'rejected')
+                                                        setActiveEvidenceLog(null)
+                                                    }}
+                                                    className="py-5 rounded-2xl border border-red-500/20 text-red-500/50 hover:text-red-500 hover:bg-red-500/5 transition-all font-black uppercase tracking-widest text-[10px] italic shadow-xl active:scale-95"
+                                                >
+                                                    Reject
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        await handleVerify(activeEvidenceLog._id, 'approved')
+                                                        setActiveEvidenceLog(null)
+                                                    }}
+                                                    className="py-5 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 transition-all font-black uppercase tracking-widest text-[10px] italic shadow-xl shadow-blue-900/40 active:scale-95"
+                                                >
+                                                    Approve
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </>
+                        ) : null}
+                    </AnimatePresence>
+
                     {((incomingApplications as any[])?.length || 0) > 0 && (
                         <section className="text-left">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
@@ -324,7 +413,13 @@ function DashboardContent({ user }: { user: any }) {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
                                 {(pendingVerifications as any[]).map((log: any) => (
-                                    <div key={log._id} className="p-10 rounded-[3.5rem] border border-white/10 bg-[#0a0f1a]/80 backdrop-blur-3xl overflow-hidden group hover:border-blue-500/20 transition-all text-left shadow-[0_20px_60px_rgba(0,0,0,0.4)]">
+                                    <div
+                                        key={log._id}
+                                        onClick={() => setActiveEvidenceLog(log)}
+                                        role="button"
+                                        tabIndex={0}
+                                        className="p-10 rounded-[3.5rem] border border-white/10 bg-[#0a0f1a]/80 backdrop-blur-3xl overflow-hidden group hover:border-blue-500/20 transition-all text-left shadow-[0_20px_60px_rgba(0,0,0,0.4)] cursor-pointer active:scale-[0.99]"
+                                    >
                                         <div className="flex items-center gap-4 mb-8">
                                             <div className="h-10 w-10 rounded-xl bg-blue-600/10 flex items-center justify-center text-blue-500 border border-blue-500/20 shadow-xl">
                                                 <Eye size={18} />
@@ -341,19 +436,27 @@ function DashboardContent({ user }: { user: any }) {
                                             </div>
                                         )}
 
-                                        <p className="p-6 rounded-2xl bg-white/5 border border-white/5 text-xs text-white/40 italic font-medium mb-10 leading-relaxed">
-                                            "{log.note || 'No specification provided with this log.'}"
+                                        <p className="p-6 rounded-2xl bg-white/5 border border-white/5 text-xs text-white/40 italic font-medium mb-10 leading-relaxed line-clamp-3">
+                                            {log.note || 'No specification provided with this log.'}
                                         </p>
 
                                         <div className="grid grid-cols-2 gap-4">
-                                            <button 
-                                                onClick={() => handleVerify(log._id, 'rejected')}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleVerify(log._id, 'rejected')
+                                                }}
                                                 className="py-5 rounded-2xl border border-red-500/20 text-red-500/40 hover:text-red-500 hover:bg-red-500/5 transition-all font-black uppercase tracking-widest text-[10px] italic shadow-xl"
                                             >
                                                 Reject Log
                                             </button>
-                                            <button 
-                                                onClick={() => handleVerify(log._id, 'approved')}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    handleVerify(log._id, 'approved')
+                                                }}
                                                 className="py-5 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 transition-all font-black uppercase tracking-widest text-[10px] italic shadow-xl shadow-blue-900/40"
                                             >
                                                 Authorize
@@ -673,7 +776,7 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
           </div>
           <div className={`p-6 rounded-[2rem] border text-left transition-colors shadow-inner ${isFailed ? 'bg-red-500/5 border-red-500/20' : 'bg-white/[0.02] border-white/5 group-hover:border-[#ff7a00]/20'}`}>
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-2 italic">Pain Tier</p>
-            <p className={`text-base sm:text-xl font-black italic tracking-tighter uppercase leading-tight break-words ${isFailed ? 'text-red-500' : 'text-[#ff7a00]'}`}>
+            <p className={`text-sm sm:text-xl font-black italic tracking-tighter uppercase leading-none whitespace-nowrap truncate ${isFailed ? 'text-red-500' : 'text-[#ff7a00]'}`}>
                 {vault.painTier || 'Serious'}
             </p>
           </div>
