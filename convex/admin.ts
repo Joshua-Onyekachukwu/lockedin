@@ -589,7 +589,7 @@ export const handlePaystackTransferSuccess = internalMutation({
       userId: withdrawal.userId,
       title: "Extraction Protocol Complete",
       message: `Your capital of ₦${(withdrawal.amount / 100).toLocaleString()} has been dispersed to your bank account.`,
-      type: "verification_needed",
+      type: "wallet_withdrawal",
       read: false,
     });
 
@@ -967,7 +967,11 @@ export const getSystemStats = query({
     await checkAdmin(ctx);
 
     const stats = await ctx.db.query("system_stats").unique();
-    const totalUsers = (await ctx.db.query("users").order("desc").take(5000)).length;
+    const users = await ctx.db.query("users").order("desc").take(5000);
+    const totalUsers = users.length;
+    const verifiedUsers = users.filter((u) => !!u.emailVerificationTime).length;
+    const unverifiedUsers = totalUsers - verifiedUsers;
+    const adminUsers = users.filter((u) => u.isAdmin === true).length;
     const activeVaults = await ctx.db
       .query("vaults")
       .withIndex("by_status", (q) => q.eq("status", "active"))
@@ -978,6 +982,9 @@ export const getSystemStats = query({
       revenue: stats?.total_revenue || 0,
       distributed: stats?.total_distributed || 0,
       totalUsers,
+      verifiedUsers,
+      unverifiedUsers,
+      adminUsers,
       activeVaults: activeVaults.length,
       totalStaked,
     };
@@ -1363,7 +1370,7 @@ export const finalizeWithdrawal = internalMutation({
                 userId: withdrawal.userId,
                 title: "Extraction Protocol Complete",
                 message: `Your capital of ₦${(withdrawal.amount / 100).toLocaleString()} has been dispersed to your bank account.`,
-                type: "verification_needed",
+                  type: "wallet_withdrawal",
                 read: false,
             });
 
@@ -1483,5 +1490,52 @@ export const markUserEmailVerified = mutation({
     });
 
     return { success: true, message: "User email marked as verified." };
+  },
+});
+
+export const updateUserVerifications = mutation({
+  args: {
+    userId: v.id("users"),
+    emailVerified: v.optional(v.boolean()),
+    bvn_verified: v.optional(v.boolean()),
+    isAdmin: v.optional(v.boolean()),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    user: v.optional(v.any()),
+  }),
+  handler: async (ctx, args) => {
+    const admin = await checkAdmin(ctx);
+    const user = await ctx.db.get(args.userId);
+    if (!user) return { success: false, message: "User not found." };
+
+    const patch: any = {};
+    if (args.emailVerified !== undefined) {
+      patch.emailVerificationTime = args.emailVerified
+        ? user.emailVerificationTime ?? Date.now()
+        : undefined;
+    }
+    if (args.bvn_verified !== undefined) patch.bvn_verified = args.bvn_verified;
+    if (args.isAdmin !== undefined) patch.isAdmin = args.isAdmin;
+
+    await ctx.db.patch(user._id, patch);
+
+    const updated = await ctx.db.get(user._id);
+
+    await ctx.db.insert("admin_audit", {
+      adminUserId: admin._id,
+      action: "update_user_verifications",
+      message: `User verification/admin flags updated. User: ${(updated?.email ?? user.email ?? user._id) as any}`,
+      targetType: "user",
+      targetId: user._id,
+      metadata: {
+        emailVerified: args.emailVerified,
+        bvn_verified: args.bvn_verified,
+        isAdmin: args.isAdmin,
+      },
+    });
+
+    return { success: true, message: "User updated.", user: updated ?? undefined };
   },
 });

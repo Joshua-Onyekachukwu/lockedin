@@ -100,6 +100,8 @@ function AdminDashboard() {
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const formatCompact = (n: number) =>
+    new Intl.NumberFormat('en-NG', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
 
   const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any;
   const { data: user, isFetching: userFetching }: { data: any; isFetching: boolean } = useSuspenseQuery({
@@ -190,6 +192,9 @@ function AdminDashboard() {
   const [txCursor, setTxCursor] = useState<string | null>(null);
   const [txCursorStack, setTxCursorStack] = useState<Array<string | null>>([]);
   const txPageSize = 25;
+  const updateUserVerifications = useMutation((api as any).admin.updateUserVerifications);
+  const [userEditRunning, setUserEditRunning] = useState(false);
+  const [statsDetail, setStatsDetail] = useState<null | 'revenue' | 'staked' | 'citizens' | 'health'>(null);
 
   const searchUsersQuery = convexQuery((api as any).admin.searchUsers, { q: userSearch, limit: 20 } as any) as any;
   const { data: searchedUsers } = useQuery({
@@ -199,7 +204,7 @@ function AdminDashboard() {
 
   const allUsersQuery = convexQuery(
     (api as any).admin.listUsersPage,
-    { cursor: usersCursor, limit: usersPageSize } as any,
+    { cursor: usersCursor ?? undefined, limit: usersPageSize } as any,
   ) as any;
   const { data: allUsersPage } = useQuery({
     ...(allUsersQuery as any),
@@ -209,7 +214,7 @@ function AdminDashboard() {
 
   const transactionsPageQuery = convexQuery(
     (api as any).admin.listTransactionsPage,
-    { cursor: txCursor, limit: txPageSize } as any,
+    { cursor: txCursor ?? undefined, limit: txPageSize } as any,
   ) as any;
   const { data: transactionsPage } = useQuery({
     ...(transactionsPageQuery as any),
@@ -325,55 +330,72 @@ function AdminDashboard() {
             <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-500 font-black uppercase tracking-widest text-[10px] italic">
                 <ShieldCheck size={14} /> Root Access Active
             </div>
-            <Link
-              to="/admin/settings"
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/admin/settings' })}
               className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-white transition-all active:scale-95"
             >
               <Settings size={20} />
-            </Link>
+            </button>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto p-8 relative z-10">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-blue-500/20 transition-all text-left">
+            <button
+              type="button"
+              onClick={() => setStatsDetail('revenue')}
+              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-blue-500/20 transition-all text-left w-full"
+            >
                 <div className="flex items-center justify-between mb-6">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">Protocol Revenue</span>
                     <TrendingUp size={18} className="text-blue-500" />
                 </div>
                 <p className="text-4xl font-black text-white italic tracking-tighter uppercase">₦{(stats.revenue / 100).toLocaleString()}</p>
                 <p className="mt-2 text-[10px] text-green-500 font-black uppercase tracking-widest italic">Captured Liquidity</p>
-            </div>
+            </button>
 
-            <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-[#ff7a00]/20 transition-all text-left">
+            <button
+              type="button"
+              onClick={() => setStatsDetail('staked')}
+              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-[#ff7a00]/20 transition-all text-left w-full"
+            >
                 <div className="flex items-center justify-between mb-6">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">Active Stakes</span>
                     <Wallet size={18} className="text-[#ff7a00]" />
                 </div>
                 <p className="text-[clamp(1.5rem,2.6vw,2.25rem)] font-black text-white italic tracking-tighter uppercase whitespace-nowrap overflow-hidden text-ellipsis">
-                  ₦{(stats.totalStaked / 100).toLocaleString()}
+                  ₦{formatCompact(stats.totalStaked / 100)}
                 </p>
                 <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">{stats.activeVaults} Active Goals</p>
-            </div>
+            </button>
 
-            <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-blue-500/20 transition-all text-left">
+            <button
+              type="button"
+              onClick={() => setStatsDetail('citizens')}
+              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-blue-500/20 transition-all text-left w-full"
+            >
                 <div className="flex items-center justify-between mb-6">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">Total Citizens</span>
                     <Users size={18} className="text-blue-500" />
                 </div>
                 <p className="text-4xl font-black text-white italic tracking-tighter uppercase">{stats.totalUsers}</p>
                 <p className="mt-2 text-[10px] text-blue-500 font-black uppercase tracking-widest italic">Identity Anchored</p>
-            </div>
+            </button>
 
-            <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-green-500/20 transition-all text-left">
+            <button
+              type="button"
+              onClick={() => setStatsDetail('health')}
+              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-green-500/20 transition-all text-left w-full"
+            >
                 <div className="flex items-center justify-between mb-6">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">System Health</span>
                     <Activity size={18} className="text-green-500" />
                 </div>
                 <p className="text-4xl font-black text-white italic tracking-tighter uppercase">STABLE</p>
                 <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">Crons Executing</p>
-            </div>
+            </button>
         </div>
 
         <div className="flex flex-wrap gap-4 mb-8">
@@ -1807,6 +1829,202 @@ function AdminDashboard() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {statsDetail ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setStatsDetail(null)}
+              className="fixed inset-0 z-[60] bg-[#050810]/70 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed inset-0 z-[65] flex items-center justify-center p-6"
+            >
+              <div className="w-full max-w-2xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
+                <div className="p-10 flex items-start justify-between gap-6">
+                  <div className="text-left">
+                    <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                      Detail View
+                    </p>
+                    <p className="mt-3 text-white font-black uppercase italic tracking-tight text-2xl">
+                      {statsDetail === 'revenue'
+                        ? 'Protocol Revenue'
+                        : statsDetail === 'staked'
+                          ? 'Active Stakes'
+                          : statsDetail === 'citizens'
+                            ? 'Total Citizens'
+                            : 'System Health'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStatsDetail(null)}
+                    className="h-12 w-12 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="px-10 pb-10 grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                  {statsDetail === 'revenue' ? (
+                    <>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Total Revenue
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          ₦{((stats?.revenue ?? 0) / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Distributed
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          ₦{((stats?.distributed ?? 0) / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Deposits (24H)
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          {overview?.deposits24h ?? 0}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Deposit Volume (24H)
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          ₦{((overview?.depositVolume24h ?? 0) / 100).toLocaleString()}
+                        </p>
+                      </div>
+                    </>
+                  ) : null}
+
+                  {statsDetail === 'staked' ? (
+                    <>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Total Staked
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          ₦{((stats?.totalStaked ?? 0) / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Active Goals
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          {stats?.activeVaults ?? 0}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Protocols (24H)
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          {overview?.protocols24h ?? 0}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Active Vaults
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          {overview?.activeVaults ?? 0}
+                        </p>
+                      </div>
+                    </>
+                  ) : null}
+
+                  {statsDetail === 'citizens' ? (
+                    <>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Total Users
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          {stats?.totalUsers ?? 0}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Verified Users
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          {stats?.verifiedUsers ?? 0}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Unverified Users
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          {stats?.unverifiedUsers ?? 0}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Admin Users
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          {stats?.adminUsers ?? 0}
+                        </p>
+                      </div>
+                    </>
+                  ) : null}
+
+                  {statsDetail === 'health' ? (
+                    <>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Pending Extractions
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          {overview?.pendingWithdrawals ?? 0}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Pending Amount
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          ₦{((overview?.pendingWithdrawalAmount ?? 0) / 100).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          System Status
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          Stable
+                        </p>
+                      </div>
+                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                          Last 24H Deposits
+                        </p>
+                        <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
+                          {overview?.deposits24h ?? 0}
+                        </p>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {selectedUser ? (
           <>
             <motion.div
@@ -1864,6 +2082,106 @@ function AdminDashboard() {
                     </p>
                   </div>
                 ))}
+              </div>
+
+              <div className="mt-10 p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                  Verification Controls
+                </p>
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    disabled={userEditRunning}
+                    onClick={async () => {
+                      setUserEditRunning(true);
+                      try {
+                        const res = await updateUserVerifications({
+                          userId: selectedUser._id,
+                          emailVerified: true,
+                        });
+                        if (res?.user) setSelectedUser(res.user);
+                        await queryClient.invalidateQueries();
+                        toast.success(res?.message ?? "Updated.");
+                      } catch (e: any) {
+                        toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
+                      } finally {
+                        setUserEditRunning(false);
+                      }
+                    }}
+                    className="px-5 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-40"
+                  >
+                    Mark Email Verified
+                  </button>
+                  <button
+                    type="button"
+                    disabled={userEditRunning}
+                    onClick={async () => {
+                      setUserEditRunning(true);
+                      try {
+                        const res = await updateUserVerifications({
+                          userId: selectedUser._id,
+                          emailVerified: false,
+                        });
+                        if (res?.user) setSelectedUser(res.user);
+                        await queryClient.invalidateQueries();
+                        toast.success(res?.message ?? "Updated.");
+                      } catch (e: any) {
+                        toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
+                      } finally {
+                        setUserEditRunning(false);
+                      }
+                    }}
+                    className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
+                  >
+                    Clear Email Verified
+                  </button>
+                  <button
+                    type="button"
+                    disabled={userEditRunning}
+                    onClick={async () => {
+                      setUserEditRunning(true);
+                      try {
+                        const res = await updateUserVerifications({
+                          userId: selectedUser._id,
+                          bvn_verified: !selectedUser.bvn_verified,
+                        });
+                        if (res?.user) setSelectedUser(res.user);
+                        await queryClient.invalidateQueries();
+                        toast.success(res?.message ?? "Updated.");
+                      } catch (e: any) {
+                        toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
+                      } finally {
+                        setUserEditRunning(false);
+                      }
+                    }}
+                    className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
+                  >
+                    Toggle BVN
+                  </button>
+                  <button
+                    type="button"
+                    disabled={userEditRunning}
+                    onClick={async () => {
+                      setUserEditRunning(true);
+                      try {
+                        const res = await updateUserVerifications({
+                          userId: selectedUser._id,
+                          isAdmin: !selectedUser.isAdmin,
+                        });
+                        if (res?.user) setSelectedUser(res.user);
+                        await queryClient.invalidateQueries();
+                        toast.success(res?.message ?? "Updated.");
+                      } catch (e: any) {
+                        toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
+                      } finally {
+                        setUserEditRunning(false);
+                      }
+                    }}
+                    className="px-5 py-4 rounded-2xl bg-blue-600/10 border border-blue-500/20 text-blue-500 font-black uppercase tracking-widest italic text-[10px] hover:bg-blue-600/20 active:scale-95 transition-all disabled:opacity-40"
+                  >
+                    Toggle Admin
+                  </button>
+                </div>
               </div>
             </motion.div>
           </>
