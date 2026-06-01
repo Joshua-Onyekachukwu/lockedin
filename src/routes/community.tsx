@@ -54,18 +54,21 @@ function CommunityPage() {
   const { data: discoverableUsers } = useQuery({
     ...discoverableUsersQuery,
     enabled: isAuthenticated && isVerified,
+    placeholderData: [],
   });
 
   const discoverableGoalsQuery = convexQuery(api.goals.listDiscoverable, EMPTY_ARGS as any) as any;
   const { data: discoverableGoals } = useQuery({
     ...discoverableGoalsQuery,
     enabled: isAuthenticated && isVerified,
+    placeholderData: [],
   });
 
   const myVaultsQuery = convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any;
   const { data: myVaults } = useQuery({
     ...myVaultsQuery,
     enabled: isAuthenticated && isVerified,
+    placeholderData: [],
   });
   
   const [activeView, setActiveView] = useState<'goals' | 'witnesses'>('goals');
@@ -139,13 +142,13 @@ function CommunityPage() {
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                 >
-                    {discoverableGoals && (discoverableGoals as any[]).length === 0 ? (
+                    {((discoverableGoals ?? []) as any[]).length === 0 ? (
                         <div className="col-span-full py-40 rounded-[4rem] border border-dashed border-white/10 text-center">
                             <History size={60} className="mx-auto text-white/5 mb-8 opacity-10" />
                             <p className="text-sm text-white/20 font-black uppercase tracking-[0.3em] italic">No discoverable goals found in this sector</p>
                         </div>
                     ) : (
-                        (discoverableGoals as any[])
+                        ((discoverableGoals ?? []) as any[])
                           .filter((g: any) => {
                             const q = searchTerm.trim().toLowerCase();
                             if (!q) return true;
@@ -206,7 +209,7 @@ function CommunityPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                      {(discoverableUsers as any[])
+                      {((discoverableUsers ?? []) as any[])
                         .filter((u: any) => u._id !== userId)
                         .filter((u: any) => {
                           const q = searchTerm.trim().toLowerCase();
@@ -234,7 +237,7 @@ function CommunityPage() {
         {requestingTo && (
             <VaultPickerModal 
                 partner={requestingTo} 
-                vaults={myVaults} 
+                vaults={myVaults ?? []} 
                 onClose={() => setRequestingTo(null)} 
             />
         )}

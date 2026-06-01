@@ -81,12 +81,23 @@ function Dashboard() {
 
 function DashboardContent({ user }: { user: any }) {
   const toast = useToast();
+  const queryClient = useQueryClient();
   
   const [isCreating, setIsCreating] = useState(false);
   const [isFunding, setIsFunding] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [checkingInGoal, setCheckingInGoal] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'protocols' | 'witnessing' | 'wallet'>('protocols');
+  const [txCursor, setTxCursor] = useState<string | null>(null)
+  const [txCursorStack, setTxCursorStack] = useState<Array<string | null>>([])
+  const txPageSize = 12
+
+  useEffect(() => {
+    if (activeTab !== 'wallet') {
+      setTxCursor(null)
+      setTxCursorStack([])
+    }
+  }, [activeTab])
 
   const { data: vaults } = useQuery({
     ...(convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any),
@@ -116,25 +127,47 @@ function DashboardContent({ user }: { user: any }) {
     staleTime: 1000 * 10,
   } as any)
 
-  const { data: transactions } = useQuery({
-    ...(convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any),
-    enabled: activeTab === 'wallet',
+  const { data: incomingApplications } = useQuery({
+    ...(convexQuery((api as any).partners.listIncomingApplications, EMPTY_ARGS as any) as any),
+    enabled: activeTab === 'witnessing',
     placeholderData: [],
     staleTime: 1000 * 10,
   } as any)
+
+  const { data: transactions } = useQuery({
+    ...(convexQuery((api as any).payments.getTransactionsPage, {
+      cursor: txCursor ?? undefined,
+      limit: txPageSize,
+    } as any) as any),
+    enabled: activeTab === 'wallet',
+    placeholderData: { page: [], isDone: true, continueCursor: null },
+    staleTime: 1000 * 10,
+  } as any)
+
+  const txPage = (transactions as any)?.page ?? []
+  const txIsDone = !!(transactions as any)?.isDone
+  const txNextCursor = (transactions as any)?.continueCursor ?? null
   
   const verifyLog = useMutation(api.verifications.verifyLog);
   const acceptPartnerRequest = useMutation(api.partners.acceptRequest);
-  const requestPartnership = useMutation(api.partners.request);
+  const acceptApplication = useMutation((api as any).partners.acceptApplication);
+  const applyToWitness = useMutation((api as any).partners.applyToWitness);
 
   const handleVerify = async (logId: any, status: 'approved' | 'rejected') => {
-      await verifyLog({ logId, status });
+      try {
+          await verifyLog({ logId, status });
+          toast.success('Evidence processed.', { title: status === 'approved' ? 'Authorized' : 'Rejected' });
+          await queryClient.invalidateQueries();
+      } catch (err: any) {
+          toast.error(toUserMessage(err, 'Failed to process evidence.'), { title: 'Verification Failed' });
+      }
   };
 
-  const handleRequestWitness = async (vaultId: any, partnerId: any) => {
+  const handleRequestWitness = async (vaultId: any) => {
       try {
-          await requestPartnership({ vaultId, partnerId });
-          toast.success('Witness request transmitted.', { title: 'Request Sent' });
+          await applyToWitness({ vaultId } as any);
+          toast.success('Application transmitted.', { title: 'Witness Applied' });
+          await queryClient.invalidateQueries();
       } catch (err: any) {
           toast.error(toUserMessage(err, 'Failed to transmit request.'), { title: 'Request Blocked' });
       }
@@ -213,6 +246,40 @@ function DashboardContent({ user }: { user: any }) {
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                     className="space-y-16"
                 >
+                    {((incomingApplications as any[])?.length || 0) > 0 && (
+                        <section className="text-left">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
+                                Incoming Witness Applications
+                                <div className="h-px flex-1 bg-white/5 text-left" />
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                                {(incomingApplications as any[]).map((req: any) => (
+                                    <div key={req._id} className="p-8 rounded-[3rem] border border-white/5 bg-white/[0.02] flex items-center justify-between group hover:border-blue-500/20 transition-all text-left shadow-2xl">
+                                        <div className="flex items-center gap-6">
+                                            <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20">
+                                                <Users size={20} />
+                                            </div>
+                                            <div className="text-left">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-white/20 mb-1 italic">{req.partner?.name} Applied To Witness</p>
+                                                <p className="font-black italic uppercase text-lg text-white">{req.goal?.title}</p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={async () => {
+                                              await acceptApplication({ partnerShipId: req._id } as any)
+                                              toast.success('Witness activated.', { title: 'Accepted' })
+                                              await queryClient.invalidateQueries()
+                                            }}
+                                            className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest italic shadow-xl shadow-blue-900/40 hover:scale-105 active:scale-95 transition-all"
+                                        >
+                                            Accept
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
                     {((incomingRequests as any[])?.length || 0) > 0 && (
                         <section className="text-left">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
@@ -344,7 +411,7 @@ function DashboardContent({ user }: { user: any }) {
                                         </div>
 
                                         <button 
-                                            onClick={() => handleRequestWitness(v._id, v.userId)}
+                                            onClick={() => handleRequestWitness(v._id)}
                                             className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white hover:text-black transition-all font-black text-[9px] uppercase tracking-widest italic"
                                         >
                                             Apply as Witness
@@ -421,12 +488,12 @@ function DashboardContent({ user }: { user: any }) {
                             </div>
 
                             <div className="space-y-4">
-                                {(transactions as any[]).length === 0 ? (
+                                {(txPage as any[]).length === 0 ? (
                                     <div className="py-24 text-center">
                                         <p className="text-sm text-white/10 italic font-black uppercase tracking-widest italic">No transaction history detected</p>
                                     </div>
                                 ) : (
-                                    (transactions as any[]).map((tx: any) => (
+                                    (txPage as any[]).map((tx: any) => (
                                         <div key={tx._id} className="p-8 rounded-[2.5rem] bg-[#050810]/40 border border-white/5 flex items-center justify-between hover:bg-white/[0.03] transition-all group shadow-xl">
                                             <div className="flex items-center gap-6">
                                                 <div className={`h-14 w-14 rounded-2xl flex items-center justify-center shadow-2xl ${tx.amount > 0 ? 'bg-green-500/10 text-green-500 shadow-green-900/10' : 'bg-red-500/10 text-red-500 shadow-red-900/10'}`}>
@@ -443,6 +510,42 @@ function DashboardContent({ user }: { user: any }) {
                                         </div>
                                     ))
                                 )}
+                            </div>
+
+                            <div className="mt-10 flex items-center justify-between gap-4">
+                              <button
+                                type="button"
+                                disabled={txCursorStack.length === 0}
+                                onClick={() => {
+                                  setTxCursorStack((s) => {
+                                    if (s.length === 0) return s
+                                    const next = [...s]
+                                    const prev = next.pop() ?? null
+                                    setTxCursor(prev)
+                                    return next
+                                  })
+                                }}
+                                className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white transition-all font-black uppercase tracking-widest text-[10px] italic disabled:opacity-40 active:scale-95"
+                              >
+                                Prev
+                              </button>
+
+                              <p className="text-[9px] font-black uppercase tracking-widest italic text-white/20">
+                                Ledger Page
+                              </p>
+
+                              <button
+                                type="button"
+                                disabled={txIsDone || !txNextCursor}
+                                onClick={() => {
+                                  if (!txNextCursor) return
+                                  setTxCursorStack((s) => [...s, txCursor])
+                                  setTxCursor(txNextCursor)
+                                }}
+                                className="px-6 py-3 rounded-2xl bg-white text-black hover:bg-white/90 transition-all font-black uppercase tracking-widest text-[10px] italic disabled:opacity-40 active:scale-95"
+                              >
+                                Next
+                              </button>
                             </div>
                          </div>
                     </div>
@@ -570,7 +673,7 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
           </div>
           <div className={`p-6 rounded-[2rem] border text-left transition-colors shadow-inner ${isFailed ? 'bg-red-500/5 border-red-500/20' : 'bg-white/[0.02] border-white/5 group-hover:border-[#ff7a00]/20'}`}>
             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-2 italic">Pain Tier</p>
-            <p className={`text-xl font-black italic tracking-tighter uppercase leading-none ${isFailed ? 'text-red-500' : 'text-[#ff7a00]'}`}>
+            <p className={`text-base sm:text-xl font-black italic tracking-tighter uppercase leading-tight break-words ${isFailed ? 'text-red-500' : 'text-[#ff7a00]'}`}>
                 {vault.painTier || 'Serious'}
             </p>
           </div>
@@ -854,13 +957,24 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
     const toast = useToast();
     const [note, setNote] = useState('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (!selectedFile) {
+            setPreviewUrl(null);
+            return;
+        }
+        const url = URL.createObjectURL(selectedFile);
+        setPreviewUrl(url);
+        return () => URL.revokeObjectURL(url);
+    }, [selectedFile]);
 
     const handleSubmit = async (e: any) => {
         e.preventDefault();
         setLoading(true);
         try {
-            let proofImageId = undefined;
+            let proofImageId: string | undefined = undefined;
             if (selectedFile) {
                 const postUrl = await generateUploadUrl();
                 const result = await fetch(postUrl, {
@@ -868,14 +982,18 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
                     headers: { "Content-Type": selectedFile.type },
                     body: selectedFile,
                 });
-                const { storageId } = await result.json();
+                if (!result.ok) {
+                    const text = await result.text().catch(() => '');
+                    throw new Error(text || 'Image upload failed.');
+                }
+                const json = await result.json();
+                const storageId = (json as any)?.storageId as string | undefined;
+                if (!storageId) throw new Error('Image upload failed (missing storage id).');
                 proofImageId = storageId;
             }
-            await checkIn({
-                goalId: vault.goal._id,
-                note: note,
-                proofImageId: proofImageId as any
-            });
+            const args: any = { goalId: vault.goal._id, note: note };
+            if (proofImageId) args.proofImageId = proofImageId;
+            await checkIn(args);
             toast.success('Execution log transmitted.', { title: 'Log Submitted' });
             onClose();
         } catch (err: any) {
@@ -934,6 +1052,16 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
                                     {selectedFile ? selectedFile.name : 'Attach Photographic Evidence'}
                                 </p>
                             </label>
+
+                            {previewUrl ? (
+                                <div className="w-full p-4 rounded-[2.5rem] border border-white/10 bg-white/[0.02]">
+                                    <img
+                                        src={previewUrl}
+                                        alt="Evidence preview"
+                                        className="w-full max-h-[320px] object-contain rounded-[2rem]"
+                                    />
+                                </div>
+                            ) : null}
                         </div>
                     </div>
 

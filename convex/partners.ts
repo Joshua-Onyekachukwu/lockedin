@@ -99,6 +99,62 @@ export const request = mutation({
   }
 });
 
+export const applyToWitness = mutation({
+  args: {
+    vaultId: v.id("vaults"),
+  },
+  returns: v.id("accountability_partners"),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
+
+    const vault = await ctx.db.get(args.vaultId);
+    if (!vault) throw new Error("Vault not found");
+    if (vault.userId === userId) {
+      throw new Error("Request Blocked: Self-witnessing is not permitted.");
+    }
+
+    const goal = await ctx.db
+      .query("goals")
+      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+      .unique();
+    if (!goal) throw new Error("Goal not found");
+
+    const existing = await ctx.db
+      .query("accountability_partners")
+      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+      .filter((q) => q.eq(q.field("partnerId"), userId))
+      .unique();
+
+    if (existing) return existing._id;
+
+    const partnerShipId = await ctx.db.insert("accountability_partners", {
+      vaultId: args.vaultId,
+      goalId: goal._id,
+      requesterId: vault.userId,
+      partnerId: userId,
+      status: "pending",
+      requester_accepted: false,
+      partner_accepted: true,
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: vault.userId,
+      title: "Witness Application",
+      message: `${user?.name || "Someone"} applied to witness your goal.`,
+      type: "partner_request",
+      link: `/invite/${args.vaultId}`,
+      read: false,
+    });
+
+    return partnerShipId;
+  },
+});
+
 export const acceptRequest = mutation({
     args: { partnerShipId: v.id("accountability_partners") },
     returns: v.null(),
@@ -121,6 +177,42 @@ export const acceptRequest = mutation({
         });
         return null;
     }
+});
+
+export const acceptApplication = mutation({
+  args: { partnerShipId: v.id("accountability_partners") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
+    const user = await ctx.db.get(userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
+
+    const partnership = await ctx.db.get(args.partnerShipId);
+    if (!partnership || partnership.requesterId !== userId) {
+      throw new Error("Authorization Breach: You cannot accept this application.");
+    }
+
+    if (partnership.status !== "pending") return null;
+
+    await ctx.db.patch(args.partnerShipId, {
+      status: "active",
+      requester_accepted: true,
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: partnership.partnerId,
+      title: "Witness Role Activated",
+      message: "Your witness application was accepted. You can now authorize evidence logs.",
+      type: "partner_request",
+      link: `/vault/${partnership.vaultId}`,
+      read: false,
+    });
+
+    return null;
+  },
 });
 
 export const listIncomingRequests = query({
@@ -146,6 +238,32 @@ export const listIncomingRequests = query({
         }
         return results;
     }
+});
+
+export const listIncomingApplications = query({
+  args: {},
+  returns: v.array(v.any()),
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) return [];
+
+    const user = await ctx.db.get(userId);
+    if (!user || !user.emailVerificationTime) return [];
+
+    const requests = await ctx.db
+      .query("accountability_partners")
+      .withIndex("by_requester_and_status", (q) => q.eq("requesterId", userId).eq("status", "pending"))
+      .collect();
+
+    const results = [];
+    for (const req of requests) {
+      if (!req.partner_accepted || req.requester_accepted) continue;
+      const partner = await ctx.db.get(req.partnerId);
+      const goal = await ctx.db.get(req.goalId);
+      results.push({ ...req, partner, goal });
+    }
+    return results;
+  },
 });
 
 export const joinByInvite = mutation({

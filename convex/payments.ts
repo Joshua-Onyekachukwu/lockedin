@@ -1147,6 +1147,32 @@ export const getTransactions = query({
   },
 });
 
+export const getTransactionsPage = query({
+  args: { cursor: v.optional(v.string()), limit: v.optional(v.number()) },
+  returns: v.object({
+    page: v.array(v.any()),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.null(), v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return { page: [], isDone: true, continueCursor: null };
+
+    const limit = Math.max(5, Math.min(args.limit ?? 20, 50));
+    const res = await ctx.db
+      .query("transactions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .paginate({ cursor: args.cursor ?? null, numItems: limit });
+
+    return {
+      page: res.page,
+      isDone: res.isDone,
+      continueCursor: res.continueCursor,
+    };
+  },
+});
+
 export const getBalance = query({
   args: {},
   returns: v.number(),

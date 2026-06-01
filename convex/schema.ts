@@ -89,7 +89,8 @@ export default defineSchema({
   }).index("by_vault", ["vaultId"])
     .index("by_partner", ["partnerId"])
     .index("by_partner_and_status", ["partnerId", "status"])
-    .index("by_requester", ["requesterId"]),
+    .index("by_requester", ["requesterId"])
+    .index("by_requester_and_status", ["requesterId", "status"]),
 
   reward_pool: defineTable({
     week_number: v.number(),

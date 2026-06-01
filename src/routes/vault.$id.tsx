@@ -57,6 +57,65 @@ function VaultPage() {
     );
   }
 
+  const frequency = (vault.goal?.frequency_type as 'daily' | 'weekly' | 'monthly' | undefined) ?? 'daily'
+  const targetCount = Number(vault.goal?.target_count ?? 1) || 1
+  const now = Date.now()
+  const startDate = Number(vault.startDate ?? vault._creationTime ?? now)
+  const todayStr = new Date(now).toISOString().split('T')[0]
+  const currentWeekNumber = Math.max(1, Math.floor((now - startDate) / (7 * 24 * 60 * 60 * 1000)) + 1)
+  const currentMonthKey = new Date(now).toISOString().slice(0, 7)
+
+  const logs: any[] = Array.isArray(vault.logs) ? vault.logs : []
+  const completedThisPeriod = logs.filter((l) => {
+    if ((l.status as any) !== 'completed') return false
+    const dateStr = (l.date as string | undefined) ?? ''
+    if (frequency === 'daily') return dateStr === todayStr
+    if (frequency === 'weekly') return Number(l.week_number ?? 0) === currentWeekNumber
+    return dateStr.slice(0, 7) === currentMonthKey
+  }).length
+
+  const remainingThisPeriod = Math.max(0, targetCount - completedThisPeriod)
+
+  const endOfToday = () => {
+    const d = new Date(now)
+    d.setHours(23, 59, 59, 999)
+    return d.getTime()
+  }
+
+  const endOfTomorrow = () => {
+    const d = new Date(now)
+    d.setDate(d.getDate() + 1)
+    d.setHours(23, 59, 59, 999)
+    return d.getTime()
+  }
+
+  const endOfWeek = () => startDate + currentWeekNumber * 7 * 24 * 60 * 60 * 1000 - 1
+
+  const endOfMonth = () => {
+    const d = new Date(now)
+    d.setMonth(d.getMonth() + 1, 1)
+    d.setHours(0, 0, 0, 0)
+    return d.getTime() - 1
+  }
+
+  const deadline =
+    frequency === 'daily'
+      ? (remainingThisPeriod > 0 ? endOfToday() : endOfTomorrow())
+      : frequency === 'weekly'
+        ? endOfWeek()
+        : endOfMonth()
+
+  const msLeft = Math.max(0, deadline - now)
+  const formatCountdown = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000)
+    const days = Math.floor(totalSeconds / (3600 * 24))
+    const hours = Math.floor((totalSeconds % (3600 * 24)) / 3600)
+    const mins = Math.floor((totalSeconds % 3600) / 60)
+    if (days > 0) return `${days}d ${hours}h`
+    if (hours > 0) return `${hours}h ${mins}m`
+    return `${Math.max(0, mins)}m`
+  }
+
   return (
     <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
         <nav className="border-b border-white/5 bg-[#0a0f1a]/50 backdrop-blur-xl px-8 py-5 flex items-center justify-between sticky top-0 z-40 text-left">
@@ -101,6 +160,22 @@ function VaultPage() {
                         <div className="mt-8 flex items-center gap-3 text-[#ff7a00] font-black text-[10px] uppercase tracking-widest italic">
                             <ShieldCheck size={18} /> Escrowed in Protocol
                         </div>
+                    </div>
+
+                    <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">Next Check-in</p>
+                        <div className="flex items-center gap-3 text-left text-white">
+                          <Clock size={18} className="text-blue-500" />
+                          <p className="text-2xl font-black italic tracking-tight">
+                            {formatCountdown(msLeft)}
+                          </p>
+                        </div>
+                        <p className="text-[10px] text-white/30 mt-4 uppercase tracking-widest font-black italic">
+                          {frequency.toUpperCase()} • {remainingThisPeriod}/{targetCount} remaining
+                        </p>
+                        <p className="text-[10px] text-white/20 mt-3 uppercase tracking-widest font-black italic">
+                          Deadline: {new Date(deadline).toLocaleString()}
+                        </p>
                     </div>
 
                     <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
