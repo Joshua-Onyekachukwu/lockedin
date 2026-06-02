@@ -86,9 +86,11 @@ export const request = mutation({
     // Check if already exists
     const existing = await ctx.db
         .query("accountability_partners")
-        .withIndex("by_vault", q => q.eq("vaultId", args.vaultId))
-        .filter(q => q.eq(q.field("partnerId"), args.partnerId))
-        .unique();
+        .withIndex("by_vault_and_partner", (q) =>
+          q.eq("vaultId", args.vaultId).eq("partnerId", args.partnerId),
+        )
+        .order("desc")
+        .first();
     
     if (existing) return existing._id;
 
@@ -146,9 +148,9 @@ export const applyToWitness = mutation({
 
     const existing = await ctx.db
       .query("accountability_partners")
-      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
-      .filter((q) => q.eq(q.field("partnerId"), userId))
-      .unique();
+      .withIndex("by_vault_and_partner", (q) => q.eq("vaultId", args.vaultId).eq("partnerId", userId))
+      .order("desc")
+      .first();
 
     if (existing) return existing._id;
 
@@ -325,6 +327,49 @@ export const listIncomingApplications = query({
       const goal = await ctx.db.get(req.goalId);
       results.push({ ...req, partner, goal });
     }
+    return results;
+  },
+});
+
+export const listMyWitnessProtocols = query({
+  args: {},
+  returns: v.array(v.any()),
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) return [];
+
+    const user = await ctx.db.get(userId);
+    if (!user || !user.emailVerificationTime) return [];
+
+    const partnerships = await ctx.db
+      .query("accountability_partners")
+      .withIndex("by_partner_and_status", (q) => q.eq("partnerId", userId).eq("status", "active"))
+      .collect();
+
+    const results: any[] = [];
+    for (const p of partnerships) {
+      const vault = await ctx.db.get(p.vaultId);
+      const goal = await ctx.db.get(p.goalId);
+      const owner = await ctx.db.get(p.requesterId);
+      const ownerImageUrl = owner?.profileImageId ? await ctx.storage.getUrl(owner.profileImageId) : null;
+
+      results.push({
+        partnership: p,
+        vault,
+        goal,
+        owner: owner
+          ? {
+              _id: owner._id,
+              name: owner.name,
+              image: ownerImageUrl ?? owner.image,
+              integrityScore: owner.integrityScore,
+              tier: owner.tier,
+              city: owner.city,
+            }
+          : null,
+      });
+    }
+
     return results;
   },
 });

@@ -121,6 +121,13 @@ function DashboardContent({ user }: { user: any }) {
     staleTime: 1000 * 10,
   } as any)
 
+  const { data: myWitnessProtocols } = useQuery({
+    ...(convexQuery((api as any).partners.listMyWitnessProtocols, EMPTY_ARGS as any) as any),
+    enabled: activeTab === 'witnessing',
+    placeholderData: [],
+    staleTime: 1000 * 10,
+  } as any)
+
   const { data: incomingRequests } = useQuery({
     ...(convexQuery(api.partners.listIncomingRequests, EMPTY_ARGS as any) as any),
     enabled: activeTab === 'witnessing',
@@ -393,6 +400,52 @@ function DashboardContent({ user }: { user: any }) {
                                         >
                                             Accept Role
                                         </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+
+                    {((myWitnessProtocols as any[])?.length || 0) > 0 && (
+                        <section className="text-left">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
+                                Your Witness Assignments
+                                <div className="h-px flex-1 bg-white/5 text-left" />
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                                {(myWitnessProtocols as any[]).map((row: any) => (
+                                    <div key={row?.partnership?._id ?? row?.vault?._id} className="p-8 rounded-[3rem] border border-white/5 bg-white/[0.02] text-left shadow-2xl">
+                                        <div className="flex items-center justify-between gap-6">
+                                            <div className="flex items-center gap-6 min-w-0">
+                                                <div className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 overflow-hidden shrink-0">
+                                                    {row?.owner?.image ? (
+                                                        <img src={row.owner.image} className="w-full h-full object-cover" alt="Owner" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-white/20">
+                                                            <Users size={18} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-white/20 italic truncate">
+                                                        Owner: {row?.owner?.name || 'Unknown'}
+                                                    </p>
+                                                    <p className="font-black italic uppercase text-lg text-white truncate">
+                                                        {row?.goal?.title || 'Protocol'}
+                                                    </p>
+                                                    <p className="mt-2 text-[9px] text-white/30 font-black uppercase tracking-[0.3em] italic truncate">
+                                                        Status: {row?.vault?.status || '—'} • Integrity {row?.owner?.integrityScore ?? 0}%
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Link
+                                                to="/vault/$id"
+                                                params={{ id: row?.vault?._id }}
+                                                className="px-6 py-3 rounded-2xl bg-white text-black font-black text-[10px] uppercase tracking-widest italic shadow-xl hover:scale-105 active:scale-95 transition-all shrink-0"
+                                            >
+                                                Open Spec
+                                            </Link>
+                                        </div>
                                     </div>
                                 ))}
                             </div>

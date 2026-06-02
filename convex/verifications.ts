@@ -30,9 +30,9 @@ export const verifyLog = mutation({
     // SECURITY: Ensure the verifier is actually an active partner for the vault
     const partner = await ctx.db
       .query("accountability_partners")
-      .withIndex("by_vault", (q) => q.eq("vaultId", goal.vaultId))
-      .filter(q => q.eq(q.field("partnerId"), userId))
-      .unique();
+      .withIndex("by_vault_and_partner", (q) => q.eq("vaultId", goal.vaultId).eq("partnerId", userId))
+      .order("desc")
+      .first();
 
     if (!partner || partner.status !== "active") {
       throw new Error("Authorization Breach: You are not an active verifier for this protocol.");
@@ -134,16 +134,19 @@ export const getPendingVerifications = query({
             .filter(q => q.eq(q.field("status"), "active"))
             .collect();
 
-        const pending = [];
+        const pending: any[] = [];
+        const seen = new Set<string>();
         for (const p of partnerships) {
             const logs = await ctx.db
                 .query("goal_logs")
                 .withIndex("by_goal", (q) => q.eq("goalId", p.goalId))
-                .filter(q => q.eq(q.field("status"), "completed"))
+                .filter(q => q.eq(q.field("status"), "pending"))
                 .order("desc")
                 .collect();
 
             for (const log of logs) {
+                const id = String((log as any)._id);
+                if (seen.has(id)) continue;
                 const approvals = Array.isArray((log as any).approvals) ? ((log as any).approvals as any[]) : [];
                 const rejections = Array.isArray((log as any).rejections) ? ((log as any).rejections as any[]) : [];
                 const hasVoted = approvals.includes(userId) || rejections.includes(userId);
@@ -156,6 +159,7 @@ export const getPendingVerifications = query({
                         userName: owner?.name,
                         proofUrl: log.proofImageId ? await ctx.storage.getUrl(log.proofImageId) : null
                     });
+                    seen.add(id);
                 }
             }
         }

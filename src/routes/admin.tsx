@@ -203,6 +203,8 @@ function AdminDashboard() {
   const txPageSize = 25;
   const updateUserVerifications = useMutation((api as any).admin.updateUserVerifications);
   const markUserEmailVerified = useMutation((api as any).admin.markUserEmailVerified);
+  const makeUsersVisibleByEmailDomain = useMutation((api as any).admin.makeUsersVisibleByEmailDomain);
+  const repairDuplicatePartnerships = useMutation((api as any).admin.repairDuplicatePartnerships);
   const [userEditRunning, setUserEditRunning] = useState(false);
   const [statsDetail, setStatsDetail] = useState<null | 'revenue' | 'staked' | 'citizens' | 'health'>(null);
 
@@ -238,7 +240,15 @@ function AdminDashboard() {
   ) as any;
   const { data: emailPrefixMatches } = useQuery({
     ...(emailPrefixQuery as any),
-    enabled: isAuthenticated && isVerified && isAdmin && verifyLookup.trim().length > 0,
+    enabled:
+      isAuthenticated &&
+      isVerified &&
+      isAdmin &&
+      verifyLookup.trim().length > 0 &&
+      !(
+        verifyPicked &&
+        (verifyPicked.email ?? "").toLowerCase() === verifyLookup.trim().toLowerCase()
+      ),
     placeholderData: [],
   } as any);
 
@@ -793,7 +803,11 @@ function AdminDashboard() {
                                 className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] px-6 py-5 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
                               />
 
-                              {(emailPrefixMatches as any[])?.length ? (
+                              {(emailPrefixMatches as any[])?.length &&
+                              !(
+                                verifyPicked &&
+                                (verifyPicked.email ?? "").toLowerCase() === verifyLookup.trim().toLowerCase()
+                              ) ? (
                                 <div className="absolute left-0 right-0 mt-3 rounded-[2rem] border border-white/10 bg-[#0a0f1a] shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden z-20">
                                   {(emailPrefixMatches as any[]).map((m: any) => (
                                     <button
@@ -1218,6 +1232,50 @@ function AdminDashboard() {
                         >
                             <ReceiptText size={16} /> Payments Explorer
                         </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                              setConfirm({
+                                open: true,
+                                title: 'Enable dummy users visibility?',
+                                description: `This turns ON Community + Witness visibility for users under: ${seedDomain}`,
+                                confirmLabel: 'Enable Visibility',
+                                tone: 'primary',
+                                run: async () => {
+                                  const res = await makeUsersVisibleByEmailDomain({
+                                    domain: seedDomain,
+                                    limit: seedLimit,
+                                    markVerified: false,
+                                  } as any)
+                                  toast.success(`Updated ${res?.updated ?? 0} users.`, { title: 'Visibility Enabled' })
+                                  await queryClient.invalidateQueries()
+                                },
+                              })
+                            }
+                            className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-center active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <Users size={16} /> Enable Dummy Visibility
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() =>
+                              setConfirm({
+                                open: true,
+                                title: 'Repair duplicate witness requests?',
+                                description: 'This ends duplicate witness rows that cause repeated goals and verification errors.',
+                                confirmLabel: 'Repair Duplicates',
+                                tone: 'primary',
+                                run: async () => {
+                                  const res = await repairDuplicatePartnerships({ dryRun: false } as any)
+                                  toast.success(`Fixed ${res?.fixed ?? 0} rows.`, { title: 'Repair Complete' })
+                                  await queryClient.invalidateQueries()
+                                },
+                              })
+                            }
+                            className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-center active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <ShieldCheck size={16} /> Repair Witness Duplicates
+                        </button>
                         <button className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/20 transition-all text-center border-dashed cursor-not-allowed opacity-60">
                           System Maintenance Mode
                         </button>
@@ -1384,7 +1442,11 @@ function AdminDashboard() {
                       className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] px-6 py-5 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
                     />
 
-                    {(emailPrefixMatches as any[])?.length ? (
+                    {(emailPrefixMatches as any[])?.length &&
+                    !(
+                      verifyPicked &&
+                      (verifyPicked.email ?? "").toLowerCase() === verifyLookup.trim().toLowerCase()
+                    ) ? (
                       <div className="absolute left-0 right-0 mt-3 rounded-[2rem] border border-white/10 bg-[#0a0f1a] shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden z-20">
                         {(emailPrefixMatches as any[]).map((m: any) => (
                           <button
@@ -2492,6 +2554,11 @@ function AdminDashboard() {
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
                         <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
                           Verification Controls
+                        </p>
+                        <p className="mt-3 text-[9px] text-white/30 font-black uppercase tracking-[0.3em] italic leading-relaxed">
+                          Email {selectedUser.emailVerificationTime ? 'On' : 'Off'} • BVN {selectedUser.bvn_verified ? 'On' : 'Off'} • Admin{' '}
+                          {selectedUser.isAdmin ? 'On' : 'Off'} • Community {selectedUser.is_discoverable ? 'On' : 'Off'} • Witness{' '}
+                          {selectedUser.witness_discoverable !== false ? 'On' : 'Off'}
                         </p>
                         <div className="mt-6 grid grid-cols-2 gap-3">
                           <button

@@ -51,6 +51,7 @@ function VaultPage() {
   } as any);
 
   const removeWitness = useMutation((api as any).partners.removeWitness);
+  const [activeLog, setActiveLog] = useState<any>(null);
   const [confirm, setConfirm] = useState<{
     open: boolean;
     title: string;
@@ -433,12 +434,20 @@ function VaultPage() {
                              </div>
                         ) : (
                             vault.logs?.map((log: any) => {
-                              const status = log.status as 'completed' | 'missed' | 'disputed' | undefined
+                              const status = log.status as 'pending' | 'completed' | 'missed' | 'disputed' | undefined
+                              const isPending = status === 'pending'
                               const isCompleted = status === 'completed'
                               const isMissed = status === 'missed'
                               const dateStr = (log.date as string | undefined) ?? ''
 
-                              const badge = isCompleted
+                              const badge = isPending
+                                ? {
+                                    label: 'Pending Approval',
+                                    wrap: 'bg-blue-600/10 border-blue-500/20 text-blue-400',
+                                    icon: <Clock size={14} />,
+                                    iconWrap: 'bg-blue-600/10 text-blue-400 border-blue-500/20',
+                                  }
+                                : isCompleted
                                 ? {
                                     label: 'Completed',
                                     wrap: 'bg-green-600/10 border-green-500/20 text-green-500',
@@ -462,6 +471,9 @@ function VaultPage() {
                               return (
                                 <div
                                   key={log._id}
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => setActiveLog(log)}
                                   className="p-8 rounded-[2.5rem] border border-white/5 bg-white/[0.02] group hover:bg-white/[0.04] transition-all text-left shadow-xl"
                                 >
                                   <div className="flex items-start justify-between gap-6">
@@ -477,7 +489,7 @@ function VaultPage() {
                                         </p>
                                         <p className="text-[10px] text-white/30 mt-2 text-left font-black uppercase tracking-widest italic">
                                           Week {log.week_number}
-                                          {log.confirmed_by ? ' • Verified' : ''}
+                                          {isPending ? ' • Awaiting Approval' : log.confirmed_by ? ' • Verified' : ''}
                                         </p>
                                       </div>
                                     </div>
@@ -515,6 +527,54 @@ function VaultPage() {
                     </div>
                 </div>
             </div>
+            {activeLog ? (
+              <div className="fixed inset-0 z-[80] flex items-center justify-center p-6">
+                <div
+                  className="absolute inset-0 bg-[#050810]/75 backdrop-blur-xl"
+                  onClick={() => setActiveLog(null)}
+                />
+                <div className="relative w-full max-w-3xl rounded-[3rem] bg-[#0a0f1a]/95 border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
+                  <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6">
+                    <div className="text-left">
+                      <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
+                        {activeLog.date ? `Check-in • ${activeLog.date}` : `Week ${activeLog.week_number} Check-in`}
+                      </p>
+                      <p className="mt-3 text-[10px] text-white/30 font-black uppercase tracking-[0.28em] italic">
+                        Status: {String(activeLog.status ?? '').toUpperCase()}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveLog(null)}
+                      className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="p-10">
+                    {activeLog.proofUrl ? (
+                      <div className="w-full max-h-[60vh] rounded-[2.5rem] overflow-hidden border border-white/10 bg-black">
+                        <img src={activeLog.proofUrl} className="w-full h-full object-contain" alt="Evidence" />
+                      </div>
+                    ) : (
+                      <div className="p-10 rounded-[2.5rem] border border-white/10 bg-white/[0.02]">
+                        <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.28em] italic">
+                          No image attached.
+                        </p>
+                      </div>
+                    )}
+                    <div className="mt-8 p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/10">
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
+                        Evidence Note
+                      </p>
+                      <p className="mt-4 text-xs text-white/40 italic leading-relaxed">
+                        {activeLog.note || 'No note provided.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
         </main>
     </div>
   );

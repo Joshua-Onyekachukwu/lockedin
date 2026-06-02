@@ -69,7 +69,7 @@ export default defineSchema({
     goalId: v.id("goals"),
     week_number: v.number(),
     date: v.string(), // YYYY-MM-DD
-    status: v.union(v.literal("completed"), v.literal("missed"), v.literal("disputed")),
+    status: v.union(v.literal("pending"), v.literal("completed"), v.literal("missed"), v.literal("disputed")),
     proofImageId: v.optional(v.id("_storage")),
     note: v.optional(v.string()),
     approvals: v.optional(v.array(v.id("users"))),
@@ -89,6 +89,7 @@ export default defineSchema({
     requester_accepted: v.boolean(),
     partner_accepted: v.boolean(),
   }).index("by_vault", ["vaultId"])
+    .index("by_vault_and_partner", ["vaultId", "partnerId"])
     .index("by_partner", ["partnerId"])
     .index("by_partner_and_status", ["partnerId", "status"])
     .index("by_requester", ["requesterId"])

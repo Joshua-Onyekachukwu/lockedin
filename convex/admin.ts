@@ -1902,3 +1902,79 @@ export const getUserProtocols = query({
     return results;
   },
 });
+
+export const makeUsersVisibleByEmailDomain = mutation({
+  args: {
+    domain: v.string(),
+    limit: v.optional(v.number()),
+    markVerified: v.optional(v.boolean()),
+  },
+  returns: v.object({ updated: v.number(), domain: v.string() }),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+
+    const raw = args.domain.trim().toLowerCase();
+    const domain = raw.startsWith("@") ? raw.slice(1) : raw;
+    const limit = Math.max(1, Math.min(args.limit ?? 50, 200));
+    const markVerified = args.markVerified === true;
+
+    const users = await ctx.db.query("users").take(2000);
+    const matches = users
+      .filter((u) => (u.email ?? "").toLowerCase().endsWith(`@${domain}`) || (u.email ?? "").toLowerCase().endsWith(domain))
+      .slice(0, limit);
+
+    for (const u of matches) {
+      await ctx.db.patch(u._id, {
+        is_discoverable: true,
+        witness_discoverable: true,
+        ...(markVerified && !u.emailVerificationTime ? { emailVerificationTime: Date.now() } : {}),
+      });
+    }
+
+    return { updated: matches.length, domain };
+  },
+});
+
+export const repairDuplicatePartnerships = mutation({
+  args: { dryRun: v.optional(v.boolean()), limit: v.optional(v.number()) },
+  returns: v.object({ scanned: v.number(), duplicateGroups: v.number(), fixed: v.number() }),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+
+    const dryRun = args.dryRun !== false;
+    const limit = Math.max(1, Math.min(args.limit ?? 2000, 5000));
+    const rows = await ctx.db.query("accountability_partners").take(limit);
+
+    const groups = new Map<string, any[]>();
+    for (const r of rows) {
+      const key = `${r.vaultId}:${r.partnerId}`;
+      const list = groups.get(key) ?? [];
+      list.push(r);
+      groups.set(key, list);
+    }
+
+    let duplicateGroups = 0;
+    let fixed = 0;
+
+    for (const [, list] of groups) {
+      if (list.length <= 1) continue;
+      duplicateGroups += 1;
+
+      const sorted = [...list].sort((a, b) => (b._creationTime ?? 0) - (a._creationTime ?? 0));
+      const keep =
+        sorted.find((x) => x.status === "active") ??
+        sorted.find((x) => x.status === "pending") ??
+        sorted[0];
+
+      for (const r of sorted) {
+        if (r._id === keep._id) continue;
+        if (dryRun) continue;
+        if (r.status === "ended") continue;
+        await ctx.db.patch(r._id, { status: "ended" });
+        fixed += 1;
+      }
+    }
+
+    return { scanned: rows.length, duplicateGroups, fixed };
+  },
+});

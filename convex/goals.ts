@@ -150,12 +150,12 @@ export const checkIn = mutation({
       goalId: args.goalId,
       week_number,
       date: today,
-      status: "completed",
+      status: "pending",
       proofImageId: args.proofImageId,
       note: args.note,
     });
 
-    return { success: true, message: "Evidence logged. Pending partner verification." };
+    return { success: true, message: "Evidence logged. Pending witness approval." };
   },
 });
 
@@ -208,15 +208,16 @@ export const getFullContext = query({
         .first();
     if (!goal) return null;
 
-    // Security check: only owner or partner can view
+    const isAdmin = user.isAdmin === true;
+
     const partner = await ctx.db
       .query("accountability_partners")
-      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
-      .filter((q) => q.eq(q.field("partnerId"), userId))
-      .unique();
+      .withIndex("by_vault_and_partner", (q) => q.eq("vaultId", args.vaultId).eq("partnerId", userId))
+      .order("desc")
+      .first();
 
     const isActivePartner = !!partner && partner.status === "active";
-    if (vault.userId !== userId && !isActivePartner) {
+    if (vault.userId !== userId && !isActivePartner && !isAdmin) {
       const owner = await ctx.db.get(vault.userId);
       const profileUrl = owner?.profileImageId ? await ctx.storage.getUrl(owner.profileImageId) : null;
       return {
@@ -259,7 +260,7 @@ export const getFullContext = query({
         };
     }));
 
-    return { ...vault, goal, logs: logsWithUrls, isPartner: isActivePartner, access: "full" };
+    return { ...vault, goal, logs: logsWithUrls, isPartner: isActivePartner, isAdmin, access: "full" };
   }
 });
 
@@ -284,9 +285,9 @@ export const getInvitePreview = query({
 
     const pending = await ctx.db
       .query("accountability_partners")
-      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
-      .filter((q) => q.eq(q.field("partnerId"), userId))
-      .unique();
+      .withIndex("by_vault_and_partner", (q) => q.eq("vaultId", args.vaultId).eq("partnerId", userId))
+      .order("desc")
+      .first();
 
     if (!pending || pending.status !== "pending") {
       return { access: "none", _id: vault._id, status: vault.status, goal: { title: goal.title } };
