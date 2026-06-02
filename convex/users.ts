@@ -341,22 +341,36 @@ export const getLeaderboard = query({
       return 1;
     };
 
+    const rankScore = (u: any) => {
+      const tier = tierWeight(u.tier);
+      const missions = Number(u.goals_completed ?? 0);
+      const streak = Number(u.streak_count ?? 0);
+      const integrity = Number(u.integrityScore ?? 0);
+      return tier * 100_000 + missions * 1_000 + streak * 100 + integrity * 10;
+    };
+
     const users = await ctx.db
       .query("users")
       .withIndex("by_is_discoverable", (q) => q.eq("is_discoverable", true))
       .take(5000);
     
-    const sorted = users
+    const eligible = users.filter((u) => !!u.emailVerificationTime);
+
+    const sorted = eligible
       .sort((a, b) => {
-        const tierDiff = tierWeight(b.tier) - tierWeight(a.tier);
-        if (tierDiff !== 0) return tierDiff;
+        const scoreDiff = rankScore(b) - rankScore(a);
+        if (scoreDiff !== 0) return scoreDiff;
+
         const integrityDiff = (b.integrityScore ?? 0) - (a.integrityScore ?? 0);
         if (integrityDiff !== 0) return integrityDiff;
 
         const goalsDiff = (b.goals_completed ?? 0) - (a.goals_completed ?? 0);
         if (goalsDiff !== 0) return goalsDiff;
 
-        return (b.streak_count ?? 0) - (a.streak_count ?? 0);
+        const streakDiff = (b.streak_count ?? 0) - (a.streak_count ?? 0);
+        if (streakDiff !== 0) return streakDiff;
+
+        return (b._creationTime ?? 0) - (a._creationTime ?? 0);
       })
       .slice(0, 50);
 
