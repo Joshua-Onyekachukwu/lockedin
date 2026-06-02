@@ -1978,3 +1978,31 @@ export const repairDuplicatePartnerships = mutation({
     return { scanned: rows.length, duplicateGroups, fixed };
   },
 });
+
+export const recomputeUserTiers = mutation({
+  args: { limit: v.optional(v.number()) },
+  returns: v.object({ scanned: v.number(), updated: v.number() }),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+
+    const tierForIntegrity = (score: number) => {
+      if (score >= 90) return "gold" as const;
+      if (score >= 75) return "silver" as const;
+      return "bronze" as const;
+    };
+
+    const limit = Math.max(1, Math.min(args.limit ?? 5000, 5000));
+    const users = await ctx.db.query("users").take(limit);
+
+    let updated = 0;
+    for (const u of users) {
+      const expected = tierForIntegrity(u.integrityScore ?? 0);
+      if (u.tier !== expected) {
+        await ctx.db.patch(u._id, { tier: expected });
+        updated += 1;
+      }
+    }
+
+    return { scanned: users.length, updated };
+  },
+});

@@ -205,6 +205,7 @@ function AdminDashboard() {
   const markUserEmailVerified = useMutation((api as any).admin.markUserEmailVerified);
   const makeUsersVisibleByEmailDomain = useMutation((api as any).admin.makeUsersVisibleByEmailDomain);
   const repairDuplicatePartnerships = useMutation((api as any).admin.repairDuplicatePartnerships);
+  const recomputeUserTiers = useMutation((api as any).admin.recomputeUserTiers);
   const [userEditRunning, setUserEditRunning] = useState(false);
   const [statsDetail, setStatsDetail] = useState<null | 'revenue' | 'staked' | 'citizens' | 'health'>(null);
 
@@ -1164,6 +1165,23 @@ function AdminDashboard() {
                             className="w-full py-5 rounded-2xl bg-white text-black hover:scale-[1.02] active:scale-95 transition-all text-center"
                         >
                             Verify User Email
+                        </button>
+                        <button 
+                            onClick={() => setConfirm({
+                              open: true,
+                              title: 'Recompute user tiers?',
+                              description: 'This will update Bronze/Silver/Gold for all users based on integrity score.',
+                              confirmLabel: 'Recompute',
+                              tone: 'primary',
+                              run: async () => {
+                                const res = await recomputeUserTiers({} as any)
+                                toast.success(`Updated ${res?.updated ?? 0} users.`, { title: 'Tier Sync Complete' })
+                                await queryClient.invalidateQueries()
+                              },
+                            })}
+                            className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-center active:scale-95"
+                        >
+                            Recompute User Tiers
                         </button>
                         <button 
                             onClick={() => setConfirm({

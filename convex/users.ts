@@ -2,6 +2,12 @@ import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { auth } from "./auth";
 
+const tierForIntegrity = (score: number) => {
+  if (score >= 90) return "gold" as const;
+  if (score >= 75) return "silver" as const;
+  return "bronze" as const;
+};
+
 export const updateBvnStatus = internalMutation({
   args: {
     userId: v.id("users"),
@@ -56,6 +62,7 @@ export const current = query({
     return {
       ...user,
       image: profileUrl ?? user.image,
+      tier: tierForIntegrity(user.integrityScore ?? 0),
     };
   },
 });
@@ -258,7 +265,7 @@ export const listDiscoverable = query({
           goals_completed: u.goals_completed,
           integrityScore: u.integrityScore,
           is_discoverable: u.is_discoverable,
-          tier: u.tier,
+          tier: tierForIntegrity(u.integrityScore ?? 0),
         };
       }),
     );
@@ -311,7 +318,7 @@ export const listWitnessPool = query({
           goals_completed: u.goals_completed,
           integrityScore: u.integrityScore,
           is_discoverable: u.is_discoverable,
-          tier: u.tier,
+          tier: tierForIntegrity(u.integrityScore ?? 0),
         };
       }),
     );
@@ -384,7 +391,7 @@ export const getLeaderboard = query({
           integrityScore: u.integrityScore,
           streak_count: u.streak_count,
           goals_completed: u.goals_completed,
-          tier: u.tier,
+          tier: tierForIntegrity(u.integrityScore ?? 0),
         };
       }),
     );
