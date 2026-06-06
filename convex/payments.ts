@@ -4,6 +4,38 @@ import { auth } from "./auth";
 import { api, internal } from "./_generated/api";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
+const PAYSTACK_MODE = process.env.PAYSTACK_MODE;
+const PAYSTACK_PUBLIC = process.env.PAYSTACK_PUBLIC_KEY;
+
+function derivePaystackDomainFromSecret(secret: string) {
+  if (secret.startsWith("sk_test_")) return "test" as const;
+  if (secret.startsWith("sk_live_")) return "live" as const;
+  return null;
+}
+
+function assertPaystackConfig() {
+  if (!PAYSTACK_SECRET) throw new Error("Payment backend not configured.");
+  const derived = derivePaystackDomainFromSecret(PAYSTACK_SECRET);
+  const declared =
+    PAYSTACK_MODE === "test" || PAYSTACK_MODE === "live" ? PAYSTACK_MODE : null;
+  const expected = declared ?? derived;
+  if (!expected) {
+    throw new Error("Payment backend misconfigured: invalid PAYSTACK_SECRET_KEY.");
+  }
+  if (declared && derived && declared !== derived) {
+    throw new Error("Payment backend misconfigured: PAYSTACK_MODE mismatch.");
+  }
+  if (PAYSTACK_PUBLIC) {
+    const pk = PAYSTACK_PUBLIC;
+    if (expected === "test" && !pk.startsWith("pk_test_")) {
+      throw new Error("Payment backend misconfigured: expected pk_test_ public key.");
+    }
+    if (expected === "live" && !pk.startsWith("pk_live_")) {
+      throw new Error("Payment backend misconfigured: expected pk_live_ public key.");
+    }
+  }
+  return expected;
+}
 
 const PaystackSource = v.union(
   v.literal("verify"),
@@ -31,6 +63,7 @@ export const initializeDeposit = mutation({
     const user = await ctx.db.get("users", userId);
     if (!user || !user.email) throw new Error("User email required for payment");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
+    assertPaystackConfig();
 
     const reference = `LKD-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 
@@ -68,6 +101,7 @@ export const initializeVaultFunding = mutation({
     const user = await ctx.db.get("users", userId);
     if (!user || !user.email) throw new Error("User email required for payment");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
+    assertPaystackConfig();
 
     const vault = await ctx.db.get("vaults", args.vaultId);
     if (!vault) throw new Error("Protocol not found");
@@ -115,8 +149,10 @@ export const verifyPayment = action({
     const user = await ctx.runQuery(api.users.current, {});
     if (!user || !user.emailVerificationTime) throw new Error("Email verification required.");
 
-    if (!PAYSTACK_SECRET) {
-      return { success: false, message: "Payment backend not configured." };
+    try {
+      assertPaystackConfig();
+    } catch (e: any) {
+      return { success: false, message: e?.message || "Payment backend misconfigured." };
     }
     try {
       const response = await fetch(`https://api.paystack.co/transaction/verify/${args.reference}`, {
@@ -130,6 +166,11 @@ export const verifyPayment = action({
       const data = await response.json();
 
       if (data.status && data.data.status === "success") {
+        const expectedDomain = derivePaystackDomainFromSecret(PAYSTACK_SECRET!);
+        const domain = data?.data?.domain as string | undefined;
+        if (expectedDomain && domain && domain !== expectedDomain) {
+          return { success: false, message: "Payment backend mode mismatch. Contact support." };
+        }
         // Amount check (Paystack returns amount in Kobo)
         const amountKobo = data.data.amount;
         const customerEmail = data?.data?.customer?.email as string | undefined;
@@ -170,7 +211,11 @@ export const listPaystackBanks = action({
   handler: async (ctx) => {
     const user = await ctx.runQuery(api.users.current, {});
     if (!user || !user.emailVerificationTime) throw new Error("Email verification required.");
-    if (!PAYSTACK_SECRET) return { success: false, message: "Payment backend not configured.", banks: [] };
+    try {
+      assertPaystackConfig();
+    } catch (e: any) {
+      return { success: false, message: e?.message || "Payment backend misconfigured.", banks: [] };
+    }
 
     try {
       const res = await fetch("https://api.paystack.co/bank?currency=NGN&country=nigeria", {
@@ -204,7 +249,11 @@ export const resolvePaystackAccount = action({
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(api.users.current, {});
     if (!user || !user.emailVerificationTime) throw new Error("Email verification required.");
-    if (!PAYSTACK_SECRET) return { success: false, message: "Payment backend not configured." };
+    try {
+      assertPaystackConfig();
+    } catch (e: any) {
+      return { success: false, message: e?.message || "Payment backend misconfigured." };
+    }
 
     const accountNumber = args.accountNumber.trim();
     const bankCode = args.bankCode.trim();
@@ -326,6 +375,25 @@ export const reconcilePaystackPayment = internalMutation({
       .unique();
 
     const now = Date.now();
+
+    const expectedDomain = PAYSTACK_SECRET
+      ? derivePaystackDomainFromSecret(PAYSTACK_SECRET)
+      : null;
+    const actualDomain =
+      typeof args.metadata?.domain === "string" ? args.metadata.domain : undefined;
+    if (expectedDomain && actualDomain && actualDomain !== expectedDomain) {
+      await ctx.db.insert("paystack_unmatched", {
+        reference: args.reference,
+        amount: args.amountKobo,
+        customerEmail: args.customerEmail,
+        source: args.source,
+        reason: "paystack_domain_mismatch",
+        metadata: args.metadata,
+        resolved: false,
+        createdAt: now,
+      });
+      return { status: "unmatched" as const };
+    }
 
     if (deposit) {
       if (deposit.amount !== args.amountKobo) {

@@ -34,6 +34,12 @@ async function computePaystackSignature(payload: string, secret: string) {
   return new Uint8Array(mac);
 }
 
+function derivePaystackDomainFromSecret(secret: string) {
+  if (secret.startsWith("sk_test_")) return "test" as const;
+  if (secret.startsWith("sk_live_")) return "live" as const;
+  return null;
+}
+
 const http = httpRouter();
 
 auth.addHttpRoutes(http);
@@ -66,6 +72,11 @@ http.route({
 
     try {
         const event = JSON.parse(payload);
+        const expectedDomain = derivePaystackDomainFromSecret(secret);
+        const actualDomain = event?.data?.domain as string | undefined;
+        if (expectedDomain && actualDomain && actualDomain !== expectedDomain) {
+          return new Response("Mode mismatch", { status: 400 });
+        }
 
         if (event.event === "charge.success") {
           const { reference, amount } = event.data;
