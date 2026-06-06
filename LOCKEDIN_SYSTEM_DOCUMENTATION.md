@@ -1,7 +1,7 @@
 # Lockedin System Documentation
 
 ## 1) Product summary
-Lockedin is a commitment and accountability system where users “stake principal” against a goal (a “Vault/Protocol”) and submit periodic evidence logs. Witnesses (accountability partners) approve/reject logs, and breaches can trigger forfeiture (pain tier) with an accounting split between platform revenue and a reward pool.
+Lockedin is a commitment and accountability system where users stake principal against a goal (a “Vault/Protocol”) and submit periodic evidence logs. Witnesses (accountability partners) approve/reject logs. Penalties accrue over time based on missed requirements, and settle at the end of the vault.
 
 The system is designed around:
 - **Hard identity gates** (email verification required before accessing most of the app)
@@ -9,6 +9,7 @@ The system is designed around:
 - **Privacy controls** (users can opt out of being discoverable in Community/Leaderboard/Witness Pool)
 - **Admin operability** (manual overrides, audits, payment tools, maintenance tools)
 - **Stable environment alignment** (Vercel frontend + Convex backend + Paystack webhooks must point to the same deployment to avoid split-brain)
+- **Non-custodial posture for MVP**: no wallet top-ups/balance; users fund each vault directly (stake-per-vault).
 
 ## 2) Key terms (how the app names map to the backend)
 - **User**: A record in `users`.
@@ -25,8 +26,7 @@ The system is designed around:
 ### 3.1 Regular verified user
 Can:
 - Create a goal (vault + goal)
-- Fund wallet (Paystack)
-- Stake principal into a vault
+- Fund a vault (Paystack) to activate it
 - Submit check-ins (logs)
 - Request witnesses / apply to witness others
 - View Community (if verified)
@@ -60,8 +60,9 @@ Expected behavior:
 ### 4.2 Goal creation (Vault + Goal)
 High-level:
 1. User chooses a goal template or custom goal.
-2. System creates a `vaults` record (principal, duration, pain tier).
+2. System creates a `vaults` record in `awaiting_funding` (principal, duration, pain tier).
 3. System creates a `goals` record linked to the vault (`vaultId`).
+4. User funds the vault via Paystack; once verified the vault becomes `active` and its clock starts (`fundedAt`).
 
 ### 4.3 Check-ins (evidence logs)
 Current lifecycle (important):
@@ -108,13 +109,18 @@ Spec access rules:
 - Owner, active witnesses, and admins see full spec.
 
 ### 4.7 Penalties / enforcement (pain tiers)
-Midnight sweep evaluates check-in compliance and can apply penalties.
-Penalty accounting (conceptual):
-- Principal forfeiture recorded via `transactions`.
-- Split:
-  - **70%** platform revenue
-  - **30%** reward pool contribution
-Those totals roll into `system_stats`.
+Midnight sweep evaluates compliance and records an explicit penalty breakdown.
+
+Implementation summary:
+- Each missed period creates a `penalty_events` row (idempotent per goal+period).
+- The vault’s `penaltyAccrued` increments by the penalty amount (it does not reduce the principal field).
+- UI shows:
+  - Accrued penalties (`penaltyAccrued`)
+  - Remaining principal (`amount - penaltyAccrued`)
+  - A penalty timeline (from `penalty_events`)
+
+Settlement rule:
+- Penalties accrue visually/internally during the vault and are financially settled only at end-of-vault.
 
 ### 4.8 Payments (Paystack)
 Frontend uses Paystack inline:
@@ -128,19 +134,26 @@ Webhooks:
 - HMAC verification uses `x-paystack-signature` and `PAYSTACK_SECRET_KEY`.
 
 Events handled include:
-- `charge.success` (wallet funding)
+- `charge.success` (vault funding)
 - Refund/dispute events (safety + reconciliation)
+
+### 4.9 Rewards (Protocol Credits)
+MVP rewards are internal, non-transferable “Protocol Credits” distributed in weekly epochs.
+
+Implementation summary:
+- Week distribution is recorded in `weekly_reward_distributions` (idempotent per week).
+- Pool is computed from penalties collected for the week.
+- Allocation is points-weighted using `sqrt(remainingStake)` across a user’s active vaults.
+- Credits are not money and are not withdrawable in MVP.
 
 ## 5) Admin tooling (what exists)
 Admin includes:
 - **Manual Overrides**
-  - Verify User Email (testing)
-  - Recompute User Tiers (backfill Bronze/Silver/Gold)
-  - Trigger Midnight Sweep
-  - Distribute Dividends
+  - Mark user email verified (requires reason + audit log)
+  - Update user verifications/permissions (reason + audit log)
+  - Enforce protocol breach / terminate a vault (settles remaining principal only)
 - **Maintenance**
-  - Enable Dummy Visibility (bulk set discoverable flags by email domain)
-  - Repair Witness Duplicates (end duplicate partner rows to stop repeated goals and query crashes)
+  - Data repair tools (e.g., ending duplicate witness relationships)
 - **User Terminal**
   - Search users and open a modal with details + Verification Controls
 
@@ -168,6 +181,7 @@ To prevent “frontend updated but backend missing functions” problems:
 - Vercel must point to the intended Convex deployment URL.
 - Paystack webhook must point to the same Convex deployment `.site`.
 - Convex env vars must be set on that same deployment.
+- Deploy backend changes to the same deployment your frontend targets (example workflow: `npx convex deploy --env-file .env.local`).
 
 ## 9) Paystack test-mode checklist (recommended)
 Given you are now using Paystack **TEST** keys:
@@ -175,28 +189,26 @@ Given you are now using Paystack **TEST** keys:
    - `VITE_PAYSTACK_PUBLIC_KEY` = Paystack test public key
 2. Convex deployment (the same one used by Vercel):
    - `PAYSTACK_SECRET_KEY` = Paystack test secret key
+   - Optional but recommended: `PAYSTACK_MODE=test` (and ensure pk/sk prefixes match)
 3. Paystack dashboard (TEST mode):
    - Webhook URL = `https://ardent-dinosaur-415.convex.site/paystack-webhook`
-4. Run a deposit test:
-   - fund wallet
-   - confirm `charge.success` credits the wallet once
+4. Run a vault funding test:
+   - create a vault (awaiting funding)
+   - fund & activate
+   - confirm `charge.success` activates the vault once (idempotent)
 5. Run edge tests:
    - duplicate webhook delivery (should be idempotent)
-   - refund/dispute test (ensure wallet handling is safe)
+   - refund/dispute test (ensure reconciliation is safe)
+   - deliberate mode mismatch (ensure it is rejected)
 
 ## 10) Version history (recent pushes)
 This is a high-level changelog based on commit messages.
 
-- `cdf8bb3` Fix tier display + recompute tiers admin action
-  - Tier derived from integrity at read-time + admin tier backfill tool.
-- `19cea6f` Docs: licensed partner custody architecture; leaderboard ranking weights
-  - Added custody architecture doc + multi-factor leaderboard ranking.
-- `f88e217` Pending approvals, dedupe witness requests, admin visibility tools
-  - Pending→approved lifecycle, dedupe repair tools, witness assignments, admin bypass for full spec.
-- `72db501` Witness pool visibility, witness limit, admin verify shortcut, revenue compact
-  - Witness pool query, max 3 witnesses enforcement, admin verify improvements, compact revenue formatting.
-- `c113f47` Community privacy, admin tools, witness consensus, badge tiers
-  - Community privacy tightening, consensus voting rules, badges/tier logic, admin enhancements.
-- `44d92f7` Evidence modal, witnesses, privacy toggles, and community UI
-  - Evidence review modal, witness details, privacy toggle enforcement, community UI fixes.
-
+- `c0b65c3` Phase 7: verification UX + share presets
+  - Full-page verification UX improvements, safe body scroll locking for modals, vault share presets.
+- `3fe5c20` Phase 6: witness lifecycle + vault completion
+  - Allow re-requesting ended witnesses; auto-end witnesses when a vault completes; hourly completion sweep.
+- `1047d59` Phase 5: Paystack mode guards
+  - Strict test/live mismatch blocking and webhook domain validation.
+- `c5ab1cd` Phase 4: weekly rewards ledger + weighted distribution
+  - Credits-only reward epochs with idempotent weekly distribution ledger.

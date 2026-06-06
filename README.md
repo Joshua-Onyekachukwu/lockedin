@@ -1,14 +1,14 @@
 # 🔒 Lockedin: Behavioral Enforcement Protocol
 
-Lockedin is a zero-trust behavioral bank built to solve the human willpower problem. It uses economic escrow and institutional-grade enforcement to ensure goals (goals) are fulfilled.
+Lockedin is a behavioral commitment and accountability platform built to help users follow through on goals using clear rules, witness verification, and stake-based commitment (stake-per-vault).
 
 ## 🏗️ The Stack
 - **Frontend:** TanStack Start (React + Vite + File-based Routing)
 - **Backend:** [Convex](https://convex.dev) (Real-time DB, Server Functions, Crons)
 - **Styling:** Tailwind CSS v4 (Industrial Aesthetic)
 - **Auth:** Convex Auth (@convex-dev/auth)
-- **Payments:** Paystack (Naira Escrow)
-- **KYC:** Mono/Smile ID (Identity Anchoring)
+- **Payments:** Paystack (Vault Funding)
+- **KYC:** Mono (BVN Verification)
 
 ## ⚖️ The Protocol Mechanics
 
@@ -40,8 +40,9 @@ Before users can sign up, you **MUST** generate a JWT key:
     - **Name:** `JWT_PRIVATE_KEY`
     - **Value:** (Paste the key you copied)
 5.  Also ensure these keys are present:
-    - `PAYSTACK_SECRET_KEY` (Live Key)
-    - `AUTH_RESEND_KEY` (For magic link emails)
+    - `PAYSTACK_SECRET_KEY` (Test or Live)
+    - `PAYSTACK_MODE` (`test` or `live`, recommended)
+    - `AUTH_RESEND_KEY` (Optional: enables email verification emails)
     - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`
 
 ### 2. Frontend Hosting (Vercel)
@@ -59,9 +60,9 @@ Before users can sign up, you **MUST** generate a JWT key:
     - `https://ardent-dinosaur-415.convex.site/paystack-webhook`
 
 ## 🛡️ Security Architecture
-- **Non-Custodial Logic:** All funds are tracked via atomic ledger entries.
-- **Root Admin:** Authorized access only for `onyekachukwujoshua1@gmail.com`.
-- **Identity Isolation:** Users only have access to their own vaults via Convex Row-Level Security.
+- **Non-custodial posture (MVP):** stake-per-vault funding; no stored-value wallet in the product.
+- **Payment safety:** server enforces Paystack webhook verification and test/live mode consistency.
+- **Auditability:** manual admin overrides are reasoned and written to an audit log.
 
 ---
 *Lockedin Operating Protocol v1.1 — Discipline is Non-Negotiable.*
