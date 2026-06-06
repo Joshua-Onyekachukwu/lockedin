@@ -59,6 +59,7 @@ export const create = mutation({
       duration_weeks: args.duration_weeks,
       startDate: undefined,
       endDate: undefined,
+      penaltyAccrued: 0,
       painTier: args.painTier,
       status: "awaiting_funding",
       interest_earned: 0,
@@ -248,7 +249,26 @@ export const getFullContext = query({
         };
     }));
 
-    return { ...vault, goal, logs: logsWithUrls, isPartner: isActivePartner, isAdmin, access: "full" };
+    const penaltyEvents = await ctx.db
+      .query("penalty_events")
+      .withIndex("by_vault", (q) => q.eq("vaultId", vault._id))
+      .order("desc")
+      .collect();
+
+    const penaltyAccrued = vault.penaltyAccrued ?? 0;
+    const principalRemaining = Math.max(0, vault.amount - penaltyAccrued);
+
+    return {
+      ...vault,
+      goal,
+      logs: logsWithUrls,
+      penaltyEvents,
+      penaltyAccrued,
+      principalRemaining,
+      isPartner: isActivePartner,
+      isAdmin,
+      access: "full",
+    };
   }
 });
 

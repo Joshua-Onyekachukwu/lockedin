@@ -87,6 +87,7 @@ function VaultPage() {
   const witnessRows: Array<any> = Array.isArray(witnesses) ? witnesses : [];
   const status = String(vault?.status ?? '')
   const isAwaitingFunding = status === 'awaiting_funding'
+  const penaltyEvents: Array<any> = Array.isArray(vault?.penaltyEvents) ? vault.penaltyEvents : []
 
   const frequency = (vault.goal?.frequency_type as 'daily' | 'weekly' | 'monthly' | undefined) ?? 'daily'
   const targetCount = Number(vault.goal?.target_count ?? 1) || 1
@@ -149,6 +150,9 @@ function VaultPage() {
 
   const principalKoboRaw = Number((vault)?.amount)
   const principalKobo = Number.isFinite(principalKoboRaw) ? principalKoboRaw : 0
+  const penaltyAccruedKoboRaw = Number(vault?.penaltyAccrued ?? 0)
+  const penaltyAccruedKobo = Number.isFinite(penaltyAccruedKoboRaw) ? penaltyAccruedKoboRaw : 0
+  const principalRemainingKobo = Math.max(0, principalKobo - penaltyAccruedKobo)
 
   if (access !== 'full') {
     return (
@@ -355,6 +359,35 @@ function VaultPage() {
                         )}
                     </div>
 
+                    {!isAwaitingFunding ? (
+                      <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
+                          Penalty Accounting
+                        </p>
+                        <div className="flex items-baseline justify-between gap-6">
+                          <div className="min-w-0">
+                            <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                              Accrued Penalties
+                            </p>
+                            <p className="mt-3 text-3xl font-black text-red-400 italic tracking-tight">
+                              ₦{(penaltyAccruedKobo / 100).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="min-w-0 text-right">
+                            <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                              Remaining Principal
+                            </p>
+                            <p className="mt-3 text-3xl font-black text-white italic tracking-tight">
+                              ₦{(principalRemainingKobo / 100).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="mt-6 text-xs text-white/30 leading-relaxed font-medium italic">
+                          Penalties accrue during the vault and are settled when the vault ends.
+                        </p>
+                      </div>
+                    ) : null}
+
                     <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">Next Check-in</p>
                         {isAwaitingFunding ? (
@@ -481,11 +514,55 @@ function VaultPage() {
                     <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">Pain Tier</p>
                         <p className="text-2xl font-bold mt-2 text-[#ff7a00] text-left uppercase italic font-black tracking-tight">{vault.painTier || 'Serious Mode'}</p>
-                        <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">Missed check-ins trigger an immediate 2% principal deduction and distribution to the reward pool.</p>
+                        <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">
+                          Missed requirements accrue penalties based on your tier and settle when the vault ends.
+                        </p>
                     </div>
                 </div>
 
                 <div className="lg:col-span-8 text-left">
+                    {penaltyEvents.length > 0 ? (
+                      <div className="mb-12 p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-8 text-left">
+                          Penalty Timeline
+                        </p>
+                        <div className="space-y-4">
+                          {penaltyEvents.slice(0, 10).map((e: any) => {
+                            const shielded = !!e.shield_used
+                            const when = new Date(Number(e.createdAt ?? 0)).toLocaleString()
+                            const label = shielded ? 'Shielded breach' : 'Penalty accrued'
+                            const amountKobo = Number(e.penalty_amount ?? 0)
+                            return (
+                              <div
+                                key={e._id}
+                                className="p-6 rounded-[2.5rem] bg-[#050810]/40 border border-white/5 flex items-start justify-between gap-6"
+                              >
+                                <div className="min-w-0">
+                                  <p className="text-[10px] text-white font-black uppercase tracking-widest italic">
+                                    {label} • {String(e.frequency_type ?? '').toUpperCase()}
+                                  </p>
+                                  <p className="mt-2 text-[10px] text-white/30 font-black uppercase tracking-widest italic">
+                                    {when}
+                                  </p>
+                                  <p className="mt-3 text-xs text-white/40 italic leading-relaxed">
+                                    Completed {Number(e.completed_count ?? 0)}/{Number(e.target_count ?? 0)}
+                                  </p>
+                                </div>
+                                <div className="shrink-0 text-right">
+                                  <p
+                                    className={`text-sm font-black uppercase tracking-widest italic ${
+                                      shielded ? 'text-yellow-300' : 'text-red-400'
+                                    }`}
+                                  >
+                                    {shielded ? '₦0' : `₦${(amountKobo / 100).toLocaleString()}`}
+                                  </p>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
                     <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black">
                         <div className="h-px flex-1 bg-white/5 text-left" />
                         Historical Logs

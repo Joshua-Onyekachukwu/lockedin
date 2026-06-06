@@ -38,6 +38,7 @@ export default defineSchema({
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
     fundedAt: v.optional(v.number()),
+    penaltyAccrued: v.optional(v.number()),
     painTier: v.union(
       v.literal("deterrence"),   // Tier 1: 2%
       v.literal("enforcement"), // Tier 2: 5%
@@ -107,6 +108,28 @@ export default defineSchema({
     source_vault_id: v.optional(v.id("vaults")),
     type: v.union(v.literal("penalty"), v.literal("distribution")),
   }).index("by_week_and_type", ["week_number", "type"]),
+
+  penalty_events: defineTable({
+    userId: v.id("users"),
+    vaultId: v.id("vaults"),
+    goalId: v.id("goals"),
+    week_number: v.number(),
+    frequency_type: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+    period_key: v.string(),
+    period_start: v.number(),
+    period_end: v.number(),
+    due_at: v.number(),
+    target_count: v.number(),
+    completed_count: v.number(),
+    shield_used: v.boolean(),
+    penalty_percent: v.number(),
+    penalty_amount: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_vault", ["vaultId"])
+    .index("by_user", ["userId"])
+    .index("by_week", ["week_number"])
+    .index("by_goal_and_period", ["goalId", "period_key"]),
 
   notifications: defineTable({
     userId: v.id("users"),
