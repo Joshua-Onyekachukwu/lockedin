@@ -4,22 +4,16 @@ import { convexQuery } from '@convex-dev/react-query';
 import { useAction, useConvexAuth, useMutation } from 'convex/react';
 import { 
   AlertCircle, 
-  ArrowDownLeft, 
   ArrowRight, 
-  ArrowUpRight,
-  Building2,
   Camera,
   Clock,
   CreditCard,
   Eye,
-  History,
   Plus,
   ShieldCheck,
   Target,
   Trophy,
-  User,
   Users,
-  Wallet,
   X
 } from 'lucide-react';
 
@@ -36,6 +30,11 @@ const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || process.
 const EMPTY_ARGS: Record<string, never> = {};
 
 export const Route = createFileRoute('/dashboard')({
+  validateSearch: (search: Record<string, unknown>) => {
+    const fundVaultId =
+      typeof search.fundVaultId === 'string' ? search.fundVaultId : undefined;
+    return { fundVaultId };
+  },
   component: Dashboard,
 });
 
@@ -82,23 +81,18 @@ function Dashboard() {
 function DashboardContent({ user }: { user: any }) {
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { fundVaultId } = Route.useSearch();
   
   const [isCreating, setIsCreating] = useState(false);
-  const [isFunding, setIsFunding] = useState(false);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [fundingVaultId, setFundingVaultId] = useState<string | null>(null);
   const [checkingInGoal, setCheckingInGoal] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'protocols' | 'witnessing' | 'wallet'>('protocols');
+  const [activeTab, setActiveTab] = useState<'protocols' | 'witnessing'>('protocols');
   const [activeEvidenceLog, setActiveEvidenceLog] = useState<any>(null);
-  const [txCursor, setTxCursor] = useState<string | null>(null)
-  const [txCursorStack, setTxCursorStack] = useState<Array<string | null>>([])
-  const txPageSize = 12
-
+  
   useEffect(() => {
-    if (activeTab !== 'wallet') {
-      setTxCursor(null)
-      setTxCursorStack([])
-    }
-  }, [activeTab])
+    if (!fundVaultId) return;
+    setFundingVaultId(fundVaultId);
+  }, [fundVaultId]);
 
   const { data: vaults } = useQuery({
     ...(convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any),
@@ -141,20 +135,6 @@ function DashboardContent({ user }: { user: any }) {
     placeholderData: [],
     staleTime: 1000 * 10,
   })
-
-  const { data: transactions } = useQuery({
-    ...(convexQuery((api as any).payments.getTransactionsPage, {
-      cursor: txCursor ?? undefined,
-      limit: txPageSize,
-    } as any) as any),
-    enabled: activeTab === 'wallet',
-    placeholderData: { page: [], isDone: true, continueCursor: null },
-    staleTime: 1000 * 10,
-  })
-
-  const txPage = (transactions as any)?.page ?? []
-  const txIsDone = !!(transactions as any)?.isDone
-  const txNextCursor = (transactions as any)?.continueCursor ?? null
   
   const verifyLog = useMutation(api.verifications.verifyLog);
   const acceptPartnerRequest = useMutation(api.partners.acceptRequest);
@@ -192,29 +172,27 @@ function DashboardContent({ user }: { user: any }) {
           { to: '/community', label: 'Community' },
         ]}
         user={user}
-        walletActive={activeTab === 'wallet'}
-        onWalletClick={() => setActiveTab('wallet')}
       />
 
       <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-12 text-left relative z-10">
         <header className="mb-10 sm:mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 text-left">
           <div className="text-left">
             <h1 className="text-4xl font-black tracking-tight md:text-5xl lg:text-7xl text-left text-white leading-tight uppercase italic">
-              {activeTab === 'protocols' ? 'Operational ' : activeTab === 'witnessing' ? 'Witness ' : 'Capital '}
-              <span className="text-blue-500 text-left">{activeTab === 'protocols' ? 'Intelligence.' : activeTab === 'witnessing' ? 'Authority.' : 'Command.'}</span>
+              {activeTab === 'protocols' ? 'Operational ' : 'Witness '}
+              <span className="text-blue-500 text-left">{activeTab === 'protocols' ? 'Intelligence.' : 'Authority.'}</span>
             </h1>
             <p className="text-white/30 mt-6 text-lg max-w-2xl leading-relaxed text-left font-medium italic">
                 {activeTab === 'protocols' 
                     ? `Integrity Score: ${user.integrityScore || 100}%. Adherence to active goals is non-negotiable.`
                     : activeTab === 'witnessing'
                     ? `Review protocol evidence and authorize goal compliance for your peers.`
-                    : `Command your liquid capital. Deploy stakes to enforce behavioral goals.`
+                    : ''
                 }
             </p>
           </div>
           
           <div className="flex bg-white/5 p-1.5 rounded-[2rem] border border-white/10">
-             {(['protocols', 'witnessing', 'wallet'] as const).map((tab) => (
+             {(['protocols', 'witnessing'] as const).map((tab) => (
                 <button 
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -235,7 +213,12 @@ function DashboardContent({ user }: { user: any }) {
                 >
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
                         {(vaults as Array<any>).map((vault: any) => (
-                            <VaultCard key={vault._id} vault={vault} onCheckIn={() => setCheckingInGoal(vault)} />
+                            <VaultCard
+                              key={vault._id}
+                              vault={vault}
+                              onCheckIn={() => setCheckingInGoal(vault)}
+                              onFund={() => setFundingVaultId(vault._id)}
+                            />
                         ))}
                         
                         <button 
@@ -578,135 +561,7 @@ function DashboardContent({ user }: { user: any }) {
                         </div>
                     </section>
                 </motion.div>
-            ) : (
-                <motion.div 
-                    key="wallet"
-                    initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-                    className="grid grid-cols-1 lg:grid-cols-12 gap-12"
-                >
-                    <div className="lg:col-span-5 space-y-10">
-                        <div className="p-12 rounded-[4rem] bg-[#0a0f1a] border border-white/5 relative overflow-hidden shadow-[0_30px_100px_rgba(0,0,0,0.6)]">
-                            <div className="absolute top-0 right-0 p-12 text-blue-600/5 -z-0">
-                                <Wallet size={240} strokeWidth={1} />
-                            </div>
-                            <div className="relative z-10">
-                                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 mb-12 italic">Liquid Capital Position</p>
-                                <h3 className="text-4xl sm:text-6xl font-black italic tracking-tighter mb-4 text-white break-words">₦{(user?.balance / 100)?.toLocaleString()}</h3>
-                                <p className="text-xs text-white/30 font-medium italic uppercase tracking-widest mb-16 italic font-black">Available for behavioral staking</p>
-                                
-                                <div className="flex flex-col gap-4">
-                                    <button 
-                                        onClick={() => setIsFunding(true)}
-                                        className="w-full py-6 rounded-3xl bg-blue-600 text-white font-black text-xs uppercase tracking-[0.3em] shadow-xl shadow-blue-900/40 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 italic"
-                                    >
-                                        <Plus size={18} /> Inject Capital
-                                    </button>
-                                    <button 
-                                        onClick={() => setIsWithdrawing(true)}
-                                        className="w-full py-6 rounded-3xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-[0.3em] hover:bg-white/10 active:scale-95 transition-all italic"
-                                    >
-                                        Extract Funds
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-8 rounded-[3rem] bg-white/[0.01] border border-dashed border-white/10">
-                             <div className="flex items-start gap-4">
-                                 <AlertCircle className="text-yellow-500 mt-1" size={20} />
-                                 <div className="text-left">
-                                     <p className="text-[10px] font-black uppercase tracking-widest text-white/60 mb-2 italic">Operating Procedure</p>
-                                     <p className="text-xs text-white/20 leading-relaxed font-medium italic uppercase tracking-tighter">
-                                         Funds requested for withdrawal are processed within 24-48 hours. Capital currently staked in active protocols is locked and untransferable.
-                                     </p>
-                                 </div>
-                             </div>
-                        </div>
-                    </div>
-
-                    <div className="lg:col-span-7">
-                         <div className="p-12 rounded-[4rem] bg-[#0a0f1a]/40 border border-white/5 backdrop-blur-3xl shadow-2xl h-full relative overflow-hidden">
-                            <div className="flex items-center justify-between mb-16">
-                                <div className="flex items-center gap-4">
-                                    <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 border border-white/5 shadow-xl">
-                                        <History size={20} />
-                                    </div>
-                                    <h4 className="text-2xl font-black italic uppercase tracking-tight">Ledger Logs</h4>
-                                </div>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-white/10 italic">Secure Synchronized History</span>
-                            </div>
-
-                            <div className="mb-8 p-6 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
-                                <AlertCircle className="text-blue-500 mt-1" size={18} />
-                                <p className="text-[10px] text-blue-500 leading-relaxed font-bold italic tracking-tight uppercase">
-                                    Paystack fees are charged by Paystack and are non-refundable. If a deposit is refunded or reversed, the amount returned may be less than what was deposited.
-                                </p>
-                            </div>
-
-                            <div className="space-y-4">
-                                {(txPage as Array<any>).length === 0 ? (
-                                    <div className="py-24 text-center">
-                                        <p className="text-sm text-white/10 italic font-black uppercase tracking-widest italic">No transaction history detected</p>
-                                    </div>
-                                ) : (
-                                    (txPage as Array<any>).map((tx: any) => (
-                                        <div key={tx._id} className="p-8 rounded-[2.5rem] bg-[#050810]/40 border border-white/5 flex items-center justify-between hover:bg-white/[0.03] transition-all group shadow-xl">
-                                            <div className="flex items-center gap-6">
-                                                <div className={`h-14 w-14 rounded-2xl flex items-center justify-center shadow-2xl ${tx.amount > 0 ? 'bg-green-500/10 text-green-500 shadow-green-900/10' : 'bg-red-500/10 text-red-500 shadow-red-900/10'}`}>
-                                                    {tx.amount > 0 ? <ArrowDownLeft size={24} /> : <ArrowUpRight size={24} />}
-                                                </div>
-                                                <div className="text-left">
-                                                    <p className="font-black text-white italic uppercase tracking-tight">{tx.description || tx.type}</p>
-                                                    <p className="text-[10px] text-white/20 mt-1 uppercase font-black italic tracking-widest">{new Date(tx._creationTime).toLocaleDateString()} • {tx.status}</p>
-                                                </div>
-                                            </div>
-                                            <span className={`text-xl font-black italic ${tx.amount > 0 ? 'text-green-500' : 'text-white'}`}>
-                                                {tx.amount > 0 ? '+' : ''}₦{(tx.amount / 100).toLocaleString()}
-                                            </span>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-
-                            <div className="mt-10 flex items-center justify-between gap-4">
-                              <button
-                                type="button"
-                                disabled={txCursorStack.length === 0}
-                                onClick={() => {
-                                  setTxCursorStack((s) => {
-                                    if (s.length === 0) return s
-                                    const next = [...s]
-                                    const prev = next.pop() ?? null
-                                    setTxCursor(prev)
-                                    return next
-                                  })
-                                }}
-                                className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 hover:text-white transition-all font-black uppercase tracking-widest text-[10px] italic disabled:opacity-40 active:scale-95"
-                              >
-                                Prev
-                              </button>
-
-                              <p className="text-[9px] font-black uppercase tracking-widest italic text-white/20">
-                                Ledger Page
-                              </p>
-
-                              <button
-                                type="button"
-                                disabled={txIsDone || !txNextCursor}
-                                onClick={() => {
-                                  if (!txNextCursor) return
-                                  setTxCursorStack((s) => [...s, txCursor])
-                                  setTxCursor(txNextCursor)
-                                }}
-                                className="px-6 py-3 rounded-2xl bg-white text-black hover:bg-white/90 transition-all font-black uppercase tracking-widest text-[10px] italic disabled:opacity-40 active:scale-95"
-                              >
-                                Next
-                              </button>
-                            </div>
-                         </div>
-                    </div>
-                </motion.div>
-            )}
+            ) : null}
         </AnimatePresence>
       </main>
 
@@ -715,19 +570,15 @@ function DashboardContent({ user }: { user: any }) {
           <CreateVaultModal
             user={user}
             onClose={() => setIsCreating(false)}
-            onOpenFundWallet={() => {
+            onCreated={(vaultId) => {
               setIsCreating(false)
-              setActiveTab('wallet')
-              setIsFunding(true)
+              setFundingVaultId(vaultId)
             }}
           />
         )}
-        {isFunding && (
-          <FundWalletModal user={user} onClose={() => setIsFunding(false)} />
-        )}
-        {isWithdrawing && (
-          <WithdrawModal user={user} onClose={() => setIsWithdrawing(false)} />
-        )}
+        {fundingVaultId ? (
+          <FundProtocolModal vaultId={fundingVaultId} user={user} onClose={() => setFundingVaultId(null)} />
+        ) : null}
         {checkingInGoal && (
           <CheckInModal vault={checkingInGoal} onClose={() => setCheckingInGoal(null)} />
         )}
@@ -736,18 +587,23 @@ function DashboardContent({ user }: { user: any }) {
   );
 }
 
-function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) {
+function VaultCard({ vault, onCheckIn, onFund }: { vault: any, onCheckIn: () => void, onFund: () => void }) {
   const isFailed = vault.status === 'failed';
+  const isAwaitingFunding = vault.status === 'awaiting_funding';
   const [timeLeft, setTimeLeft] = useState<string>('');
   const principalKoboRaw = Number((vault)?.amount)
   const principalKobo = Number.isFinite(principalKoboRaw) ? principalKoboRaw : 0
 
   useEffect(() => {
-    if (isFailed) return;
+    if (isFailed || isAwaitingFunding) return;
     
     const interval = setInterval(() => {
         const now = Date.now();
         const end = vault.endDate;
+        if (!end) {
+          setTimeLeft('');
+          return;
+        }
         const diff = end - now;
 
         if (diff <= 0) {
@@ -763,7 +619,7 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [vault.endDate, isFailed]);
+  }, [isAwaitingFunding, vault.endDate, isFailed]);
   
   return (
     <motion.div 
@@ -800,9 +656,11 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
           <div className={`px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-widest italic shadow-xl ${
             isFailed 
                 ? 'bg-red-500 text-white border-red-400 animate-pulse' 
-                : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
+                : isAwaitingFunding
+                  ? 'bg-white/5 border-white/10 text-white/40'
+                  : 'bg-blue-500/10 border-blue-500/20 text-blue-500'
           }`}>
-            {isFailed ? 'Protocol Breach' : 'Active Goal'}
+            {isFailed ? 'Protocol Breach' : isAwaitingFunding ? 'Awaiting Funding' : 'Active Goal'}
           </div>
           <span className={`text-[10px] font-black uppercase tracking-widest italic ${isFailed ? 'text-red-500/40' : 'text-white/10'}`}>Ref: {vault._id.slice(0,6)}</span>
         </div>
@@ -811,12 +669,12 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
             {vault.goal.title}
         </h3>
         
-        {!isFailed && (
+        {!isFailed && !isAwaitingFunding ? (
             <div className="flex items-center gap-2 mb-6">
                 <Clock size={12} className="text-[#ff7a00]" />
                 <p className="text-[10px] font-black text-[#ff7a00] uppercase tracking-widest italic">{timeLeft}</p>
             </div>
-        )}
+        ) : null}
 
         <p className={`text-sm mb-12 line-clamp-2 italic font-medium leading-relaxed uppercase tracking-tighter ${isFailed ? 'text-red-500/40' : 'text-white/30'}`}>
             {vault.goal.description}
@@ -867,6 +725,13 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
                 <div className="w-full py-6 rounded-2xl bg-red-600/10 border border-red-500/20 text-red-500 flex items-center justify-center gap-3 shadow-xl font-black">
                     <AlertCircle size={18} /> Forfeiture Processed
                 </div>
+            ) : isAwaitingFunding ? (
+                <button
+                    onClick={onFund}
+                    className="w-full py-6 rounded-2xl font-black transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 bg-white text-black hover:scale-[1.02] shadow-white/5"
+                >
+                    <CreditCard size={18} /> Fund & Activate
+                </button>
             ) : (
                 <button 
                     onClick={onCheckIn}
@@ -891,11 +756,11 @@ function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) 
 function CreateVaultModal({
   user,
   onClose,
-  onOpenFundWallet,
+  onCreated,
 }: {
   user: any
   onClose: () => void
-  onOpenFundWallet: () => void
+  onCreated: (vaultId: string) => void
 }) {
     const createVault = useMutation(api.goals.create);
     const queryClient = useQueryClient();
@@ -925,7 +790,7 @@ function CreateVaultModal({
         e.preventDefault();
         setLoading(true);
         try {
-            await createVault({
+            const vaultId = await createVault({
                 title,
                 description: description || `Automatic protocol for ${title}. Adherence is strictly monitored.`,
                 stakedAmount: parseInt(amount) * 100, // NGN in Kobo
@@ -937,18 +802,10 @@ function CreateVaultModal({
             });
             await queryClient.invalidateQueries({ queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey });
             await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
-            toast.success('Protocol initialized.', { title: 'Protocol Activated' });
-            onClose();
+            toast.success('Protocol created. Funding required to activate.', { title: 'Awaiting Funding' });
+            onCreated(vaultId);
         } catch (err: any) {
-            const message = toUserMessage(err, 'Failed to initialize protocol.')
-            if (message.includes('Insufficient capital in wallet')) {
-              toast.warning(message, {
-                title: 'Insufficient Capital',
-                action: { label: 'Top Up', onClick: onOpenFundWallet },
-              })
-              return
-            }
-            toast.error(message, { title: 'Initialization Failed' })
+            toast.error(toUserMessage(err, 'Failed to create protocol.'), { title: 'Creation Failed' })
         } finally {
             setLoading(false);
         }
@@ -1261,21 +1118,21 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
     );
 }
 
-function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) {
-    const [amount, setAmount] = useState('5000');
-    const initializeDeposit = useMutation(api.payments.initializeDeposit);
+function FundProtocolModal({ vaultId, user, onClose }: { vaultId: string, user: any, onClose: () => void }) {
+    const initializeVaultFunding = useMutation(api.payments.initializeVaultFunding);
     const verifyPayment = useAction(api.payments.verifyPayment);
     const queryClient = useQueryClient();
     const toast = useToast();
     const [loading, setLoading] = useState(false);
     const [depositReference, setDepositReference] = useState<string | null>(null);
+    const [amountKobo, setAmountKobo] = useState<number>(0);
     const [shouldOpenPaystack, setShouldOpenPaystack] = useState(false);
     const [pollRef, setPollRef] = useState<string | null>(null);
 
     const config = {
         reference: depositReference ?? '',
         email: user.email,
-        amount: parseInt(amount) * 100, // Paystack expects amount in kobo
+        amount: amountKobo,
         publicKey: PAYSTACK_PUBLIC_KEY,
     };
 
@@ -1292,19 +1149,17 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
         try {
             const result = await verifyPayment({ reference: reference.reference });
             if (result.success) {
-                await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
-                await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any).queryKey });
+                await queryClient.invalidateQueries({ queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey });
                 await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey });
-                toast.success(result.message, { title: 'Wallet Funded' });
+                toast.success(result.message, { title: 'Protocol Activated' });
                 setLoading(false);
                 onClose();
             } else {
-                toast.info('Awaiting confirmation...', { title: 'Processing Deposit' });
+                toast.info('Awaiting confirmation...', { title: 'Processing' });
                 setPollRef(reference.reference);
             }
         } catch (err: any) {
-            console.error(err);
-            toast.info('Awaiting confirmation...', { title: 'Processing Deposit' });
+            toast.info('Awaiting confirmation...', { title: 'Processing' });
             setPollRef(reference.reference);
         }
     };
@@ -1320,18 +1175,14 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
             toast.error('Payment configuration missing. Set VITE_PAYSTACK_PUBLIC_KEY.', { title: 'Payment Offline' });
             return;
         }
-        if (!amount || parseInt(amount) < 500) {
-            toast.warning('Minimum deposit is ₦500.', { title: 'Deposit Too Small' });
-            return;
-        }
         setLoading(true);
         try {
-            const res = await initializeDeposit({ amount: parseInt(amount) });
+            const res = await initializeVaultFunding({ vaultId: vaultId as any });
+            setAmountKobo(res.amountKobo);
             setDepositReference(res.reference);
             setShouldOpenPaystack(true);
         } catch (err: any) {
-            console.error(err);
-            toast.error(toUserMessage(err, 'Failed to initialize deposit.'), { title: 'Deposit Failed' });
+            toast.error(toUserMessage(err, 'Failed to initialize protocol funding.'), { title: 'Funding Failed' });
             setLoading(false);
         }
     };
@@ -1351,10 +1202,9 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
       if (!depositStatus) return;
       if (depositStatus.status !== 'completed') return;
       (async () => {
-        await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
-        await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any).queryKey });
+        await queryClient.invalidateQueries({ queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey });
         await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey });
-        toast.success(`Deposit confirmed. ₦${(depositStatus.amount / 100).toLocaleString()} added to wallet.`, { title: 'Wallet Funded' });
+        toast.success('Funding confirmed.', { title: 'Protocol Activated' });
         setLoading(false);
         setPollRef(null);
         onClose();
@@ -1373,39 +1223,25 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
                 <div className="p-6 sm:p-12 text-left">
                     <div className="flex items-center justify-between mb-12">
                         <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-[#ff7a00]/10 text-[#ff7a00] flex items-center justify-center italic font-black border border-[#ff7a00]/20 shadow-xl">
-                                <Wallet size={20} />
+                            <div className="h-12 w-12 rounded-2xl bg-blue-600/10 text-blue-500 flex items-center justify-center italic font-black border border-blue-500/20 shadow-xl">
+                                <CreditCard size={20} />
                             </div>
-                            <h2 className="text-2xl font-black tracking-tight uppercase italic text-white leading-none">Fund Wallet</h2>
+                            <h2 className="text-2xl font-black tracking-tight uppercase italic text-white leading-none">Fund Protocol</h2>
                         </div>
                         <button onClick={onClose} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 text-white/20 hover:text-white transition-colors active:scale-90"><X size={20} /></button>
                     </div>
 
                     <p className="text-white/30 text-xs font-bold italic uppercase tracking-widest mb-10 leading-relaxed">
-                        Inject capital into your behavioral bank account. This capital is used to stake against your goals.
+                        Authorize the stake payment to activate this protocol.
                     </p>
 
-                    <div className="space-y-8">
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Amount (NGN)</label>
-                            <div className="relative">
-                                <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-white/20 italic">₦</span>
-                                <input 
-                                    type="number"
-                                    required
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-12 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white text-xl"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="p-6 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
-                            <CreditCard className="text-blue-500 mt-1" size={20} />
-                            <p className="text-[10px] text-blue-500 leading-relaxed font-bold italic tracking-tight uppercase">
-                                Secured via Paystack. Funds are instantly available for protocol staking. Paystack fees are charged by Paystack and are not refundable (refunds may return less than deposited).
-                            </p>
-                        </div>
+                    <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 flex items-center justify-between gap-6">
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
+                        Stake
+                      </p>
+                      <p className="text-xl font-black italic text-white">
+                        ₦{(amountKobo / 100).toLocaleString()}
+                      </p>
                     </div>
 
                     <button 
@@ -1413,196 +1249,9 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
                         disabled={loading}
                         className="w-full mt-12 py-6 rounded-2xl bg-white text-black font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all shadow-white/5 disabled:opacity-50 italic"
                     >
-                        {loading ? 'Processing...' : 'Authorize Deposit'}
+                        {loading ? 'Processing...' : 'Authorize Stake'}
                     </button>
                 </div>
-            </motion.div>
-        </motion.div>
-    );
-}
-
-function WithdrawModal({ user, onClose }: { user: any, onClose: () => void }) {
-    const [amount, setAmount] = useState('5000');
-    const [accountNumber, setAccountNumber] = useState('');
-    const [bankName, setBankName] = useState('');
-    const [bankCode, setBankCode] = useState('');
-    const [accountName, setAccountName] = useState('');
-    const [loading, setLoading] = useState(false);
-    const requestWithdrawal = useMutation(api.payments.requestWithdrawal);
-    const listPaystackBanks = useAction(api.payments.listPaystackBanks);
-    const resolvePaystackAccount = useAction(api.payments.resolvePaystackAccount);
-    const queryClient = useQueryClient();
-    const toast = useToast();
-
-    const { data: banksRes } = useQuery({
-      queryKey: ['paystackBanks'],
-      queryFn: async () => {
-        const res = await listPaystackBanks({});
-        if (!res?.success) throw new Error(res?.message || 'Unable to load banks.');
-        return res;
-      },
-      staleTime: 1000 * 60 * 60,
-      retry: 1,
-    });
-
-    const banks: Array<{ name: string; code: string }> = (banksRes as any)?.banks ?? [];
-
-    const { data: resolvedRes } = useQuery({
-      queryKey: ['paystackResolve', bankCode, accountNumber],
-      queryFn: async () => {
-        const res = await resolvePaystackAccount({ accountNumber, bankCode });
-        if (!res?.success) throw new Error(res?.message || 'Unable to resolve account.');
-        return res;
-      },
-      enabled: !!bankCode && accountNumber.trim().length === 10,
-      retry: 0,
-    });
-
-    useEffect(() => {
-      const name = (resolvedRes as any)?.accountName as string | undefined;
-      if (name) setAccountName(name);
-    }, [resolvedRes]);
-
-    const handleSubmit = async (e: any) => {
-        e.preventDefault();
-        if (parseInt(amount) * 100 > user.balance) {
-            toast.warning('Insufficient balance.', { title: 'Insufficient Capital' });
-            return;
-        }
-        setLoading(true);
-        try {
-            const res = await requestWithdrawal({
-                amount: parseInt(amount) * 100,
-                accountNumber,
-                bankCode, 
-                bankName,
-                accountName: accountName || user.name || 'Account Holder'
-            });
-            if (!res.success) {
-              toast.error(toUserMessage(res?.message, 'Withdrawal failed.'), { title: 'Withdrawal Failed' });
-              return;
-            }
-            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey });
-            await queryClient.invalidateQueries({ queryKey: (convexQuery(api.payments.getTransactions, EMPTY_ARGS as any) as any).queryKey });
-            await queryClient.invalidateQueries({ queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey });
-            toast.success(res.message, { title: 'Withdrawal Requested' });
-            onClose();
-        } catch (err: any) {
-            console.error(err);
-            toast.error(toUserMessage(err, 'Extraction failed.'), { title: 'Withdrawal Failed' });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-4 sm:p-6"
-        >
-            <motion.div 
-                initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
-                className="w-full max-w-md bg-[#0a0f1a] border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
-            >
-                <form onSubmit={handleSubmit} className="p-6 sm:p-12 text-left">
-                    <div className="flex items-center justify-between mb-12">
-                        <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 rounded-2xl bg-white/5 text-white flex items-center justify-center italic font-black border border-white/10 shadow-xl">
-                                <ArrowUpRight size={20} />
-                            </div>
-                            <h2 className="text-2xl font-black tracking-tight uppercase italic text-white leading-none">Extract Capital</h2>
-                        </div>
-                        <button type="button" onClick={onClose} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 text-white/20 hover:text-white transition-colors active:scale-90"><X size={20} /></button>
-                    </div>
-
-                    <div className="space-y-8">
-                        <div>
-                            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Extraction Amount (NGN)</label>
-                            <input 
-                                type="number"
-                                required
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
-                                className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white text-xl"
-                            />
-                        </div>
-                        
-                        <div className="grid grid-cols-1 gap-6">
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Destination Bank</label>
-                                <div className="relative">
-                                    <Building2 className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" size={16} />
-                                    <select
-                                        required
-                                        value={bankCode}
-                                        onChange={(e) => {
-                                            const code = e.target.value;
-                                            const bank = banks.find((b) => b.code === code);
-                                            setBankCode(code);
-                                            setBankName(bank?.name ?? '');
-                                            setAccountName('');
-                                        }}
-                                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-14 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white uppercase text-xs"
-                                    >
-                                        <option value="" className="bg-[#0a0f1a]">Select Bank</option>
-                                        {banks.map((b) => (
-                                            <option key={b.code} value={b.code} className="bg-[#0a0f1a]">
-                                                {b.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Account Number</label>
-                                <div className="relative">
-                                    <CreditCard className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" size={16} />
-                                    <input 
-                                        required
-                                        value={accountNumber}
-                                        onChange={(e) => setAccountNumber(e.target.value)}
-                                        placeholder="0123456789"
-                                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-14 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white uppercase text-xs"
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mb-4 block italic">Account Name</label>
-                                <div className="relative">
-                                    <User className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" size={16} />
-                                    <input 
-                                        value={accountName}
-                                        onChange={(e) => setAccountName(e.target.value)}
-                                        placeholder="Resolved automatically"
-                                        className="w-full bg-white/[0.02] border border-white/10 rounded-2xl pl-14 pr-6 py-4 outline-none focus:border-blue-500 transition-all font-bold italic text-white uppercase text-xs"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-6 rounded-[2rem] bg-white/5 border border-white/10 flex items-start gap-4">
-                            <User className="text-white/20 mt-1" size={18} />
-                            <p className="text-[10px] text-white/40 leading-relaxed font-bold italic tracking-tight uppercase">
-                                Funds will be sent to the legal name: <span className="text-white font-black">{user.name}</span>.
-                            </p>
-                        </div>
-
-                        <div className="p-6 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 flex items-start gap-4 shadow-inner">
-                            <AlertCircle className="text-blue-500 mt-1" size={18} />
-                            <p className="text-[10px] text-blue-500 leading-relaxed font-bold italic tracking-tight uppercase">
-                                Transfers are processed via Paystack/banks. Any processor or bank charges are applied by them and are outside Lockedin’s control.
-                            </p>
-                        </div>
-                    </div>
-
-                    <button 
-                        type="submit"
-                        disabled={loading}
-                        className="w-full mt-12 py-6 rounded-2xl bg-white text-black font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-98 transition-all shadow-white/5 disabled:opacity-50 italic"
-                    >
-                        {loading ? 'Processing...' : 'Authorize Extraction'}
-                    </button>
-                </form>
             </motion.div>
         </motion.div>
     );

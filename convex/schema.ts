@@ -35,14 +35,20 @@ export default defineSchema({
     amount: v.number(),
     currency: v.string(), // e.g. "NGN"
     duration_weeks: v.number(),
-    startDate: v.number(),
-    endDate: v.number(),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
+    fundedAt: v.optional(v.number()),
     painTier: v.union(
       v.literal("deterrence"),   // Tier 1: 2%
       v.literal("enforcement"), // Tier 2: 5%
       v.literal("liquidation")  // Tier 3: 10%
     ),
-    status: v.union(v.literal("active"), v.literal("completed"), v.literal("failed")),
+    status: v.union(
+      v.literal("awaiting_funding"),
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("failed"),
+    ),
     paystack_reference: v.optional(v.string()),
     interest_earned: v.number(),
   }).index("by_user", ["userId"])
@@ -162,6 +168,8 @@ export default defineSchema({
     status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
     reference: v.string(), // Paystack/Flutterwave reference
     provider: v.union(v.literal("paystack"), v.literal("flutterwave")),
+    vaultId: v.optional(v.id("vaults")),
+    kind: v.optional(v.union(v.literal("wallet_topup"), v.literal("vault_funding"))),
     metadata: v.optional(v.any()),
   }).index("by_reference", ["reference"])
     .index("by_user", ["userId"]),

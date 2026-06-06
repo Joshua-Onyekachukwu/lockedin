@@ -85,11 +85,13 @@ function VaultPage() {
 
   const isOwner = vault?.userId === user?._id;
   const witnessRows: Array<any> = Array.isArray(witnesses) ? witnesses : [];
+  const status = String(vault?.status ?? '')
+  const isAwaitingFunding = status === 'awaiting_funding'
 
   const frequency = (vault.goal?.frequency_type as 'daily' | 'weekly' | 'monthly' | undefined) ?? 'daily'
   const targetCount = Number(vault.goal?.target_count ?? 1) || 1
   const now = Date.now()
-  const startDate = Number(vault.startDate ?? vault._creationTime ?? now)
+  const startDate = Number(vault.fundedAt ?? vault.startDate ?? vault._creationTime ?? now)
   const todayStr = new Date(now).toISOString().split('T')[0]
   const currentWeekNumber = Math.max(1, Math.floor((now - startDate) / (7 * 24 * 60 * 60 * 1000)) + 1)
   const currentMonthKey = new Date(now).toISOString().slice(0, 7)
@@ -134,7 +136,7 @@ function VaultPage() {
         ? endOfWeek()
         : endOfMonth()
 
-  const msLeft = Math.max(0, deadline - now)
+  const msLeft = isAwaitingFunding ? 0 : Math.max(0, deadline - now)
   const formatCountdown = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000)
     const days = Math.floor(totalSeconds / (3600 * 24))
@@ -284,7 +286,27 @@ function VaultPage() {
         <main className="max-w-7xl mx-auto p-6 lg:p-12 text-left">
             <header className="mb-16 text-left">
                 <div className="flex items-center gap-4 mb-8 text-left">
-                    <span className="px-4 py-1 rounded-full bg-blue-600/10 border border-blue-500/20 text-[10px] font-black text-blue-500 uppercase tracking-widest italic">Active Goal</span>
+                    <span
+                      className={`px-4 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest italic ${
+                        status === 'active'
+                          ? 'bg-blue-600/10 border-blue-500/20 text-blue-500'
+                          : status === 'awaiting_funding'
+                            ? 'bg-yellow-600/10 border-yellow-500/20 text-yellow-400'
+                            : status === 'completed'
+                              ? 'bg-green-600/10 border-green-500/20 text-green-500'
+                              : 'bg-red-600/10 border-red-500/20 text-red-500'
+                      }`}
+                    >
+                      {status === 'awaiting_funding'
+                        ? 'Awaiting Funding'
+                        : status === 'active'
+                          ? 'Active'
+                          : status === 'completed'
+                            ? 'Completed'
+                            : status === 'failed'
+                              ? 'Failed'
+                              : status || 'Unknown'}
+                    </span>
                     <span className="text-white/10 uppercase tracking-widest text-[10px] font-black">Ref: {vaultId.slice(0, 8)}</span>
                 </div>
                 <h1 className="text-4xl font-bold tracking-tight md:text-5xl lg:text-7xl text-left text-white leading-tight font-black uppercase italic">
@@ -295,28 +317,72 @@ function VaultPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 text-left">
                 <div className="lg:col-span-4 space-y-8 text-left">
+                    {isOwner && isAwaitingFunding ? (
+                      <div className="p-8 rounded-[3rem] bg-yellow-600/10 border border-yellow-500/20 text-left shadow-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-200/80 text-left mb-4">
+                          Activation Required
+                        </p>
+                        <p className="text-xs text-yellow-200/70 leading-relaxed font-medium italic">
+                          This protocol is created but not active yet. Fund it to start the clock and enable check-ins.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate({
+                              to: '/dashboard',
+                              search: { fundVaultId: vaultId } as any,
+                            })
+                          }
+                          className="mt-6 w-full px-8 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all"
+                        >
+                          Fund & Activate
+                        </button>
+                      </div>
+                    ) : null}
                     <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">Staked Principal</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
+                          {isAwaitingFunding ? 'Stake Amount' : 'Staked Principal'}
+                        </p>
                         <p className="text-5xl font-black text-white text-left italic tracking-tighter">₦{(principalKobo / 100).toLocaleString()}</p>
-                        <div className="mt-8 flex items-center gap-3 text-[#ff7a00] font-black text-[10px] uppercase tracking-widest italic">
-                            <ShieldCheck size={18} /> Escrowed in Protocol
-                        </div>
+                        {isAwaitingFunding ? (
+                          <div className="mt-8 flex items-center gap-3 text-yellow-300 font-black text-[10px] uppercase tracking-widest italic">
+                            <AlertTriangle size={18} /> Not funded yet
+                          </div>
+                        ) : (
+                          <div className="mt-8 flex items-center gap-3 text-[#ff7a00] font-black text-[10px] uppercase tracking-widest italic">
+                              <ShieldCheck size={18} /> Escrowed in Protocol
+                          </div>
+                        )}
                     </div>
 
                     <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">Next Check-in</p>
-                        <div className="flex items-center gap-3 text-left text-white">
-                          <Clock size={18} className="text-blue-500" />
-                          <p className="text-2xl font-black italic tracking-tight">
-                            {formatCountdown(msLeft)}
-                          </p>
-                        </div>
-                        <p className="text-[10px] text-white/30 mt-4 uppercase tracking-widest font-black italic">
-                          {frequency.toUpperCase()} • {remainingThisPeriod}/{targetCount} remaining
-                        </p>
-                        <p className="text-[10px] text-white/20 mt-3 uppercase tracking-widest font-black italic">
-                          Deadline: {new Date(deadline).toLocaleString()}
-                        </p>
+                        {isAwaitingFunding ? (
+                          <>
+                            <div className="flex items-center gap-3 text-left text-white">
+                              <Clock size={18} className="text-yellow-400" />
+                              <p className="text-2xl font-black italic tracking-tight">Not started</p>
+                            </div>
+                            <p className="text-[10px] text-white/30 mt-4 uppercase tracking-widest font-black italic">
+                              Fund this protocol to begin the first cycle.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-3 text-left text-white">
+                              <Clock size={18} className="text-blue-500" />
+                              <p className="text-2xl font-black italic tracking-tight">
+                                {formatCountdown(msLeft)}
+                              </p>
+                            </div>
+                            <p className="text-[10px] text-white/30 mt-4 uppercase tracking-widest font-black italic">
+                              {frequency.toUpperCase()} • {remainingThisPeriod}/{targetCount} remaining
+                            </p>
+                            <p className="text-[10px] text-white/20 mt-3 uppercase tracking-widest font-black italic">
+                              Deadline: {new Date(deadline).toLocaleString()}
+                            </p>
+                          </>
+                        )}
                     </div>
 
                     <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">

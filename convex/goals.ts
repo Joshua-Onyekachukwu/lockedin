@@ -51,21 +51,16 @@ export const create = mutation({
     const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
-    if (user.balance < args.stakedAmount) throw new Error("Insufficient capital in wallet");
 
-    // Deduct balance (Logical escrow)
-    await ctx.db.patch("users", userId, { balance: user.balance - args.stakedAmount });
-
-    const now = Date.now();
     const vaultId = await ctx.db.insert("vaults", {
       userId,
       amount: args.stakedAmount,
       currency: "NGN",
       duration_weeks: args.duration_weeks,
-      startDate: now,
-      endDate: now + args.duration_weeks * 7 * 24 * 60 * 60 * 1000,
+      startDate: undefined,
+      endDate: undefined,
       painTier: args.painTier,
-      status: "active",
+      status: "awaiting_funding",
       interest_earned: 0,
     });
 
@@ -79,18 +74,10 @@ export const create = mutation({
       target_count: args.target_count,
     });
 
-    await ctx.db.insert("transactions", {
-      userId,
-      amount: -args.stakedAmount,
-      type: "stake",
-      vaultId,
-      status: "completed",
-    });
-
     await ctx.db.insert("notifications", {
       userId,
-      title: "Protocol Initialized",
-      message: `${args.title} activated. ₦${(args.stakedAmount / 100).toLocaleString()} staked to enforce adherence.`,
+      title: "Protocol Created",
+      message: `${args.title} created. Complete funding to activate the protocol.`,
       type: "protocol_created",
       link: "/dashboard",
       read: false,
@@ -141,7 +128,8 @@ export const checkIn = mutation({
 
     // Calculate current week
     const now = Date.now();
-    const diffMs = now - vault.startDate;
+    const startTs = vault.startDate ?? vault.fundedAt ?? vault._creationTime;
+    const diffMs = now - startTs;
     const week_number = Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
 
     const today = new Date().toISOString().split('T')[0];
