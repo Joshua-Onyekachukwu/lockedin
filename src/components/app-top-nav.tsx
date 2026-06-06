@@ -81,8 +81,6 @@ export function AppTopNav({
   backTo = '/dashboard',
   contextLinks,
   user,
-  walletActive,
-  onWalletClick,
 }: {
   title: string
   subtitle: string
@@ -90,8 +88,6 @@ export function AppTopNav({
   backTo?: string
   contextLinks?: Array<ContextLink>
   user?: any
-  walletActive?: boolean
-  onWalletClick?: () => void
 }) {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
   const navigate = useNavigate()
@@ -231,27 +227,6 @@ export function AppTopNav({
           <button
             type="button"
             onClick={() => {
-              if (onWalletClick) {
-                onWalletClick()
-                return
-              }
-              navigate({ to: '/dashboard' })
-            }}
-            className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 rounded-2xl transition-all active:scale-95 border min-w-0 ${
-              walletActive
-                ? 'bg-blue-600/10 border-blue-500 text-white shadow-xl shadow-blue-900/10'
-                : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
-            }`}
-          >
-            <Wallet size={16} className={walletActive ? 'text-blue-500' : 'text-[#ff7a00]'} />
-            <span className="text-[11px] sm:text-sm font-black tracking-tight italic truncate max-w-[120px] sm:max-w-none">
-              ₦{((effectiveUser?.balance ?? 0) / 100)?.toLocaleString()}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
               setShowMobileMenu(false)
               setShowNotifications(false)
               setShowProfileMenu((v) => !v)
@@ -290,24 +265,6 @@ export function AppTopNav({
                 {unreadCount > 0 ? (
                   <span className="absolute top-0 right-0 h-4 w-4 bg-[#ff7a00] rounded-full border-4 border-[#050810] flex items-center justify-center shadow-lg" />
                 ) : null}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (onWalletClick) {
-                    onWalletClick()
-                    return
-                  }
-                  navigate({ to: '/dashboard' })
-                }}
-                className={`p-3 rounded-2xl transition-all active:scale-95 border ${
-                  walletActive
-                    ? 'bg-blue-600/10 border-blue-500 text-white shadow-xl shadow-blue-900/10'
-                    : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
-                }`}
-              >
-                <Wallet size={18} className={walletActive ? 'text-blue-500' : 'text-[#ff7a00]'} />
               </button>
 
               <button

@@ -3,11 +3,16 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  useNavigate,
   useRouter,
   useRouterState,
 } from '@tanstack/react-router'
 import * as React from 'react'
 import { Analytics } from '@vercel/analytics/react'
+import { useQuery } from '@tanstack/react-query'
+import { convexQuery } from '@convex-dev/react-query'
+import { useConvexAuth } from 'convex/react'
+import { api } from '../../convex/_generated/api'
 import type { QueryClient } from '@tanstack/react-query'
 import '~/styles/app.css'
 
@@ -38,9 +43,65 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
   return (
     <RootDocument>
-      <Outlet />
+      <AuthGate>
+        <Outlet />
+      </AuthGate>
     </RootDocument>
   )
+}
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate()
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
+
+  const pathname = useRouterState({
+    select: (s) => s.location.pathname,
+    structuralSharing: true as any,
+  })
+
+  const userQuery = React.useMemo(
+    () => convexQuery(api.users.current, {} as any) as any,
+    [],
+  )
+
+  const { data: user }: { data: any } = useQuery({
+    ...(userQuery),
+    enabled: isAuthenticated,
+    staleTime: 1000 * 20,
+  })
+
+  React.useEffect(() => {
+    if (authLoading) return
+
+    const allowUnauthed = new Set([
+      '/',
+      '/login',
+      '/signup',
+      '/verify-email',
+      '/auth/callback',
+    ])
+
+    const allowUnverified = new Set([
+      '/',
+      '/verify-required',
+      '/verify-email',
+      '/auth/callback',
+      '/login',
+      '/signup',
+    ])
+
+    if (!isAuthenticated) {
+      if (!allowUnauthed.has(pathname)) navigate({ to: '/login' })
+      return
+    }
+
+    const isVerified = !!user?.emailVerificationTime
+    if (!isVerified) {
+      if (!allowUnverified.has(pathname)) navigate({ to: '/verify-required' })
+    }
+  }, [authLoading, isAuthenticated, navigate, pathname, user])
+
+  return <>{children}</>
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {

@@ -448,8 +448,8 @@ export const populateExistingLogsForUser = internalMutation({
 
       goalsProcessed += 1;
 
-      const windowStart = vault.startDate;
-      const windowEnd = Math.min(vault.endDate, now);
+      const windowStart = vault.startDate ?? vault.fundedAt ?? vault._creationTime;
+      const windowEnd = Math.min(vault.endDate ?? now, now);
       const rangeDays = Math.max(1, Math.floor((windowEnd - windowStart) / (24 * 60 * 60 * 1000)) + 1);
       const daysToGenerate = Math.min(logsPerGoal, rangeDays);
 

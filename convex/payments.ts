@@ -40,12 +40,62 @@ export const initializeDeposit = mutation({
       status: "pending",
       reference,
       provider: "paystack",
+      kind: "wallet_topup",
     });
 
     return {
       reference,
       userId,
       email: user.email,
+    };
+  },
+});
+
+export const initializeVaultFunding = mutation({
+  args: {
+    vaultId: v.id("vaults"),
+  },
+  returns: v.object({
+    reference: v.string(),
+    vaultId: v.id("vaults"),
+    email: v.string(),
+    amountKobo: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const user = await ctx.db.get("users", userId);
+    if (!user || !user.email) throw new Error("User email required for payment");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
+
+    const vault = await ctx.db.get("vaults", args.vaultId);
+    if (!vault) throw new Error("Protocol not found");
+    if (vault.userId !== userId) throw new Error("Unauthorized");
+
+    if (vault.status !== "awaiting_funding") {
+      throw new Error("Protocol is not awaiting funding");
+    }
+
+    const reference = `LKD-VLT-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+
+    await ctx.db.insert("deposits", {
+      userId,
+      amount: vault.amount,
+      status: "pending",
+      reference,
+      provider: "paystack",
+      vaultId: vault._id,
+      kind: "vault_funding",
+    });
+
+    await ctx.db.patch("vaults", vault._id, { paystack_reference: reference });
+
+    return {
+      reference,
+      vaultId: vault._id,
+      email: user.email,
+      amountKobo: vault.amount,
     };
   },
 });
@@ -91,9 +141,8 @@ export const verifyPayment = action({
           metadata: data.data,
         });
 
-        if (result.status === "credited") {
-          return { success: true, message: "Payment verified and wallet funded." };
-        }
+        if (result.status === "credited") return { success: true, message: "Payment verified." };
+        if (result.status === "vault_funded") return { success: true, message: "Protocol funded and activated." };
         if (result.status === "already_credited") {
           return { success: true, message: "Payment already credited." };
         }
@@ -249,6 +298,7 @@ export const reconcilePaystackPayment = internalMutation({
   returns: v.object({
     status: v.union(
       v.literal("credited"),
+      v.literal("vault_funded"),
       v.literal("already_credited"),
       v.literal("unmatched"),
       v.literal("mismatch"),
@@ -305,6 +355,103 @@ export const reconcilePaystackPayment = internalMutation({
           createdAt: now,
         });
         return { status: "unmatched" as const };
+      }
+
+      if (deposit.vaultId || deposit.kind === "vault_funding") {
+        const vaultId = deposit.vaultId;
+        if (!vaultId) {
+          await ctx.db.insert("paystack_unmatched", {
+            reference: args.reference,
+            amount: args.amountKobo,
+            customerEmail: args.customerEmail,
+            source: args.source,
+            reason: "vault_funding_missing_vaultId",
+            metadata: args.metadata,
+            resolved: false,
+            createdAt: now,
+          });
+          return { status: "unmatched" as const };
+        }
+
+        const vault = await ctx.db.get("vaults", vaultId);
+        if (!vault) {
+          await ctx.db.insert("paystack_unmatched", {
+            reference: args.reference,
+            amount: args.amountKobo,
+            customerEmail: args.customerEmail,
+            source: args.source,
+            reason: "vault_not_found",
+            metadata: args.metadata,
+            resolved: false,
+            createdAt: now,
+          });
+          return { status: "unmatched" as const };
+        }
+
+        if (vault.userId !== deposit.userId) {
+          await ctx.db.insert("paystack_unmatched", {
+            reference: args.reference,
+            amount: args.amountKobo,
+            customerEmail: args.customerEmail,
+            source: args.source,
+            reason: "vault_owner_mismatch",
+            metadata: args.metadata,
+            resolved: false,
+            createdAt: now,
+          });
+          return { status: "unmatched" as const };
+        }
+
+        if (deposit.status !== "completed") {
+          await ctx.db.patch("deposits", deposit._id, {
+            status: "completed",
+            metadata: args.metadata,
+            kind: "vault_funding",
+            vaultId,
+          });
+        }
+
+        if (vault.status === "awaiting_funding") {
+          const startDate = Date.now();
+          await ctx.db.patch("vaults", vault._id, {
+            status: "active",
+            startDate,
+            endDate: startDate + vault.duration_weeks * 7 * 24 * 60 * 60 * 1000,
+            fundedAt: startDate,
+            paystack_reference: args.reference,
+          });
+
+          await ctx.db.insert("transactions", {
+            userId: user._id,
+            amount: -vault.amount,
+            type: "stake",
+            vaultId: vault._id,
+            status: "completed",
+            description: `Protocol funding: ${args.reference}`,
+          });
+
+          await ctx.db.insert("notifications", {
+            userId: user._id,
+            title: "Protocol Activated",
+            message: `Funding confirmed. ₦${(vault.amount / 100).toLocaleString()} locked into protocol.`,
+            type: "protocol_created",
+            link: "/dashboard",
+            read: false,
+          });
+        }
+
+        await ctx.db.insert("paystack_reconciliations", {
+          reference: args.reference,
+          amount: args.amountKobo,
+          customerEmail: args.customerEmail,
+          creditedUserId: user._id,
+          depositId: deposit._id,
+          source: args.source,
+          metadata: args.metadata,
+          createdAt: now,
+        });
+
+        return { status: "vault_funded" as const, creditedUserId: user._id, depositId: deposit._id };
       }
 
       if (deposit.status !== "completed") {
@@ -385,6 +532,7 @@ export const reconcilePaystackPayment = internalMutation({
       status: "completed",
       reference: args.reference,
       provider: "paystack",
+      kind: "wallet_topup",
       metadata: args.metadata,
     });
 
