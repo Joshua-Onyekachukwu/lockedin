@@ -74,7 +74,7 @@ function VerifyRequiredPage() {
     try {
       await queryClient.invalidateQueries({ queryKey: userQuery.queryKey });
       await queryClient.refetchQueries({ queryKey: userQuery.queryKey, exact: true });
-      const refreshed = queryClient.getQueryData(userQuery.queryKey) as any;
+      const refreshed = queryClient.getQueryData<any>(userQuery.queryKey);
       if (refreshed?.emailVerificationTime) {
         navigate({ to: '/dashboard' });
         return;
