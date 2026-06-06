@@ -1750,12 +1750,13 @@ export const enforceProtocolBreach = mutation({
 });
 
 export const markUserEmailVerified = mutation({
-  args: { email: v.string() },
+  args: { email: v.string(), reason: v.optional(v.string()) },
   returns: v.object({ success: v.boolean(), message: v.string() }),
   handler: async (ctx, args) => {
     const admin = await checkAdmin(ctx);
     const email = args.email.trim().toLowerCase();
     if (!email) return { success: false, message: "Email required." };
+    const reason = args.reason?.trim() || undefined;
 
     const user = await ctx.db
       .query("users")
@@ -1773,10 +1774,10 @@ export const markUserEmailVerified = mutation({
     await ctx.db.insert("admin_audit", {
       adminUserId: admin._id,
       action: "mark_user_email_verified",
-      message: `Email verified by admin. User: ${email}`,
+      message: `Email verified by admin. User: ${email}${reason ? ` (Reason: ${reason})` : ""}`,
       targetType: "user",
       targetId: user._id,
-      metadata: { email },
+      metadata: { email, reason },
     });
 
     return { success: true, message: "User email marked as verified." };
@@ -1791,6 +1792,7 @@ export const updateUserVerifications = mutation({
     isAdmin: v.optional(v.boolean()),
     is_discoverable: v.optional(v.boolean()),
     witness_discoverable: v.optional(v.boolean()),
+    reason: v.optional(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -1801,6 +1803,7 @@ export const updateUserVerifications = mutation({
     const admin = await checkAdmin(ctx);
     const user = await ctx.db.get("users", args.userId);
     if (!user) return { success: false, message: "User not found." };
+    const reason = args.reason?.trim() || undefined;
 
     const patch: any = {};
     if (args.emailVerified !== undefined) {
@@ -1820,7 +1823,7 @@ export const updateUserVerifications = mutation({
     await ctx.db.insert("admin_audit", {
       adminUserId: admin._id,
       action: "update_user_verifications",
-      message: `User verification/admin flags updated. User: ${(updated?.email ?? user.email ?? user._id) as any}`,
+      message: `User verification/admin flags updated. User: ${(updated?.email ?? user.email ?? user._id) as any}${reason ? ` (Reason: ${reason})` : ""}`,
       targetType: "user",
       targetId: user._id,
       metadata: {
@@ -1829,6 +1832,7 @@ export const updateUserVerifications = mutation({
         isAdmin: args.isAdmin,
         is_discoverable: args.is_discoverable,
         witness_discoverable: args.witness_discoverable,
+        reason,
       },
     });
 

@@ -195,6 +195,12 @@ function AdminDashboard() {
   const [verifyRunning, setVerifyRunning] = useState(false);
   const [verifyFeedback, setVerifyFeedback] = useState<null | { tone: 'success' | 'error'; message: string }>(null);
   const [verifyQuickOpen, setVerifyQuickOpen] = useState(false);
+  const [verifyReason, setVerifyReason] = useState('');
+  const [emailOverride, setEmailOverride] = useState<{
+    open: boolean;
+    mode: 'verify' | 'clear';
+    reason: string;
+  }>({ open: false, mode: 'verify', reason: '' });
   const [usersCursor, setUsersCursor] = useState<string | null>(null);
   const [usersCursorStack, setUsersCursorStack] = useState<Array<string | null>>([]);
   const usersPageSize = 25;
@@ -784,107 +790,6 @@ function AdminDashboard() {
                             </div>
                           </div>
 
-                          <div className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl shadow-2xl p-8 text-left">
-                            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/20 italic">
-                              Testing Tools
-                            </p>
-                            <p className="mt-4 text-[10px] text-white/40 font-black uppercase tracking-[0.28em] italic leading-relaxed">
-                              For testing only. Search by email and mark a user as verified.
-                            </p>
-
-                            <div className="mt-6 relative">
-                              <input
-                                value={verifyLookup}
-                                onChange={(e) => {
-                                  setVerifyLookup(e.target.value)
-                                  setVerifyPicked(null)
-                                  setVerifyFeedback(null)
-                                }}
-                                placeholder="TYPE EMAIL..."
-                                className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] px-6 py-5 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
-                              />
-
-                              {(emailPrefixMatches as Array<any>)?.length &&
-                              !(
-                                verifyPicked &&
-                                (verifyPicked.email ?? "").toLowerCase() === verifyLookup.trim().toLowerCase()
-                              ) ? (
-                                <div className="absolute left-0 right-0 mt-3 rounded-[2rem] border border-white/10 bg-[#0a0f1a] shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden z-20">
-                                  {(emailPrefixMatches as Array<any>).map((m: any) => (
-                                    <button
-                                      key={m._id}
-                                      type="button"
-                                      onClick={() => {
-                                        setVerifyPicked(m)
-                                        setVerifyLookup(m.email ?? '')
-                                        setVerifyFeedback(null)
-                                      }}
-                                      className="w-full px-6 py-4 text-left hover:bg-white/[0.04] active:bg-white/[0.06] transition-all"
-                                    >
-                                      <p className="text-[10px] text-white font-black uppercase tracking-[0.25em] italic truncate">
-                                        {m.email || '—'}
-                                      </p>
-                                      <p className="mt-2 text-[9px] text-white/30 font-black uppercase tracking-[0.3em] italic truncate">
-                                        {m.name || 'Anonymous'} • {m.emailVerified ? 'Verified' : 'Unverified'} • BVN {m.bvn_verified ? 'Yes' : 'No'} • Community{' '}
-                                        {m.is_discoverable ? 'On' : 'Off'} • Witness{' '}
-                                        {m.witness_discoverable !== false ? 'On' : 'Off'}
-                                      </p>
-                                    </button>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
-
-                            <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                              <button
-                                type="button"
-                                disabled={verifyRunning || !verifyLookup.trim()}
-                                onClick={async () => {
-                                  setVerifyRunning(true)
-                                  setVerifyFeedback(null)
-                                  try {
-                                    const res = await markUserEmailVerified({ email: verifyLookup.trim() } as any)
-                                    setVerifyFeedback({
-                                      tone: res?.success ? 'success' : 'error',
-                                      message: res?.message ?? (res?.success ? 'Verified.' : 'Failed.'),
-                                    })
-                                    await queryClient.invalidateQueries()
-                                  } catch (e: any) {
-                                    setVerifyFeedback({ tone: 'error', message: sanitizeMessage(e?.message ?? '', 'Verification failed.') })
-                                  } finally {
-                                    setVerifyRunning(false)
-                                  }
-                                }}
-                                className="px-8 py-5 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                              >
-                                {verifyRunning ? 'VERIFYING...' : 'MARK VERIFIED'}
-                              </button>
-                              <button
-                                type="button"
-                                disabled={!verifyPicked}
-                                onClick={() => {
-                                  if (!verifyPicked) return
-                                  setSelectedUser(verifyPicked)
-                                }}
-                                className="px-8 py-5 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
-                              >
-                                Open User
-                              </button>
-                            </div>
-
-                            {verifyFeedback ? (
-                              <div
-                                className={`mt-6 rounded-2xl border px-6 py-4 text-[10px] font-black uppercase tracking-[0.25em] italic ${
-                                  verifyFeedback.tone === 'success'
-                                    ? 'bg-green-500/10 border-green-500/20 text-green-500'
-                                    : 'bg-red-500/10 border-red-500/20 text-red-500'
-                                }`}
-                              >
-                                {verifyFeedback.message}
-                              </div>
-                            ) : null}
-                          </div>
-
                           <div className="relative">
                             <Search size={18} className="absolute left-6 top-1/2 -translate-y-1/2 text-white/20" />
                             <input
@@ -1160,6 +1065,7 @@ function AdminDashboard() {
                               setVerifyLookup('')
                               setVerifyPicked(null)
                               setVerifyFeedback(null)
+                              setVerifyReason('')
                               setVerifyQuickOpen(true)
                             }}
                             className="w-full py-5 rounded-2xl bg-white text-black hover:scale-[1.02] active:scale-95 transition-all text-center"
@@ -1328,6 +1234,102 @@ function AdminDashboard() {
       />
 
       <AnimatePresence>
+        {emailOverride.open && selectedUser ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                if (userEditRunning) return
+                setEmailOverride({ open: false, mode: 'verify', reason: '' })
+              }}
+              className="fixed inset-0 z-[90] bg-[#050810]/70 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+            >
+              <div className="w-full max-w-xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
+                <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6">
+                  <div className="text-left min-w-0">
+                    <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
+                      {emailOverride.mode === 'verify' ? 'Mark Email Verified' : 'Clear Email Verified'}
+                    </p>
+                    <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed truncate">
+                      {selectedUser.email || selectedUser._id}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (userEditRunning) return
+                      setEmailOverride({ open: false, mode: 'verify', reason: '' })
+                    }}
+                    className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="p-10">
+                  <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic mb-3">
+                    Reason
+                  </p>
+                  <textarea
+                    value={emailOverride.reason}
+                    onChange={(e) => setEmailOverride((s) => ({ ...s, reason: e.target.value }))}
+                    placeholder="WHY ARE YOU OVERRIDING VERIFICATION?"
+                    rows={3}
+                    className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] px-6 py-5 text-[10px] font-black uppercase tracking-[0.25em] italic text-white/70 outline-none focus:border-blue-500 resize-none"
+                  />
+
+                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      disabled={userEditRunning}
+                      onClick={() => setEmailOverride({ open: false, mode: 'verify', reason: '' })}
+                      className="flex-1 px-8 py-5 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={userEditRunning || !emailOverride.reason.trim()}
+                      onClick={async () => {
+                        setUserEditRunning(true)
+                        try {
+                          const res = await updateUserVerifications({
+                            userId: selectedUser._id,
+                            emailVerified: emailOverride.mode === 'verify',
+                            reason: emailOverride.reason.trim(),
+                          })
+                          if (res?.user) setSelectedUser(res.user)
+                          await queryClient.invalidateQueries()
+                          toast.success(res?.message ?? 'Updated.')
+                          setEmailOverride({ open: false, mode: 'verify', reason: '' })
+                        } catch (e: any) {
+                          toast.error(sanitizeMessage(e?.message ?? '', 'Update failed.'))
+                        } finally {
+                          setUserEditRunning(false)
+                        }
+                      }}
+                      className="flex-1 px-8 py-5 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {userEditRunning ? 'RUNNING...' : emailOverride.mode === 'verify' ? 'Mark Verified' : 'Clear Verified'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {waitlistDetail ? (
           <>
             <motion.div
@@ -1418,7 +1420,11 @@ function AdminDashboard() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => (verifyRunning ? null : setVerifyQuickOpen(false))}
+              onClick={() => {
+                if (verifyRunning) return
+                setVerifyQuickOpen(false)
+                setVerifyReason('')
+              }}
               className="fixed inset-0 z-[90] bg-[#050810]/70 backdrop-blur-xl"
             />
             <motion.div
@@ -1435,12 +1441,16 @@ function AdminDashboard() {
                       Verify User Email
                     </p>
                     <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed">
-                      For testing only. Marks a user’s email as verified in the database.
+                      Marks a user’s email as verified. Requires a reason for audit logs.
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => (verifyRunning ? null : setVerifyQuickOpen(false))}
+                    onClick={() => {
+                      if (verifyRunning) return
+                      setVerifyQuickOpen(false)
+                      setVerifyReason('')
+                    }}
                     className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
                   >
                     <X size={18} />
@@ -1489,15 +1499,31 @@ function AdminDashboard() {
                     ) : null}
                   </div>
 
+                  <div className="mt-6">
+                    <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic mb-3">
+                      Reason
+                    </p>
+                    <textarea
+                      value={verifyReason}
+                      onChange={(e) => setVerifyReason(e.target.value)}
+                      placeholder="WHY ARE YOU OVERRIDING VERIFICATION?"
+                      rows={3}
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] px-6 py-5 text-[10px] font-black uppercase tracking-[0.25em] italic text-white/70 outline-none focus:border-blue-500 resize-none"
+                    />
+                  </div>
+
                   <div className="mt-6 flex flex-col sm:flex-row gap-3">
                     <button
                       type="button"
-                      disabled={verifyRunning || !verifyLookup.trim()}
+                      disabled={verifyRunning || !verifyLookup.trim() || !verifyReason.trim()}
                       onClick={async () => {
                         setVerifyRunning(true)
                         setVerifyFeedback(null)
                         try {
-                          const res = await markUserEmailVerified({ email: verifyLookup.trim() } as any)
+                          const res = await markUserEmailVerified({
+                            email: verifyLookup.trim(),
+                            reason: verifyReason.trim(),
+                          } as any)
                           setVerifyFeedback({
                             tone: res?.success ? 'success' : 'error',
                             message: res?.message ?? (res?.success ? 'Verified.' : 'Failed.'),
@@ -2546,6 +2572,9 @@ function AdminDashboard() {
                 <div className="p-6 sm:p-10 max-h-[75vh] overflow-y-auto">
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div className="lg:col-span-5 space-y-6">
+                      <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                        Overview
+                      </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {[
                           { k: 'Tier', v: selectedUser.tier },
@@ -2571,7 +2600,7 @@ function AdminDashboard() {
 
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
                         <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                          Verification Controls
+                          Manual Overrides
                         </p>
                         <p className="mt-3 text-[9px] text-white/30 font-black uppercase tracking-[0.3em] italic leading-relaxed">
                           Email {selectedUser.emailVerificationTime ? 'On' : 'Off'} • BVN {selectedUser.bvn_verified ? 'On' : 'Off'} • Admin{' '}
@@ -2582,22 +2611,7 @@ function AdminDashboard() {
                           <button
                             type="button"
                             disabled={userEditRunning}
-                            onClick={async () => {
-                              setUserEditRunning(true);
-                              try {
-                                const res = await updateUserVerifications({
-                                  userId: selectedUser._id,
-                                  emailVerified: true,
-                                });
-                                if (res?.user) setSelectedUser(res.user);
-                                await queryClient.invalidateQueries();
-                                toast.success(res?.message ?? "Updated.");
-                              } catch (e: any) {
-                                toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
-                              } finally {
-                                setUserEditRunning(false);
-                              }
-                            }}
+                            onClick={() => setEmailOverride({ open: true, mode: 'verify', reason: '' })}
                             className="px-5 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-40"
                           >
                             Mark Email Verified
@@ -2605,22 +2619,7 @@ function AdminDashboard() {
                           <button
                             type="button"
                             disabled={userEditRunning}
-                            onClick={async () => {
-                              setUserEditRunning(true);
-                              try {
-                                const res = await updateUserVerifications({
-                                  userId: selectedUser._id,
-                                  emailVerified: false,
-                                });
-                                if (res?.user) setSelectedUser(res.user);
-                                await queryClient.invalidateQueries();
-                                toast.success(res?.message ?? "Updated.");
-                              } catch (e: any) {
-                                toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
-                              } finally {
-                                setUserEditRunning(false);
-                              }
-                            }}
+                            onClick={() => setEmailOverride({ open: true, mode: 'clear', reason: '' })}
                             className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
                           >
                             Clear Email Verified
