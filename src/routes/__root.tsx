@@ -29,7 +29,7 @@ export const Route = createRootRouteWithContext<{
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Lockedin | The Behavioral Bank',
+        title: 'Lockedin | Behavioral Commitment Platform',
       },
     ],
     links: [
