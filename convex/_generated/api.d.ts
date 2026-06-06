@@ -24,6 +24,7 @@ import type * as rewards from "../rewards.js";
 import type * as security from "../security.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
+import type * as vaultLifecycle from "../vaultLifecycle.js";
 import type * as verifications from "../verifications.js";
 import type * as waitlist from "../waitlist.js";
 
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   security: typeof security;
   seed: typeof seed;
   users: typeof users;
+  vaultLifecycle: typeof vaultLifecycle;
   verifications: typeof verifications;
   waitlist: typeof waitlist;
 }>;

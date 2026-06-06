@@ -96,6 +96,7 @@ export default defineSchema({
     requester_accepted: v.boolean(),
     partner_accepted: v.boolean(),
   }).index("by_vault", ["vaultId"])
+    .index("by_vault_and_status", ["vaultId", "status"])
     .index("by_vault_and_partner", ["vaultId", "partnerId"])
     .index("by_partner", ["partnerId"])
     .index("by_partner_and_status", ["partnerId", "status"])

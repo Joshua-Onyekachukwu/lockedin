@@ -1,12 +1,13 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 
 async function countActiveWitnesses(ctx: any, vaultId: any) {
   const active = await ctx.db
     .query("accountability_partners")
-    .withIndex("by_vault", (q: any) => q.eq("vaultId", vaultId))
-    .filter((q: any) => q.eq(q.field("status"), "active"))
+    .withIndex("by_vault_and_status", (q: any) =>
+      q.eq("vaultId", vaultId).eq("status", "active"),
+    )
     .collect();
   return active.length;
 }
@@ -92,7 +93,9 @@ export const request = mutation({
         .order("desc")
         .first();
     
-    if (existing) return existing._id;
+    if (existing && (existing.status === "active" || existing.status === "pending")) {
+      return existing._id;
+    }
 
     await enforceMaxWitnesses(ctx, args.vaultId);
 
@@ -152,7 +155,9 @@ export const applyToWitness = mutation({
       .order("desc")
       .first();
 
-    if (existing) return existing._id;
+    if (existing && (existing.status === "active" || existing.status === "pending")) {
+      return existing._id;
+    }
 
     await enforceMaxWitnesses(ctx, args.vaultId);
 
@@ -400,16 +405,19 @@ export const joinByInvite = mutation({
         .unique();
     if (!goal) throw new Error("Goal not found");
 
-    // Check if already a partner
     const existing = await ctx.db
-        .query("accountability_partners")
-        .withIndex("by_vault", q => q.eq("vaultId", args.vaultId))
-        .filter(q => q.eq(q.field("partnerId"), userId))
-        .unique();
+      .query("accountability_partners")
+      .withIndex("by_vault_and_partner", (q) =>
+        q.eq("vaultId", args.vaultId).eq("partnerId", userId),
+      )
+      .order("desc")
+      .first();
     
-    if (existing) {
-        return { success: true, message: "You are already a witness for this goal." };
+    if (existing && (existing.status === "active" || existing.status === "pending")) {
+      return { success: true, message: "You are already a witness for this goal." };
     }
+
+    await enforceMaxWitnesses(ctx, args.vaultId);
 
     await ctx.db.insert("accountability_partners", {
       vaultId: args.vaultId,
@@ -450,11 +458,13 @@ export const getPartners = query({
 
         const partner = await ctx.db
           .query("accountability_partners")
-          .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
-          .filter((q) => q.eq(q.field("partnerId"), userId))
-          .unique();
+          .withIndex("by_vault_and_partner", (q) =>
+            q.eq("vaultId", args.vaultId).eq("partnerId", userId),
+          )
+          .order("desc")
+          .first();
 
-        if (vault.userId !== userId && !partner) return [];
+        if (vault.userId !== userId && (!partner || partner.status !== "active")) return [];
 
         const partners = await ctx.db
             .query("accountability_partners")
@@ -469,4 +479,21 @@ export const getPartners = query({
         }
         return results;
     }
+});
+
+export const endAllForVault = internalMutation({
+  args: { vaultId: v.id("vaults") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("accountability_partners")
+      .withIndex("by_vault", (q: any) => q.eq("vaultId", args.vaultId))
+      .collect();
+
+    for (const row of rows) {
+      if (row.status === "ended") continue;
+      await ctx.db.patch("accountability_partners", row._id, { status: "ended" });
+    }
+    return null;
+  },
 });

@@ -26,4 +26,11 @@ crons.interval(
   { limit: 25 },
 );
 
+crons.interval(
+  "vault completion sweep",
+  { hours: 1 },
+  internal.vaultLifecycle.completeMaturedVaults,
+  {},
+);
+
 export default crons;

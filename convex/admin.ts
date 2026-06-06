@@ -1716,22 +1716,30 @@ export const enforceProtocolBreach = mutation({
         const vault = await ctx.db.get("vaults", args.vaultId);
         if (!vault || vault.status !== "active") return null;
 
-        await ctx.db.patch("vaults", args.vaultId, { status: "failed" });
+        const existingAccrued = vault.penaltyAccrued ?? 0;
+        const remaining = Math.max(0, vault.amount - existingAccrued);
+
+        await ctx.db.patch("vaults", args.vaultId, {
+          status: "failed",
+          penaltyAccrued: vault.amount,
+        });
+
+        await ctx.runMutation(internal.partners.endAllForVault, { vaultId: args.vaultId });
 
         // Logic for penalty distribution
         await ctx.db.insert("transactions", {
             userId: vault.userId,
-            amount: -vault.amount,
+            amount: -remaining,
             type: "penalty",
             vaultId: vault._id,
             status: "completed",
-            description: "Protocol Breach: Total principal forfeiture enforced by Admin."
+            description: "Protocol Breach: Remaining principal forfeiture enforced by Admin."
         });
 
         await ctx.db.insert("notifications", {
             userId: vault.userId,
             title: "PROTOCOL BREACH ENFORCED",
-            message: "System has detected an unrecoverable goal failure. Principal has been forfeited.",
+            message: "System has detected an unrecoverable goal failure. Vault has been ended and penalties settled.",
             type: "streak_alert",
             read: false,
         });
@@ -1742,7 +1750,7 @@ export const enforceProtocolBreach = mutation({
             message: `Forfeiture enforced. Vault: ${args.vaultId}`,
             targetType: "vault",
             targetId: args.vaultId,
-            metadata: { amount: vault.amount }
+            metadata: { amount: remaining }
         });
 
         return null;
