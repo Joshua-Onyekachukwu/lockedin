@@ -1,8 +1,8 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useConvexAuth } from 'convex/react';
-import { Lock, LogIn, Mail, Key, User, ArrowRight, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AlertCircle, ArrowLeft, ArrowRight, Key, Loader2, Lock, LogIn, Mail, User } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 
 export const Route = createFileRoute('/login')({
@@ -46,7 +46,7 @@ function LoginPage() {
     setSuccess(provider === 'google' ? 'Redirecting to Google...' : 'Verifying identity...');
     try {
       if (provider === 'google') {
-        await signIn(provider, { redirectTo: '/auth/callback?to=/verify-required' } as any);
+        await signIn(provider, { redirectTo: '/auth/callback?to=/verify-required' });
       } else {
         await signIn(provider);
       }

@@ -1,5 +1,5 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 
 /**
@@ -48,13 +48,13 @@ export const create = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
     if (user.balance < args.stakedAmount) throw new Error("Insufficient capital in wallet");
 
     // Deduct balance (Logical escrow)
-    await ctx.db.patch(userId, { balance: user.balance - args.stakedAmount });
+    await ctx.db.patch("users", userId, { balance: user.balance - args.stakedAmount });
 
     const now = Date.now();
     const vaultId = await ctx.db.insert("vaults", {
@@ -106,7 +106,7 @@ export const generateUploadUrl = mutation({
   handler: async (ctx) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
     return await ctx.storage.generateUploadUrl();
@@ -124,11 +124,11 @@ export const checkIn = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
-    const goal = await ctx.db.get(args.goalId);
+    const goal = await ctx.db.get("goals", args.goalId);
     if (!goal) throw new Error("Goal not found");
     
     // SECURITY: Ensure the user owns this goal
@@ -136,7 +136,7 @@ export const checkIn = mutation({
         throw new Error("Authorization Breach: You cannot check-in for a protocol you do not own.");
     }
 
-    const vault = await ctx.db.get(goal.vaultId);
+    const vault = await ctx.db.get("vaults", goal.vaultId);
     if (!vault || vault.status !== "active") return { success: false, message: "Vault is not active" };
 
     // Calculate current week
@@ -166,7 +166,7 @@ export const listByUser = query({
     const userId = await auth.getUserId(ctx);
     if (userId === null) return [];
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user || !user.emailVerificationTime) return [];
 
     const vaults = await ctx.db
@@ -196,10 +196,10 @@ export const getFullContext = query({
     const userId = await auth.getUserId(ctx);
     if (userId === null) return null;
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user || !user.emailVerificationTime) return null;
 
-    const vault = await ctx.db.get(args.vaultId);
+    const vault = await ctx.db.get("vaults", args.vaultId);
     if (!vault) return null;
     
     const goal = await ctx.db
@@ -218,7 +218,7 @@ export const getFullContext = query({
 
     const isActivePartner = !!partner && partner.status === "active";
     if (vault.userId !== userId && !isActivePartner && !isAdmin) {
-      const owner = await ctx.db.get(vault.userId);
+      const owner = await ctx.db.get("users", vault.userId);
       const profileUrl = owner?.profileImageId ? await ctx.storage.getUrl(owner.profileImageId) : null;
       return {
         access: "preview",
@@ -271,10 +271,10 @@ export const getInvitePreview = query({
     const userId = await auth.getUserId(ctx);
     if (userId === null) return null;
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user || !user.emailVerificationTime) return null;
 
-    const vault = await ctx.db.get(args.vaultId);
+    const vault = await ctx.db.get("vaults", args.vaultId);
     if (!vault) return null;
 
     const goal = await ctx.db
@@ -316,7 +316,7 @@ export const listDiscoverable = query({
     handler: async (ctx, args) => {
         const userId = await auth.getUserId(ctx);
         if (userId === null) return [];
-        const user = await ctx.db.get(userId);
+        const user = await ctx.db.get("users", userId);
         if (!user || !user.emailVerificationTime) return [];
 
         const limit = Math.max(1, Math.min(args.limit ?? 120, 200));
@@ -335,7 +335,7 @@ export const listDiscoverable = query({
           .order("desc")
           .take(1500);
 
-        const results: any[] = [];
+        const results: Array<any> = [];
 
         for (const vault of activeVaults) {
           if (results.length >= limit) break;

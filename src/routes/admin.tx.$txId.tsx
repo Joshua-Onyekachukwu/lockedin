@@ -1,10 +1,10 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
 import { useConvexAuth } from 'convex/react'
-import { api } from '../../convex/_generated/api'
 import { ArrowLeft, ReceiptText } from 'lucide-react'
 import { useEffect } from 'react'
+import { api } from '../../convex/_generated/api'
 
 export const Route = createFileRoute('/admin/tx/$txId')({
   component: TransactionDetail,
@@ -17,24 +17,24 @@ function TransactionDetail() {
 
   const userQuery = convexQuery(api.users.current, {} as any) as any
   const { data: user, isFetching: userFetching }: { data: any; isFetching: boolean } = useSuspenseQuery({
-    ...(userQuery as any),
+    ...(userQuery),
     enabled: isAuthenticated,
     staleTime: 0,
     refetchOnMount: 'always',
-  } as any)
+  })
   const isVerified = !!user?.emailVerificationTime
 
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, {} as any) as any
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
     ...adminStatusQuery,
     enabled: isAuthenticated,
-  } as any)
+  })
 
   const txQuery = convexQuery((api as any).admin.getTransactionById, { transactionId: txId } as any) as any
   const { data: tx }: { data: any } = useSuspenseQuery({
-    ...(txQuery as any),
+    ...(txQuery),
     enabled: isAuthenticated && isVerified && adminStatus?.isAdmin,
-  } as any)
+  })
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {

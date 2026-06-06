@@ -1,5 +1,5 @@
-import { mutation, query, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 
 const tierForIntegrity = (score: number) => {
@@ -15,7 +15,7 @@ export const updateBvnStatus = internalMutation({
     bvn: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, {
+    await ctx.db.patch("users", args.userId, {
       bvn_verified: true,
       bvn_last4: args.bvn.slice(-4),
       ...(args.name ? { name: args.name } : {}),
@@ -54,7 +54,7 @@ export const current = query({
     if (userId === null) {
       return null;
     }
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) return null;
 
     const profileUrl = user.profileImageId ? await ctx.storage.getUrl(user.profileImageId) : null;
@@ -73,7 +73,7 @@ export const generateProfileImageUploadUrl = mutation({
   handler: async (ctx) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Not authenticated");
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
     return await ctx.storage.generateUploadUrl();
@@ -87,12 +87,12 @@ export const setProfileImage = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Not authenticated");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
     const previous = user.profileImageId;
-    await ctx.db.patch(userId, { profileImageId: args.storageId });
+    await ctx.db.patch("users", userId, { profileImageId: args.storageId });
 
     if (previous) {
       await ctx.storage.delete(previous);
@@ -130,7 +130,7 @@ export const verifyBvn = mutation({
 
     // INTEGRATION INFRASTRUCTURE: MONO / DOJAH / SMILE ID
     
-    await ctx.db.patch(userId, {
+    await ctx.db.patch("users", userId, {
       bvn_verified: true,
       bvn_last4: args.bvn.slice(-4),
       ...(args.firstName && args.lastName ? { name: `${args.firstName} ${args.lastName}` } : {}),
@@ -155,7 +155,7 @@ export const updateProfile = mutation({
       throw new Error("Not authenticated");
     }
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
@@ -181,7 +181,7 @@ export const updateProfile = mutation({
     }
 
     if (Object.keys(patch).length) {
-      await ctx.db.patch(userId, patch);
+      await ctx.db.patch("users", userId, patch);
     }
 
     await ctx.db.insert("notifications", {
@@ -203,7 +203,7 @@ export const exchangeCreditsForShield = mutation({
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Unauthenticated");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("User not found");
 
     // Cost: 5,000 credits per Shield (configurable)
@@ -213,7 +213,7 @@ export const exchangeCreditsForShield = mutation({
       return { success: false, message: "Insufficient Protocol Credits." };
     }
 
-    await ctx.db.patch(userId, {
+    await ctx.db.patch("users", userId, {
       credits: user.credits - cost,
       shields: (user.shields || 0) + args.amount
     });
@@ -240,7 +240,7 @@ export const listDiscoverable = query({
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) return [];
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user || !user.emailVerificationTime) return [];
 
     const limit = Math.max(1, Math.min(args.limit ?? 200, 500));
@@ -290,7 +290,7 @@ export const listWitnessPool = query({
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) return [];
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user || !user.emailVerificationTime) return [];
 
     const limit = Math.max(1, Math.min(args.limit ?? 200, 500));
@@ -339,7 +339,7 @@ export const getLeaderboard = query({
   handler: async (ctx) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) return [];
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user || !user.emailVerificationTime) return [];
 
     const tierWeight = (tier?: "bronze" | "silver" | "gold") => {

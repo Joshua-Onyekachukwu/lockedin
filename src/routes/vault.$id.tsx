@@ -2,17 +2,17 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useConvexAuth, useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
 import { 
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
-  AlertTriangle,
-  ShieldCheck, 
-  Clock,
+  Clock, 
+  ShieldCheck,
   Users,
   X
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { api } from '../../convex/_generated/api';
 import { ConfirmModal } from '~/components/confirm-modal';
 import { useToast } from '~/components/toast';
 
@@ -32,11 +32,11 @@ function VaultPage() {
   const { data: user }: { data: any } = useSuspenseQuery({
     ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
     enabled: isAuthenticated,
-  } as any);
+  });
   const isVerified = !!user?.emailVerificationTime;
   
   const vaultQuery = convexQuery(api.goals.getFullContext, {
-    vaultId: vaultId as any,
+    vaultId: vaultId,
   }) as any;
   const { data: vault }: { data: any } = useSuspenseQuery({
     ...vaultQuery,
@@ -44,11 +44,11 @@ function VaultPage() {
   });
 
   const { data: witnesses } = useQuery({
-    ...(convexQuery(api.partners.getPartners as any, { vaultId: vaultId as any }) as any),
+    ...(convexQuery(api.partners.getPartners as any, { vaultId: vaultId }) as any),
     enabled: isAuthenticated && isVerified && vault?.access === 'full',
     placeholderData: [],
     staleTime: 1000 * 15,
-  } as any);
+  });
 
   const removeWitness = useMutation((api as any).partners.removeWitness);
   const [activeLog, setActiveLog] = useState<any>(null);
@@ -84,7 +84,7 @@ function VaultPage() {
   const access = vault?.access === 'full' ? 'full' : 'preview'
 
   const isOwner = vault?.userId === user?._id;
-  const witnessRows: any[] = Array.isArray(witnesses) ? witnesses : [];
+  const witnessRows: Array<any> = Array.isArray(witnesses) ? witnesses : [];
 
   const frequency = (vault.goal?.frequency_type as 'daily' | 'weekly' | 'monthly' | undefined) ?? 'daily'
   const targetCount = Number(vault.goal?.target_count ?? 1) || 1
@@ -94,9 +94,9 @@ function VaultPage() {
   const currentWeekNumber = Math.max(1, Math.floor((now - startDate) / (7 * 24 * 60 * 60 * 1000)) + 1)
   const currentMonthKey = new Date(now).toISOString().slice(0, 7)
 
-  const logs: any[] = Array.isArray(vault.logs) ? vault.logs : []
+  const logs: Array<any> = Array.isArray(vault.logs) ? vault.logs : []
   const completedThisPeriod = logs.filter((l) => {
-    if ((l.status as any) !== 'completed') return false
+    if ((l.status) !== 'completed') return false
     const dateStr = (l.date as string | undefined) ?? ''
     if (frequency === 'daily') return dateStr === todayStr
     if (frequency === 'weekly') return Number(l.week_number ?? 0) === currentWeekNumber
@@ -145,7 +145,7 @@ function VaultPage() {
     return `${Math.max(0, mins)}m`
   }
 
-  const principalKoboRaw = Number((vault as any)?.amount)
+  const principalKoboRaw = Number((vault)?.amount)
   const principalKobo = Number.isFinite(principalKoboRaw) ? principalKoboRaw : 0
 
   if (access !== 'full') {

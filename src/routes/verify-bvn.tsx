@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAction } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { ArrowRight, Loader2, Info, Lock } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, Info, Loader2, Lock } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
+import { api } from '../../convex/_generated/api';
 
 export const Route = createFileRoute('/verify-bvn')({
   component: VerifyBvnPage,

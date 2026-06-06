@@ -1,30 +1,30 @@
-import { createFileRoute, useNavigate, Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { Link, Outlet, createFileRoute, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
-import { useMutation, useAction, useConvexAuth } from 'convex/react';
+import { useAction, useConvexAuth, useMutation } from 'convex/react';
+import { 
+  Activity, 
+  ArrowLeft, 
+  Database, 
+  Download,
+  Lock,
+  MoreVertical,
+  ReceiptText,
+  ScrollText,
+  Search,
+  Settings,
+  ShieldCheck,
+  TrendingUp,
+  Users,
+  Wallet,
+  X
+} from 'lucide-react';
+import React, { Suspense, useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../../convex/_generated/api';
 import { useToast } from '~/components/toast';
 import { ConfirmModal } from '~/components/confirm-modal';
 import { sanitizeMessage } from '~/lib/errors';
-import { 
-  Users, 
-  Download, 
-  TrendingUp, 
-  ShieldCheck,
-  MoreVertical,
-  Wallet,
-  Activity,
-  ArrowLeft,
-  Settings,
-  Lock,
-  Search,
-  Database,
-  ScrollText,
-  ReceiptText,
-  X
-} from 'lucide-react';
-import React, { useState, useEffect, Suspense } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const EMPTY_ARGS: Record<string, never> = {};
 
@@ -107,18 +107,18 @@ function AdminDashboard() {
 
   const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any;
   const { data: user, isFetching: userFetching }: { data: any; isFetching: boolean } = useSuspenseQuery({
-    ...(userQuery as any),
+    ...(userQuery),
     enabled: isAuthenticated,
     staleTime: 0,
     refetchOnMount: 'always',
-  } as any);
+  });
   const isVerified = !!user?.emailVerificationTime;
   
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, EMPTY_ARGS as any) as any;
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
     ...adminStatusQuery,
     enabled: isAuthenticated,
-  } as any);
+  });
 
   const isAdmin = !!adminStatus?.isAdmin;
 
@@ -128,38 +128,38 @@ function AdminDashboard() {
   const { data: stats }: { data: any } = useSuspenseQuery({
     ...statsQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
-  } as any);
+  });
 
   const waitlistQuery = convexQuery(api.waitlist.list, EMPTY_ARGS as any) as any;
   const { data: waitlist }: { data: any } = useSuspenseQuery({
     ...waitlistQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
-  } as any);
+  });
   const deleteWaitlistEntry = useMutation((api as any).admin.deleteWaitlistEntry);
 
   const pendingWithdrawalsQuery = convexQuery(api.admin.getPendingWithdrawals, EMPTY_ARGS as any) as any;
   const { data: pendingWithdrawals }: { data: any } = useSuspenseQuery({
     ...pendingWithdrawalsQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
-  } as any);
+  });
 
   const breachCandidatesQuery = convexQuery(api.admin.getBreachCandidates, EMPTY_ARGS as any) as any;
   const { data: breachCandidates }: { data: any } = useSuspenseQuery({
     ...breachCandidatesQuery,
     enabled: isAuthenticated && isVerified && isAdmin && activeTab === 'breaches',
-  } as any);
+  });
 
   const overviewQuery = convexQuery(api.admin.getOverview, EMPTY_ARGS as any) as any;
   const { data: overview }: { data: any } = useSuspenseQuery({
     ...overviewQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
-  } as any);
+  });
 
   const auditQuery = convexQuery((api as any).admin.getAuditLog, { limit: 100 } as any) as any;
   const { data: auditLog }: { data: any } = useSuspenseQuery({
     ...auditQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
-  } as any);
+  });
   
   const sweep = useMutation(api.admin.triggerMidnightSweep);
   const distribute = useMutation(api.admin.triggerWeeklyDistribution);
@@ -211,36 +211,36 @@ function AdminDashboard() {
 
   const searchUsersQuery = convexQuery((api as any).admin.searchUsers, { q: userSearch, limit: 20 } as any) as any;
   const { data: searchedUsers } = useQuery({
-    ...(searchUsersQuery as any),
+    ...(searchUsersQuery),
     enabled: isAuthenticated && isVerified && isAdmin && userSearch.trim().length > 0,
-  } as any);
+  });
 
   const allUsersQuery = convexQuery(
     (api as any).admin.listUsersPage,
     { cursor: usersCursor ?? undefined, limit: usersPageSize } as any,
   ) as any;
   const { data: allUsersPage } = useQuery({
-    ...(allUsersQuery as any),
+    ...(allUsersQuery),
     enabled: isAuthenticated && isVerified && isAdmin && userSearch.trim().length === 0,
     placeholderData: { page: [], isDone: false, continueCursor: null },
-  } as any);
+  });
 
   const transactionsPageQuery = convexQuery(
     (api as any).admin.listTransactionsPage,
     { cursor: txCursor ?? undefined, limit: txPageSize } as any,
   ) as any;
   const { data: transactionsPage } = useQuery({
-    ...(transactionsPageQuery as any),
+    ...(transactionsPageQuery),
     enabled: isAuthenticated && isVerified && isAdmin && activeTab === 'transactions',
     placeholderData: { page: [], isDone: false, continueCursor: null },
-  } as any);
+  });
 
   const emailPrefixQuery = convexQuery(
     (api as any).admin.searchUsersByEmailPrefix,
     { prefix: verifyLookup, limit: 10 } as any,
   ) as any;
   const { data: emailPrefixMatches } = useQuery({
-    ...(emailPrefixQuery as any),
+    ...(emailPrefixQuery),
     enabled:
       isAuthenticated &&
       isVerified &&
@@ -251,17 +251,17 @@ function AdminDashboard() {
         (verifyPicked.email ?? "").toLowerCase() === verifyLookup.trim().toLowerCase()
       ),
     placeholderData: [],
-  } as any);
+  });
 
   const selectedUserProtocolsQuery = convexQuery(
     (api as any).admin.getUserProtocols,
     { userId: selectedUser?._id, limit: 50 } as any,
   ) as any;
   const { data: selectedUserProtocols } = useQuery({
-    ...(selectedUserProtocolsQuery as any),
+    ...(selectedUserProtocolsQuery),
     enabled: isAuthenticated && isVerified && isAdmin && !!selectedUser?._id,
     placeholderData: [],
-  } as any);
+  });
 
   useEffect(() => {
     if (userSearch.trim().length === 0) {
@@ -450,7 +450,7 @@ function AdminDashboard() {
             ] as const).map((t) => (
               <button
                 key={t.key}
-                onClick={() => setActiveTab(t.key as any)}
+                onClick={() => setActiveTab(t.key)}
                 className={`px-4 sm:px-8 py-2.5 sm:py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
                   activeTab === (t.key as any)
                     ? 'bg-white text-black shadow-xl'
@@ -632,7 +632,7 @@ function AdminDashboard() {
                                                           run: async () => {
                                                             await enforceBreach({ vaultId: b._id })
                                                             toast.success('Forfeiture enforced.', { title: 'Enforcement Complete' })
-                                                            await queryClient.invalidateQueries({ queryKey: statsQuery.queryKey as any })
+                                                            await queryClient.invalidateQueries({ queryKey: statsQuery.queryKey })
                                                             await queryClient.invalidateQueries()
                                                           }
                                                         })}
@@ -717,8 +717,8 @@ function AdminDashboard() {
                                 </div>
                             </div>
                             <div className="p-10 space-y-4">
-                              {(auditLog as any[])?.length ? (
-                                (auditLog as any[]).map((row: any) =>
+                              {(auditLog as Array<any>)?.length ? (
+                                (auditLog as Array<any>).map((row: any) =>
                                   row.kind === 'admin' ? (
                                     <Link
                                       key={row._id}
@@ -804,13 +804,13 @@ function AdminDashboard() {
                                 className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] px-6 py-5 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
                               />
 
-                              {(emailPrefixMatches as any[])?.length &&
+                              {(emailPrefixMatches as Array<any>)?.length &&
                               !(
                                 verifyPicked &&
                                 (verifyPicked.email ?? "").toLowerCase() === verifyLookup.trim().toLowerCase()
                               ) ? (
                                 <div className="absolute left-0 right-0 mt-3 rounded-[2rem] border border-white/10 bg-[#0a0f1a] shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden z-20">
-                                  {(emailPrefixMatches as any[]).map((m: any) => (
+                                  {(emailPrefixMatches as Array<any>).map((m: any) => (
                                     <button
                                       key={m._id}
                                       type="button"
@@ -950,7 +950,7 @@ function AdminDashboard() {
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
-                                      {((allUsersPage as any)?.page as any[])?.map((u: any) => (
+                                      {((allUsersPage as any)?.page as Array<any>)?.map((u: any) => (
                                         <tr
                                           key={u._id}
                                           onClick={() => setSelectedUser(u)}
@@ -988,7 +988,7 @@ function AdminDashboard() {
                                           </td>
                                         </tr>
                                       ))}
-                                      {((allUsersPage as any)?.page as any[])?.length === 0 ? (
+                                      {((allUsersPage as any)?.page as Array<any>)?.length === 0 ? (
                                         <tr>
                                           <td
                                             colSpan={6}
@@ -1002,8 +1002,8 @@ function AdminDashboard() {
                                   </table>
                                 </div>
                               </div>
-                            ) : (searchedUsers as any[])?.length ? (
-                              (searchedUsers as any[]).map((u: any) => (
+                            ) : (searchedUsers as Array<any>)?.length ? (
+                              (searchedUsers as Array<any>).map((u: any) => (
                                 <button
                                   type="button"
                                   key={u._id}
@@ -1097,7 +1097,7 @@ function AdminDashboard() {
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
-                                  {(((transactionsPage as any)?.page as any[]) ?? []).map((t: any) => (
+                                  {(((transactionsPage as any)?.page as Array<any>) ?? []).map((t: any) => (
                                     <tr key={t._id} className="hover:bg-white/[0.03] transition-all">
                                       <td className="px-4 sm:px-8 py-4 sm:py-6">
                                         <Link
@@ -1130,7 +1130,7 @@ function AdminDashboard() {
                                       </td>
                                     </tr>
                                   ))}
-                                  {(((transactionsPage as any)?.page as any[]) ?? []).length === 0 ? (
+                                  {(((transactionsPage as any)?.page as Array<any>) ?? []).length === 0 ? (
                                     <tr>
                                       <td
                                         colSpan={5}
@@ -1193,7 +1193,7 @@ function AdminDashboard() {
                               run: async () => {
                                 await sweep({})
                                 toast.success('Midnight sweep protocol initialized.', { title: 'Command Executed' })
-                                await queryClient.invalidateQueries({ queryKey: statsQuery.queryKey as any })
+                                await queryClient.invalidateQueries({ queryKey: statsQuery.queryKey })
                               },
                             })}
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-blue-600/20 hover:border-blue-500/30 transition-all text-center active:scale-95"
@@ -1210,7 +1210,7 @@ function AdminDashboard() {
                               run: async () => {
                                 await distribute({})
                                 toast.success('Weekly distribution protocol initialized.', { title: 'Command Executed' })
-                                await queryClient.invalidateQueries({ queryKey: statsQuery.queryKey as any })
+                                await queryClient.invalidateQueries({ queryKey: statsQuery.queryKey })
                               },
                             })}
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-orange-600/20 hover:border-orange-500/30 transition-all text-center active:scale-95"
@@ -1460,13 +1460,13 @@ function AdminDashboard() {
                       className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] px-6 py-5 text-[10px] font-black uppercase tracking-[0.35em] italic text-white/70 outline-none focus:border-blue-500"
                     />
 
-                    {(emailPrefixMatches as any[])?.length &&
+                    {(emailPrefixMatches as Array<any>)?.length &&
                     !(
                       verifyPicked &&
                       (verifyPicked.email ?? "").toLowerCase() === verifyLookup.trim().toLowerCase()
                     ) ? (
                       <div className="absolute left-0 right-0 mt-3 rounded-[2rem] border border-white/10 bg-[#0a0f1a] shadow-[0_0_80px_rgba(0,0,0,1)] overflow-hidden z-20">
-                        {(emailPrefixMatches as any[]).map((m: any) => (
+                        {(emailPrefixMatches as Array<any>).map((m: any) => (
                           <button
                             key={m._id}
                             type="button"
@@ -2727,8 +2727,8 @@ function AdminDashboard() {
                         User Protocols
                       </p>
                       <div className="mt-6 space-y-4">
-                        {(selectedUserProtocols as any[])?.length ? (
-                          (selectedUserProtocols as any[]).map((v: any) => (
+                        {(selectedUserProtocols as Array<any>)?.length ? (
+                          (selectedUserProtocols as Array<any>).map((v: any) => (
                             <Link
                               key={v._id}
                               to="/vault/$id"

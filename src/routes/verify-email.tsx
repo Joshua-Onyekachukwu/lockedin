@@ -1,11 +1,11 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAction, useConvexAuth } from 'convex/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
+import { AlertCircle, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../../convex/_generated/api';
-import { ArrowLeft, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const EMPTY_ARGS: Record<string, never> = {};
 
@@ -61,8 +61,8 @@ function VerifyEmailPage() {
         if (res?.success) {
           setState('success');
           setMessage(res?.message ?? 'Email verified.');
-          await queryClient.invalidateQueries({ queryKey: userQuery.queryKey as any });
-          await queryClient.refetchQueries({ queryKey: userQuery.queryKey as any, exact: true } as any);
+          await queryClient.invalidateQueries({ queryKey: userQuery.queryKey });
+          await queryClient.refetchQueries({ queryKey: userQuery.queryKey, exact: true });
           setTimeout(() => navigate({ to: '/dashboard' }), 800);
         } else {
           setState('error');

@@ -1,5 +1,5 @@
-import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 const FIRST_NAMES = ["Chidi", "Amina", "Oluwaseun", "Blessing", "Emeka", "Fatima", "Tunde", "Chioma", "Damilola", "Zainab", "Ifeanyi", "Nkechi", "Abubakar", "Yetunde", "Obinna", "Funke", "Kelechi", "Rukayat", "Segun", "Ekaette"];
@@ -176,7 +176,7 @@ export const purgeUsersAndLinkedDataBatch = internalMutation({
                     .take(200);
                 if (logs.length === 0) break;
                 for (const l of logs) {
-                    if (!dryRun) await ctx.db.patch(l._id, { confirmed_by: undefined, confirmed_at: undefined });
+                    if (!dryRun) await ctx.db.patch("goal_logs", l._id, { confirmed_by: undefined, confirmed_at: undefined });
                 }
             }
 
@@ -188,7 +188,7 @@ export const purgeUsersAndLinkedDataBatch = internalMutation({
                 if (rows.length === 0) break;
                 partnersDeleted += rows.length;
                 if (!dryRun) {
-                    for (const r of rows) await ctx.db.delete(r._id);
+                    for (const r of rows) await ctx.db.delete("accountability_partners", r._id);
                 }
             }
 
@@ -200,7 +200,7 @@ export const purgeUsersAndLinkedDataBatch = internalMutation({
                 if (rows.length === 0) break;
                 partnersDeleted += rows.length;
                 if (!dryRun) {
-                    for (const r of rows) await ctx.db.delete(r._id);
+                    for (const r of rows) await ctx.db.delete("accountability_partners", r._id);
                 }
             }
 
@@ -220,7 +220,7 @@ export const purgeUsersAndLinkedDataBatch = internalMutation({
                         if (rows.length === 0) break;
                         partnersDeleted += rows.length;
                         if (!dryRun) {
-                            for (const r of rows) await ctx.db.delete(r._id);
+                            for (const r of rows) await ctx.db.delete("accountability_partners", r._id);
                         }
                     }
 
@@ -240,17 +240,17 @@ export const purgeUsersAndLinkedDataBatch = internalMutation({
                                 if (logs.length === 0) break;
                                 goalLogsDeleted += logs.length;
                                 if (!dryRun) {
-                                    for (const lg of logs) await ctx.db.delete(lg._id);
+                                    for (const lg of logs) await ctx.db.delete("goal_logs", lg._id);
                                 }
                             }
 
                             goalsDeleted += 1;
-                            if (!dryRun) await ctx.db.delete(g._id);
+                            if (!dryRun) await ctx.db.delete("goals", g._id);
                         }
                     }
 
                     vaultsDeleted += 1;
-                    if (!dryRun) await ctx.db.delete(vlt._id);
+                    if (!dryRun) await ctx.db.delete("vaults", vlt._id);
                 }
             }
 
@@ -262,7 +262,7 @@ export const purgeUsersAndLinkedDataBatch = internalMutation({
                 if (rows.length === 0) break;
                 transactionsDeleted += rows.length;
                 if (!dryRun) {
-                    for (const r of rows) await ctx.db.delete(r._id);
+                    for (const r of rows) await ctx.db.delete("transactions", r._id);
                 }
             }
 
@@ -274,7 +274,7 @@ export const purgeUsersAndLinkedDataBatch = internalMutation({
                 if (rows.length === 0) break;
                 notificationsDeleted += rows.length;
                 if (!dryRun) {
-                    for (const r of rows) await ctx.db.delete(r._id);
+                    for (const r of rows) await ctx.db.delete("notifications", r._id);
                 }
             }
 
@@ -286,7 +286,7 @@ export const purgeUsersAndLinkedDataBatch = internalMutation({
                 if (rows.length === 0) break;
                 depositsDeleted += rows.length;
                 if (!dryRun) {
-                    for (const r of rows) await ctx.db.delete(r._id);
+                    for (const r of rows) await ctx.db.delete("deposits", r._id);
                 }
             }
 
@@ -298,7 +298,7 @@ export const purgeUsersAndLinkedDataBatch = internalMutation({
                 if (rows.length === 0) break;
                 withdrawalsDeleted += rows.length;
                 if (!dryRun) {
-                    for (const r of rows) await ctx.db.delete(r._id);
+                    for (const r of rows) await ctx.db.delete("withdrawals", r._id);
                 }
             }
 
@@ -310,12 +310,12 @@ export const purgeUsersAndLinkedDataBatch = internalMutation({
                 if (rows.length === 0) break;
                 verificationTokensDeleted += rows.length;
                 if (!dryRun) {
-                    for (const r of rows) await ctx.db.delete(r._id);
+                    for (const r of rows) await ctx.db.delete("email_verification_tokens", r._id);
                 }
             }
 
             usersDeleted += 1;
-            if (!dryRun) await ctx.db.delete(userId);
+            if (!dryRun) await ctx.db.delete("users", userId);
         }
 
         return {
@@ -342,7 +342,7 @@ export const seedHistoryForUser = internalMutation({
     },
     returns: v.null(),
     handler: async (ctx, args) => {
-        const user = await ctx.db.get(args.userId);
+        const user = await ctx.db.get("users", args.userId);
         if (!user) return null;
 
         const now = Date.now();

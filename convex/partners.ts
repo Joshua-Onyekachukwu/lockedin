@@ -1,5 +1,5 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 
 async function countActiveWitnesses(ctx: any, vaultId: any) {
@@ -28,11 +28,11 @@ export const join = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
-    const vault = await ctx.db.get(args.vaultId);
+    const vault = await ctx.db.get("vaults", args.vaultId);
     if (!vault) throw new Error("Vault not found");
 
     const goal = await ctx.db
@@ -67,7 +67,7 @@ export const request = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
@@ -78,7 +78,7 @@ export const request = mutation({
     if (!goal) throw new Error("Goal not found");
 
     // SECURITY: Ensure the requester owns the vault
-    const vault = await ctx.db.get(args.vaultId);
+    const vault = await ctx.db.get("vaults", args.vaultId);
     if (!vault || vault.userId !== userId) {
         throw new Error("Authorization Breach: You can only request witnesses for your own protocols.");
     }
@@ -106,7 +106,7 @@ export const request = mutation({
       partner_accepted: false,
     });
 
-    const requester = await ctx.db.get(userId);
+    const requester = await ctx.db.get("users", userId);
 
     await ctx.db.insert("notifications", {
         userId: args.partnerId,
@@ -130,11 +130,11 @@ export const applyToWitness = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
-    const vault = await ctx.db.get(args.vaultId);
+    const vault = await ctx.db.get("vaults", args.vaultId);
     if (!vault) throw new Error("Vault not found");
     if (vault.userId === userId) {
       throw new Error("Request Blocked: Self-witnessing is not permitted.");
@@ -186,11 +186,11 @@ export const acceptRequest = mutation({
         const userId = await auth.getUserId(ctx);
         if (userId === null) throw new Error("Unauthenticated");
 
-        const user = await ctx.db.get(userId);
+        const user = await ctx.db.get("users", userId);
         if (!user) throw new Error("Identity verification failed");
         if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
-        const partnership = await ctx.db.get(args.partnerShipId);
+        const partnership = await ctx.db.get("accountability_partners", args.partnerShipId);
         if (!partnership || partnership.partnerId !== userId) {
             throw new Error("Authorization Breach: You cannot accept this request.");
         }
@@ -199,7 +199,7 @@ export const acceptRequest = mutation({
           await enforceMaxWitnesses(ctx, partnership.vaultId);
         }
 
-        await ctx.db.patch(args.partnerShipId, {
+        await ctx.db.patch("accountability_partners", args.partnerShipId, {
             status: "active",
             partner_accepted: true
         });
@@ -214,11 +214,11 @@ export const acceptApplication = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
-    const partnership = await ctx.db.get(args.partnerShipId);
+    const partnership = await ctx.db.get("accountability_partners", args.partnerShipId);
     if (!partnership || partnership.requesterId !== userId) {
       throw new Error("Authorization Breach: You cannot accept this application.");
     }
@@ -227,7 +227,7 @@ export const acceptApplication = mutation({
 
     await enforceMaxWitnesses(ctx, partnership.vaultId);
 
-    await ctx.db.patch(args.partnerShipId, {
+    await ctx.db.patch("accountability_partners", args.partnerShipId, {
       status: "active",
       requester_accepted: true,
     });
@@ -252,18 +252,18 @@ export const removeWitness = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
-    const partnership = await ctx.db.get(args.partnerShipId);
+    const partnership = await ctx.db.get("accountability_partners", args.partnerShipId);
     if (!partnership || partnership.requesterId !== userId) {
       throw new Error("Authorization Breach: You cannot remove this witness.");
     }
 
     if (partnership.status === "ended") return null;
 
-    await ctx.db.patch(args.partnerShipId, {
+    await ctx.db.patch("accountability_partners", args.partnerShipId, {
       status: "ended",
     });
 
@@ -287,7 +287,7 @@ export const listIncomingRequests = query({
         const userId = await auth.getUserId(ctx);
         if (userId === null) return [];
 
-        const user = await ctx.db.get(userId);
+        const user = await ctx.db.get("users", userId);
         if (!user || !user.emailVerificationTime) return [];
 
         const requests = await ctx.db
@@ -297,8 +297,8 @@ export const listIncomingRequests = query({
         
         const results = [];
         for (const req of requests) {
-            const requester = await ctx.db.get(req.requesterId);
-            const goal = await ctx.db.get(req.goalId);
+            const requester = await ctx.db.get("users", req.requesterId);
+            const goal = await ctx.db.get("goals", req.goalId);
             results.push({ ...req, requester, goal });
         }
         return results;
@@ -312,7 +312,7 @@ export const listIncomingApplications = query({
     const userId = await auth.getUserId(ctx);
     if (userId === null) return [];
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user || !user.emailVerificationTime) return [];
 
     const requests = await ctx.db
@@ -323,8 +323,8 @@ export const listIncomingApplications = query({
     const results = [];
     for (const req of requests) {
       if (!req.partner_accepted || req.requester_accepted) continue;
-      const partner = await ctx.db.get(req.partnerId);
-      const goal = await ctx.db.get(req.goalId);
+      const partner = await ctx.db.get("users", req.partnerId);
+      const goal = await ctx.db.get("goals", req.goalId);
       results.push({ ...req, partner, goal });
     }
     return results;
@@ -338,7 +338,7 @@ export const listMyWitnessProtocols = query({
     const userId = await auth.getUserId(ctx);
     if (userId === null) return [];
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user || !user.emailVerificationTime) return [];
 
     const partnerships = await ctx.db
@@ -346,11 +346,11 @@ export const listMyWitnessProtocols = query({
       .withIndex("by_partner_and_status", (q) => q.eq("partnerId", userId).eq("status", "active"))
       .collect();
 
-    const results: any[] = [];
+    const results: Array<any> = [];
     for (const p of partnerships) {
-      const vault = await ctx.db.get(p.vaultId);
-      const goal = await ctx.db.get(p.goalId);
-      const owner = await ctx.db.get(p.requesterId);
+      const vault = await ctx.db.get("vaults", p.vaultId);
+      const goal = await ctx.db.get("goals", p.goalId);
+      const owner = await ctx.db.get("users", p.requesterId);
       const ownerImageUrl = owner?.profileImageId ? await ctx.storage.getUrl(owner.profileImageId) : null;
 
       results.push({
@@ -383,11 +383,11 @@ export const joinByInvite = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
-    const vault = await ctx.db.get(args.vaultId);
+    const vault = await ctx.db.get("vaults", args.vaultId);
     if (!vault) throw new Error("Vault not found");
 
     if (vault.userId === userId) {
@@ -421,7 +421,7 @@ export const joinByInvite = mutation({
       partner_accepted: true,
     });
 
-    const partner = await ctx.db.get(userId);
+    const partner = await ctx.db.get("users", userId);
 
     await ctx.db.insert("notifications", {
         userId: vault.userId,
@@ -442,10 +442,10 @@ export const getPartners = query({
         const userId = await auth.getUserId(ctx);
         if (userId === null) return [];
 
-        const user = await ctx.db.get(userId);
+        const user = await ctx.db.get("users", userId);
         if (!user || !user.emailVerificationTime) return [];
 
-        const vault = await ctx.db.get(args.vaultId);
+        const vault = await ctx.db.get("vaults", args.vaultId);
         if (!vault) return [];
 
         const partner = await ctx.db
@@ -463,7 +463,7 @@ export const getPartners = query({
         
         const results = [];
         for (const p of partners) {
-            const user = await ctx.db.get(p.partnerId);
+            const user = await ctx.db.get("users", p.partnerId);
             const profileUrl = user?.profileImageId ? await ctx.storage.getUrl(user.profileImageId) : null;
             results.push({ ...p, user: user ? { ...user, image: profileUrl ?? user.image } : null });
         }

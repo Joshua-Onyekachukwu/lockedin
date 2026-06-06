@@ -1,10 +1,10 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
 import { useAction, useConvexAuth, useMutation } from 'convex/react'
-import { api } from '../../convex/_generated/api'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { api } from '../../convex/_generated/api'
 import { ConfirmModal } from '~/components/confirm-modal'
 import { useToast } from '~/components/toast'
 
@@ -22,11 +22,11 @@ function AdminSettings() {
 
   const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any
   const { data: user, isFetching: userFetching }: { data: any; isFetching: boolean } = useSuspenseQuery({
-    ...(userQuery as any),
+    ...(userQuery),
     enabled: isAuthenticated,
     staleTime: 0,
     refetchOnMount: 'always',
-  } as any)
+  })
   const isVerified = !!user?.emailVerificationTime
 
   const recomputeSystemAccounting = useMutation((api as any).admin.recomputeSystemAccounting)
@@ -49,7 +49,7 @@ function AdminSettings() {
   const { data: adminStatus }: { data: any } = useSuspenseQuery({
     ...adminStatusQuery,
     enabled: isAuthenticated,
-  } as any)
+  })
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {

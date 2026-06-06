@@ -1,5 +1,5 @@
-import { mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation } from "./_generated/server";
 
 /**
  * MIGRATION PROTOCOL v1.1
@@ -26,7 +26,7 @@ export const migrateLegacyGoals = mutation({
       }
 
       if (Object.keys(updates).length > 0) {
-        await ctx.db.patch(goal._id, updates);
+        await ctx.db.patch("goals", goal._id, updates);
         count++;
       }
     }

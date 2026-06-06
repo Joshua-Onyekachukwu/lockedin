@@ -1,21 +1,21 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { 
-  Lock, 
-  ArrowRight,
-  Zap,
-  Shield,
-  CircleDot,
-  CheckCircle2,
-  Menu,
-  X,
-  History,
+  ArrowRight, 
   Camera,
-  ShieldCheck,
+  CheckCircle2,
+  CircleDot,
+  Cpu,
   Globe,
-  Cpu
+  History,
+  Lock,
+  Menu,
+  Shield,
+  ShieldCheck,
+  X,
+  Zap
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import { useConvexAuth, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 

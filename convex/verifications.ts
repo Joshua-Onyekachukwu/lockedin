@@ -1,5 +1,5 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 
 const tierForIntegrity = (score: number) => {
@@ -19,12 +19,12 @@ export const verifyLog = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
-    const log = await ctx.db.get(args.logId);
+    const log = await ctx.db.get("goal_logs", args.logId);
     if (!log) throw new Error("Evidence not found");
     if (log.confirmed_by) return null;
     if (log.status === "disputed") return null;
 
-    const goal = await ctx.db.get(log.goalId);
+    const goal = await ctx.db.get("goals", log.goalId);
     if (!goal) throw new Error("Protocol not found");
 
     // SECURITY: Ensure the verifier is actually an active partner for the vault
@@ -39,25 +39,25 @@ export const verifyLog = mutation({
     }
 
     const now = Date.now();
-    const approvals = Array.isArray((log as any).approvals) ? ((log as any).approvals as any[]) : [];
-    const rejections = Array.isArray((log as any).rejections) ? ((log as any).rejections as any[]) : [];
+    const approvals = Array.isArray((log as any).approvals) ? ((log as any).approvals as Array<any>) : [];
+    const rejections = Array.isArray((log as any).rejections) ? ((log as any).rejections as Array<any>) : [];
     const alreadyVoted = approvals.includes(userId) || rejections.includes(userId);
     if (alreadyVoted) throw new Error("You have already voted on this evidence.");
 
     // Update User Metrics on Approval
     if (args.status === "approved") {
         const nextApprovals = approvals.includes(userId) ? approvals : [...approvals, userId];
-        await ctx.db.patch(args.logId, {
+        await ctx.db.patch("goal_logs", args.logId, {
           approvals: nextApprovals,
           status: "completed",
           confirmed_by: userId,
           confirmed_at: now,
         });
 
-        const owner = await ctx.db.get(goal.userId);
+        const owner = await ctx.db.get("users", goal.userId);
         if (owner) {
             const nextIntegrity = Math.min(100, (owner.integrityScore ?? 100) + 1);
-            await ctx.db.patch(owner._id, {
+            await ctx.db.patch("users", owner._id, {
                 // Rise slowly: +1 point per successful verification
                 integrityScore: nextIntegrity,
                 tier: tierForIntegrity(nextIntegrity),
@@ -71,7 +71,7 @@ export const verifyLog = mutation({
 
     const nextRejections = rejections.includes(userId) ? rejections : [...rejections, userId];
     if (nextRejections.length >= 2) {
-      await ctx.db.patch(args.logId, {
+      await ctx.db.patch("goal_logs", args.logId, {
         rejections: nextRejections,
         status: "disputed",
         confirmed_by: userId,
@@ -80,7 +80,7 @@ export const verifyLog = mutation({
       return null;
     }
 
-    await ctx.db.patch(args.logId, {
+    await ctx.db.patch("goal_logs", args.logId, {
       rejections: nextRejections,
     });
 
@@ -98,19 +98,19 @@ export const ownerRejectLog = mutation({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
 
-    const log = await ctx.db.get(args.logId);
+    const log = await ctx.db.get("goal_logs", args.logId);
     if (!log) throw new Error("Evidence not found");
     if (log.status === "disputed") return null;
     if (log.confirmed_by) return null;
 
-    const goal = await ctx.db.get(log.goalId);
+    const goal = await ctx.db.get("goals", log.goalId);
     if (!goal) throw new Error("Protocol not found");
     if (goal.userId !== userId) throw new Error("Authorization Breach: Only the protocol owner can reject.");
 
-    const rejections = Array.isArray((log as any).rejections) ? ((log as any).rejections as any[]) : [];
+    const rejections = Array.isArray((log as any).rejections) ? ((log as any).rejections as Array<any>) : [];
     const nextRejections = rejections.includes(userId) ? rejections : [...rejections, userId];
     const now = Date.now();
-    await ctx.db.patch(args.logId, {
+    await ctx.db.patch("goal_logs", args.logId, {
       rejections: nextRejections,
       status: "disputed",
       confirmed_by: userId,
@@ -134,7 +134,7 @@ export const getPendingVerifications = query({
             .filter(q => q.eq(q.field("status"), "active"))
             .collect();
 
-        const pending: any[] = [];
+        const pending: Array<any> = [];
         const seen = new Set<string>();
         for (const p of partnerships) {
             const logs = await ctx.db
@@ -147,12 +147,12 @@ export const getPendingVerifications = query({
             for (const log of logs) {
                 const id = String((log as any)._id);
                 if (seen.has(id)) continue;
-                const approvals = Array.isArray((log as any).approvals) ? ((log as any).approvals as any[]) : [];
-                const rejections = Array.isArray((log as any).rejections) ? ((log as any).rejections as any[]) : [];
+                const approvals = Array.isArray((log as any).approvals) ? ((log as any).approvals as Array<any>) : [];
+                const rejections = Array.isArray((log as any).rejections) ? ((log as any).rejections as Array<any>) : [];
                 const hasVoted = approvals.includes(userId) || rejections.includes(userId);
                 if (!log.confirmed_by && !hasVoted) {
-                    const goal = await ctx.db.get(log.goalId);
-                    const owner = goal ? await ctx.db.get(goal.userId) : null;
+                    const goal = await ctx.db.get("goals", log.goalId);
+                    const owner = goal ? await ctx.db.get("users", goal.userId) : null;
                     pending.push({ 
                         ...log, 
                         goalTitle: goal?.title,

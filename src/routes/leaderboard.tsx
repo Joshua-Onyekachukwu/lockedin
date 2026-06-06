@@ -2,8 +2,6 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useConvexAuth } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { AppTopNav } from '~/components/app-top-nav';
 import { 
   Crown,
   Flame, 
@@ -13,6 +11,8 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
+import { api } from '../../convex/_generated/api';
+import { AppTopNav } from '~/components/app-top-nav';
 
 const EMPTY_ARGS: Record<string, never> = {};
 
@@ -26,12 +26,12 @@ function LeaderboardPage() {
   const { data: user }: { data: any } = useSuspenseQuery({
     ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
     enabled: isAuthenticated,
-  } as any);
-  const isVerified = !!(user as any)?.emailVerificationTime;
+  });
+  const isVerified = !!(user)?.emailVerificationTime;
   const { data: leaderboard } = useSuspenseQuery({
     ...(convexQuery(api.users.getLeaderboard, EMPTY_ARGS as any) as any),
     enabled: isAuthenticated && isVerified,
-  } as any) as any;
+  }) as any;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -85,7 +85,7 @@ function LeaderboardPage() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {(leaderboard as any[]).map((user: any, index: number) => (
+          {(leaderboard as Array<any>).map((user: any, index: number) => (
             <motion.div
               key={user._id}
               initial={{ opacity: 0, y: 16 }}

@@ -2,8 +2,8 @@ import { convexQuery } from '@convex-dev/react-query'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { useMutation, useConvexAuth } from 'convex/react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useConvexAuth, useMutation } from 'convex/react'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowLeft,
   Bell,
@@ -104,10 +104,10 @@ export function AppTopNav({
   )
 
   const { data: currentUser }: { data: any } = useQuery({
-    ...(userQuery as any),
+    ...(userQuery),
     enabled: isAuthenticated && !user,
     staleTime: 1000 * 20,
-  } as any)
+  })
 
   const effectiveUser = user ?? currentUser
 
@@ -116,11 +116,11 @@ export function AppTopNav({
     [],
   )
   const { data: notifications } = useQuery({
-    ...(notificationsQuery as any),
+    ...(notificationsQuery),
     enabled: isAuthenticated,
     placeholderData: [],
     staleTime: 1000 * 10,
-  } as any)
+  })
 
   const markRead = useMutation((api as any).notifications.markRead)
 
@@ -136,7 +136,7 @@ export function AppTopNav({
   }, [authLoading, effectiveUser, isAuthenticated])
 
   const unreadCount =
-    (notifications as any[])?.filter?.((n: any) => !n.read).length || 0
+    (notifications as Array<any>)?.filter?.((n: any) => !n.read).length || 0
 
   const closeAll = () => {
     setShowNotifications(false)
@@ -503,7 +503,7 @@ export function AppTopNav({
               </div>
 
               <div className="space-y-4 text-left">
-                {(notifications as any[])?.length === 0 ? (
+                {(notifications as Array<any>)?.length === 0 ? (
                   <div className="text-center mt-20">
                     <Bell className="mx-auto text-white/5 mb-4 opacity-10" size={60} />
                     <p className="text-sm text-white/20 italic font-medium uppercase tracking-widest">
@@ -511,7 +511,7 @@ export function AppTopNav({
                     </p>
                   </div>
                 ) : (
-                  (notifications as any[]).map((n: any) => {
+                  (notifications as Array<any>).map((n: any) => {
                     const meta = notificationMeta(n)
                     return (
                       <div

@@ -1,7 +1,7 @@
-import { mutation, query, action, internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { auth } from "./auth";
-import { internal, api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
@@ -68,7 +68,7 @@ async function checkAdmin(ctx: any) {
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("UNAUTHORIZED: ACCESS DENIED");
     
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) {
         throw new Error("SECURITY ALERT: Administrative privileges required.");
     }
@@ -164,7 +164,7 @@ export const getUserByIdUnsafe = internalQuery({
   args: { userId: v.id("users") },
   returns: v.union(v.null(), v.any()),
   handler: async (ctx, args) => {
-    return (await ctx.db.get(args.userId)) ?? null;
+    return (await ctx.db.get("users", args.userId)) ?? null;
   },
 });
 
@@ -232,7 +232,7 @@ export const getAuditLog = query({
 
     const adminResults = [];
     for (const row of adminRows) {
-      const admin = await ctx.db.get(row.adminUserId);
+      const admin = await ctx.db.get("users", row.adminUserId);
       adminResults.push({ ...row, kind: "admin", admin });
     }
 
@@ -401,9 +401,9 @@ export const getAuditById = query({
   ),
   handler: async (ctx, args) => {
     await checkAdmin(ctx);
-    const row = await ctx.db.get(args.auditId);
+    const row = await ctx.db.get("admin_audit", args.auditId);
     if (!row) return null;
-    const admin = await ctx.db.get(row.adminUserId);
+    const admin = await ctx.db.get("users", row.adminUserId);
     return { ...row, admin };
   },
 });
@@ -444,15 +444,15 @@ export const listTransactionsPage = query({
     });
 
     const usersById = new Map<string, any>();
-    for (const tx of result.page as any[]) {
+    for (const tx of result.page as Array<any>) {
       const id = String(tx.userId);
       if (!usersById.has(id)) {
-        usersById.set(id, await ctx.db.get(tx.userId));
+        usersById.set(id, await ctx.db.get("users", tx.userId));
       }
     }
 
     return {
-      page: (result.page as any[]).map((t) => ({
+      page: (result.page as Array<any>).map((t) => ({
         _id: t._id,
         _creationTime: t._creationTime,
         userId: t.userId,
@@ -496,9 +496,9 @@ export const getTransactionById = query({
   ),
   handler: async (ctx, args) => {
     await checkAdmin(ctx);
-    const row = await ctx.db.get(args.transactionId);
+    const row = await ctx.db.get("transactions", args.transactionId);
     if (!row) return null;
-    const user = await ctx.db.get(row.userId);
+    const user = await ctx.db.get("users", row.userId);
     return { ...row, user };
   },
 });
@@ -572,9 +572,9 @@ export const checkAdminStatus = query({
             return { isAdmin: true, user };
         } catch (e) {
             const userId = await auth.getUserId(ctx);
-            const user = userId ? await ctx.db.get(userId) : null;
+            const user = userId ? await ctx.db.get("users", userId) : null;
             const allowlist = getAdminEmailAllowlist();
-            const email = (user?.email as string | undefined) ?? undefined;
+            const email = (user?.email) ?? undefined;
             const isAllowlistAdmin =
               !!email && allowlist.map((x) => x.toLowerCase()).includes(email.toLowerCase());
             const isDbAdmin = user?.isAdmin === true;
@@ -614,7 +614,7 @@ export const handlePaystackTransferSuccess = internalMutation({
     }
     if (withdrawal.status === "completed") return { ok: true, message: "Already completed." };
 
-    await ctx.db.patch(withdrawal._id, {
+    await ctx.db.patch("withdrawals", withdrawal._id, {
       status: "completed",
       processed_at: Date.now(),
       paystack_status: "success",
@@ -638,7 +638,7 @@ export const handlePaystackTransferSuccess = internalMutation({
       .first();
 
     if (tx) {
-      await ctx.db.patch(tx._id, { status: "completed" });
+      await ctx.db.patch("transactions", tx._id, { status: "completed" });
     }
 
     return { ok: true, message: "Withdrawal completed." };
@@ -669,12 +669,12 @@ export const handlePaystackTransferFailed = internalMutation({
     }
     if (withdrawal.status === "completed") return { ok: true, message: "Already completed." };
 
-    const user = await ctx.db.get(withdrawal.userId);
+    const user = await ctx.db.get("users", withdrawal.userId);
     if (user) {
-      await ctx.db.patch(user._id, { balance: (user.balance || 0) + withdrawal.amount });
+      await ctx.db.patch("users", user._id, { balance: (user.balance || 0) + withdrawal.amount });
     }
 
-    await ctx.db.patch(withdrawal._id, {
+    await ctx.db.patch("withdrawals", withdrawal._id, {
       status: "failed",
       processed_at: Date.now(),
       paystack_status: "failed",
@@ -696,7 +696,7 @@ export const handlePaystackTransferFailed = internalMutation({
       .first();
 
     if (tx) {
-      await ctx.db.patch(tx._id, { status: "failed" });
+      await ctx.db.patch("transactions", tx._id, { status: "failed" });
     }
 
     return { ok: true, message: "Withdrawal failed; escrow released." };
@@ -823,7 +823,7 @@ export const recoverPaystackTransaction = action({
     };
 
     await ctx.runMutation(internal.admin.logAudit, {
-      adminUserId: (adminStatus.user as any)._id as Id<"users">,
+      adminUserId: (adminStatus.user)._id as Id<"users">,
       action: "paystack_recovery",
       message: `Recovery attempted for reference ${args.reference}. Result: ${result.status}.`,
       targetType: "paystack",
@@ -900,22 +900,22 @@ export const paymentsExplorerLookup = action({
     const isEmail = q.includes("@");
     if (isEmail) {
       const user: any =
-        (await ctx.runQuery(internal.admin.findUserByEmail, { email: q } as any)) ||
-        (await ctx.runQuery(internal.admin.findUserByEmail, { email: q.toLowerCase() } as any));
+        (await ctx.runQuery(internal.admin.findUserByEmail, { email: q })) ||
+        (await ctx.runQuery(internal.admin.findUserByEmail, { email: q.toLowerCase() }));
 
       const reconciliationsByEmail = (await ctx.runQuery(
         internal.payments.listPaystackReconciliationsByCustomerEmail,
         { customerEmail: q, limit: 50 },
-      )) as any[];
+      )) as Array<any>;
       const unmatchedByEmail = (await ctx.runQuery(internal.payments.listPaystackUnmatchedByCustomerEmail, {
         customerEmail: q,
         limit: 50,
-      })) as any[];
+      })) as Array<any>;
       const withdrawalsByEmail = user
         ? await ctx.runQuery(internal.admin.listWithdrawalsByUser, { userId: user._id, limit: 50 })
         : [];
 
-      const recentTransactions: any[] = user
+      const recentTransactions: Array<any> = user
         ? await ctx.runQuery(internal.admin.listRecentTransactionsForUser, { userId: user._id, limit: 25 })
         : [];
 
@@ -938,7 +938,7 @@ export const paymentsExplorerLookup = action({
       const withdrawal = await ctx.runQuery(internal.admin.findWithdrawalByIdentifiers, { query: q });
       if (withdrawal) {
         const user = await ctx.runQuery(internal.admin.getUserByIdUnsafe, { userId: withdrawal.userId });
-        const recentTransactions: any[] = user
+        const recentTransactions: Array<any> = user
           ? await ctx.runQuery(internal.admin.listRecentTransactionsForUser, { userId: (user as any)._id, limit: 25 })
           : [];
         return {
@@ -963,12 +963,12 @@ export const paymentsExplorerLookup = action({
     const deposit: any = await ctx.runQuery(internal.payments.getDepositByReference, { reference: q });
     const withdrawalByReference = await ctx.runQuery(internal.admin.getWithdrawalByPaystackReference, { reference: q });
 
-    let creditedUserId: Id<"users"> | undefined = (reconciliation as any)?.creditedUserId;
-    if (!creditedUserId) creditedUserId = (deposit as any)?.userId;
+    let creditedUserId: Id<"users"> | undefined = (reconciliation)?.creditedUserId;
+    if (!creditedUserId) creditedUserId = (deposit)?.userId;
     if (!creditedUserId) {
-      const email = (paystack as any)?.customer?.email as string | undefined;
+      const email = (paystack)?.customer?.email as string | undefined;
       if (email) {
-        const byEmail = (await ctx.runQuery(internal.admin.findUserByEmail, { email } as any)) as any;
+        const byEmail = (await ctx.runQuery(internal.admin.findUserByEmail, { email })) as any;
         creditedUserId = byEmail?._id as Id<"users"> | undefined;
       }
     }
@@ -976,8 +976,8 @@ export const paymentsExplorerLookup = action({
     const user: any = creditedUserId
       ? await ctx.runQuery(internal.admin.getUserByIdUnsafe, { userId: creditedUserId })
       : null;
-    const recentTransactions: any[] = user
-      ? await ctx.runQuery(internal.admin.listRecentTransactionsForUser, { userId: (user as any)._id, limit: 25 })
+    const recentTransactions: Array<any> = user
+      ? await ctx.runQuery(internal.admin.listRecentTransactionsForUser, { userId: (user)._id, limit: 25 })
       : [];
 
     return {
@@ -1095,7 +1095,7 @@ export const recomputeSystemAccounting = mutation({
         total_reward_pool_contributed: 0,
       }));
 
-    await ctx.db.patch(statsId, {
+    await ctx.db.patch("system_stats", statsId, {
       total_revenue: totalRevenue,
       total_distributed: totalDistributed,
       total_penalties_collected: totalPenaltiesCollected,
@@ -1172,7 +1172,7 @@ export const seedDummyUserHistory = action({
     }
 
     await ctx.runMutation(internal.admin.logAudit, {
-      adminUserId: (adminStatus.user as any)._id as Id<"users">,
+      adminUserId: (adminStatus.user)._id as Id<"users">,
       action: "seed_dummy_history",
       message: `Seeded ${goalsPerUser} goal(s) per user for ${userIds.length} user(s) @${domain}.`,
       metadata: { domain, goalsPerUser, logsPerGoal, users: userIds.length },
@@ -1224,14 +1224,14 @@ export const populateExistingUserHistory = action({
       const res = (await ctx.runMutation(internal.seed.populateExistingLogsForUser, {
         userId,
         logsPerGoal,
-      })) as { goalsProcessed: number; logsInserted: number; logsSkipped: number };
+      }));
       totalGoals += res.goalsProcessed;
       totalInserted += res.logsInserted;
       totalSkipped += res.logsSkipped;
     }
 
     await ctx.runMutation(internal.admin.logAudit, {
-      adminUserId: (adminStatus.user as any)._id as Id<"users">,
+      adminUserId: (adminStatus.user)._id as Id<"users">,
       action: "populate_existing_history",
       message: `Populated historical logs for ${userIds.length} user(s) @${domain}. Inserted ${totalInserted} log(s), skipped ${totalSkipped} existing log(s) across ${totalGoals} goal(s).`,
       metadata: { domain, logsPerGoal, users: userIds.length, totalGoals, totalInserted, totalSkipped },
@@ -1323,7 +1323,7 @@ export const purgeSeedDataByDomain: any = action({
     }
 
     await ctx.runMutation(internal.admin.logAudit, {
-      adminUserId: (adminStatus.user as any)._id as Id<"users">,
+      adminUserId: (adminStatus.user)._id as Id<"users">,
       action: "purge_seed_data",
       message: dryRun
         ? `Dry-run purge completed for @${domain}.`
@@ -1371,10 +1371,10 @@ export const deleteWaitlistEntry = mutation({
   returns: v.object({ success: v.boolean(), message: v.string() }),
   handler: async (ctx, args) => {
     const admin = await checkAdmin(ctx);
-    const entry = await ctx.db.get(args.waitlistId);
+    const entry = await ctx.db.get("waitlist", args.waitlistId);
     if (!entry) return { success: false, message: "Waitlist entry not found." };
 
-    await ctx.db.delete(args.waitlistId);
+    await ctx.db.delete("waitlist", args.waitlistId);
     await ctx.db.insert("admin_audit", {
       adminUserId: admin._id,
       action: "waitlist_remove",
@@ -1435,7 +1435,7 @@ export const getPendingWithdrawals = query({
 
     const results = [];
     for (const w of withdrawals) {
-      const user = await ctx.db.get(w.userId);
+      const user = await ctx.db.get("users", w.userId);
       results.push({ ...w, user });
     }
     return results;
@@ -1446,7 +1446,7 @@ export const getWithdrawalById = internalQuery({
     args: { withdrawalId: v.id("withdrawals") },
     returns: v.any(),
     handler: async (ctx, args) => {
-        return await ctx.db.get(args.withdrawalId);
+        return await ctx.db.get("withdrawals", args.withdrawalId);
     }
 });
 
@@ -1522,7 +1522,7 @@ export const approveWithdrawal = action({
         if (!transferData.status) throw new Error(transferData.message);
 
         await ctx.runMutation(internal.admin.logAudit, {
-          adminUserId: (adminStatus.user as any)._id as Id<"users">,
+          adminUserId: (adminStatus.user)._id as Id<"users">,
           action: "approve_withdrawal",
           message: `Withdrawal approved and transfer queued. Amount: ₦${(amount / 100).toLocaleString()}.`,
           targetType: "withdrawal",
@@ -1547,7 +1547,7 @@ export const approveWithdrawal = action({
           reason: err?.message || "Unknown error",
         });
         await ctx.runMutation(internal.admin.logAudit, {
-          adminUserId: (adminStatus.user as any)._id as Id<"users">,
+          adminUserId: (adminStatus.user)._id as Id<"users">,
           action: "approve_withdrawal_failed",
           message: `Withdrawal transfer failed: ${err?.message || "Unknown error"}`,
           targetType: "withdrawal",
@@ -1570,10 +1570,10 @@ export const updateWithdrawalPaystackMeta = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const withdrawal = await ctx.db.get(args.withdrawalId);
+    const withdrawal = await ctx.db.get("withdrawals", args.withdrawalId);
     if (!withdrawal) return null;
 
-    await ctx.db.patch(args.withdrawalId, {
+    await ctx.db.patch("withdrawals", args.withdrawalId, {
       status: "processing",
       paystack_reference: args.reference,
       paystack_transfer_code: args.transferCode,
@@ -1601,16 +1601,16 @@ export const updateWithdrawalPaystackFailure = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const withdrawal = await ctx.db.get(args.withdrawalId);
+    const withdrawal = await ctx.db.get("withdrawals", args.withdrawalId);
     if (!withdrawal) return null;
     if (withdrawal.status === "completed") return null;
 
-    const user = await ctx.db.get(withdrawal.userId);
+    const user = await ctx.db.get("users", withdrawal.userId);
     if (user) {
-      await ctx.db.patch(user._id, { balance: (user.balance || 0) + withdrawal.amount });
+      await ctx.db.patch("users", user._id, { balance: (user.balance || 0) + withdrawal.amount });
     }
 
-    await ctx.db.patch(args.withdrawalId, {
+    await ctx.db.patch("withdrawals", args.withdrawalId, {
       status: "failed",
       processed_at: Date.now(),
       paystack_status: "failed",
@@ -1632,7 +1632,7 @@ export const updateWithdrawalPaystackFailure = internalMutation({
       .first();
 
     if (tx) {
-      await ctx.db.patch(tx._id, { status: "failed" });
+      await ctx.db.patch("transactions", tx._id, { status: "failed" });
     }
 
     return null;
@@ -1647,10 +1647,10 @@ export const finalizeWithdrawal = internalMutation({
     },
     returns: v.null(),
     handler: async (ctx, args) => {
-        const withdrawal = await ctx.db.get(args.withdrawalId);
+        const withdrawal = await ctx.db.get("withdrawals", args.withdrawalId);
         if (!withdrawal) return null;
 
-        await ctx.db.patch(args.withdrawalId, {
+        await ctx.db.patch("withdrawals", args.withdrawalId, {
             status: args.status as any,
             processed_at: args.processedAt,
         });
@@ -1671,7 +1671,7 @@ export const finalizeWithdrawal = internalMutation({
               .first();
             
             if (tx) {
-                await ctx.db.patch(tx._id, { status: "completed" });
+                await ctx.db.patch("transactions", tx._id, { status: "completed" });
             }
         }
 
@@ -1694,7 +1694,7 @@ export const getBreachCandidates = query({
         
         const results = [];
         for (const vault of activeVaults) {
-            const user = await ctx.db.get(vault.userId);
+            const user = await ctx.db.get("users", vault.userId);
             const goal = await ctx.db
                 .query("goals")
                 .withIndex("by_vault", q => q.eq("vaultId", vault._id))
@@ -1713,10 +1713,10 @@ export const enforceProtocolBreach = mutation({
     returns: v.null(),
     handler: async (ctx, args) => {
         const admin = await checkAdmin(ctx);
-        const vault = await ctx.db.get(args.vaultId);
+        const vault = await ctx.db.get("vaults", args.vaultId);
         if (!vault || vault.status !== "active") return null;
 
-        await ctx.db.patch(args.vaultId, { status: "failed" });
+        await ctx.db.patch("vaults", args.vaultId, { status: "failed" });
 
         // Logic for penalty distribution
         await ctx.db.insert("transactions", {
@@ -1768,7 +1768,7 @@ export const markUserEmailVerified = mutation({
       return { success: true, message: "User already verified." };
     }
 
-    await ctx.db.patch(user._id, { emailVerificationTime: Date.now() });
+    await ctx.db.patch("users", user._id, { emailVerificationTime: Date.now() });
 
     await ctx.db.insert("admin_audit", {
       adminUserId: admin._id,
@@ -1799,7 +1799,7 @@ export const updateUserVerifications = mutation({
   }),
   handler: async (ctx, args) => {
     const admin = await checkAdmin(ctx);
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get("users", args.userId);
     if (!user) return { success: false, message: "User not found." };
 
     const patch: any = {};
@@ -1813,9 +1813,9 @@ export const updateUserVerifications = mutation({
     if (args.is_discoverable !== undefined) patch.is_discoverable = args.is_discoverable;
     if (args.witness_discoverable !== undefined) patch.witness_discoverable = args.witness_discoverable;
 
-    await ctx.db.patch(user._id, patch);
+    await ctx.db.patch("users", user._id, patch);
 
-    const updated = await ctx.db.get(user._id);
+    const updated = await ctx.db.get("users", user._id);
 
     await ctx.db.insert("admin_audit", {
       adminUserId: admin._id,
@@ -1890,7 +1890,7 @@ export const getUserProtocols = query({
       .order("desc")
       .take(limit);
 
-    const results: any[] = [];
+    const results: Array<any> = [];
     for (const vault of vaults) {
       const goal = await ctx.db
         .query("goals")
@@ -1924,7 +1924,7 @@ export const makeUsersVisibleByEmailDomain = mutation({
       .slice(0, limit);
 
     for (const u of matches) {
-      await ctx.db.patch(u._id, {
+      await ctx.db.patch("users", u._id, {
         is_discoverable: true,
         witness_discoverable: true,
         ...(markVerified && !u.emailVerificationTime ? { emailVerificationTime: Date.now() } : {}),
@@ -1945,7 +1945,7 @@ export const repairDuplicatePartnerships = mutation({
     const limit = Math.max(1, Math.min(args.limit ?? 2000, 5000));
     const rows = await ctx.db.query("accountability_partners").take(limit);
 
-    const groups = new Map<string, any[]>();
+    const groups = new Map<string, Array<any>>();
     for (const r of rows) {
       const key = `${r.vaultId}:${r.partnerId}`;
       const list = groups.get(key) ?? [];
@@ -1970,7 +1970,7 @@ export const repairDuplicatePartnerships = mutation({
         if (r._id === keep._id) continue;
         if (dryRun) continue;
         if (r.status === "ended") continue;
-        await ctx.db.patch(r._id, { status: "ended" });
+        await ctx.db.patch("accountability_partners", r._id, { status: "ended" });
         fixed += 1;
       }
     }
@@ -1998,7 +1998,7 @@ export const recomputeUserTiers = mutation({
     for (const u of users) {
       const expected = tierForIntegrity(u.integrityScore ?? 0);
       if (u.tier !== expected) {
-        await ctx.db.patch(u._id, { tier: expected });
+        await ctx.db.patch("users", u._id, { tier: expected });
         updated += 1;
       }
     }

@@ -1,17 +1,17 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
-import { useMutation, useConvexAuth } from 'convex/react';
-import { api } from '../../convex/_generated/api';
+import { useConvexAuth, useMutation } from 'convex/react';
 import { 
+  ArrowRight, 
+  Lock, 
   ShieldCheck, 
-  Target, 
-  Users, 
-  Lock,
-  ArrowRight
+  Target,
+  Users
 } from 'lucide-react';
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { api } from '../../convex/_generated/api';
 
 export const Route = createFileRoute('/invite/$vaultId')({
   component: PartnerInvite,
@@ -25,18 +25,18 @@ function PartnerInvite() {
   const { data: user }: { data: any } = useSuspenseQuery({
     ...userQuery,
     enabled: isAuthenticated,
-  } as any);
+  });
   const isVerified = !!user?.emailVerificationTime;
   
   const joinAsPartner = useMutation(api.partners.join);
   
   const vaultQuery = convexQuery((api as any).goals.getInvitePreview, {
-    vaultId: vaultId as any,
+    vaultId: vaultId,
   }) as any;
   const { data: vault }: { data: any } = useSuspenseQuery({
     ...vaultQuery,
     enabled: isAuthenticated && isVerified,
-  } as any);
+  });
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -61,7 +61,7 @@ function PartnerInvite() {
   const handleAccept = async () => {
     if (!user?._id) return;
     await joinAsPartner({
-        vaultId: vaultId as any,
+        vaultId: vaultId,
         role: 'verifier'
     });
     navigate({ to: '/dashboard' });

@@ -1,12 +1,12 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useConvexAuth, useAction } from 'convex/react';
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useAction, useConvexAuth } from 'convex/react';
 import { convexQuery } from '@convex-dev/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useAuthActions } from '@convex-dev/auth/react';
-import { api } from '../../convex/_generated/api';
 import { ArrowLeft, CheckCircle2, Loader2, Mail, RefreshCw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
+import { api } from '../../convex/_generated/api';
 
 const EMPTY_ARGS: Record<string, never> = {};
 
@@ -59,7 +59,7 @@ function VerifyRequiredPage() {
     setStatus('sending');
     setMessage(null);
     try {
-      const res = await requestEmailVerification(EMPTY_ARGS as any);
+      const res = await requestEmailVerification(EMPTY_ARGS);
       setStatus('sent');
       setMessage(res?.message ?? 'Verification email sent.');
     } catch (e: any) {
@@ -72,9 +72,9 @@ function VerifyRequiredPage() {
     setChecking(true);
     setMessage(null);
     try {
-      await queryClient.invalidateQueries({ queryKey: userQuery.queryKey as any });
-      await queryClient.refetchQueries({ queryKey: userQuery.queryKey as any, exact: true } as any);
-      const refreshed = queryClient.getQueryData(userQuery.queryKey as any) as any;
+      await queryClient.invalidateQueries({ queryKey: userQuery.queryKey });
+      await queryClient.refetchQueries({ queryKey: userQuery.queryKey, exact: true });
+      const refreshed = queryClient.getQueryData(userQuery.queryKey) as any;
       if (refreshed?.emailVerificationTime) {
         navigate({ to: '/dashboard' });
         return;

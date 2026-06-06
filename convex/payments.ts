@@ -1,5 +1,5 @@
-import { mutation, query, action, internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 import { api, internal } from "./_generated/api";
 
@@ -28,7 +28,7 @@ export const initializeDeposit = mutation({
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user || !user.email) throw new Error("User email required for payment");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
@@ -206,12 +206,12 @@ export const fulfillDeposit = internalMutation({
     }
 
     // Update deposit status
-    await ctx.db.patch(deposit._id, { status: "completed", metadata: args.metadata });
+    await ctx.db.patch("deposits", deposit._id, { status: "completed", metadata: args.metadata });
 
     // Update user balance
-    const user = await ctx.db.get(deposit.userId);
+    const user = await ctx.db.get("users", deposit.userId);
     if (user) {
-      await ctx.db.patch(user._id, {
+      await ctx.db.patch("users", user._id, {
         balance: (user.balance || 0) + args.amountKobo,
       });
 
@@ -292,7 +292,7 @@ export const reconcilePaystackPayment = internalMutation({
         return { status: "mismatch" as const };
       }
 
-      const user = await ctx.db.get(deposit.userId);
+      const user = await ctx.db.get("users", deposit.userId);
       if (!user) {
         await ctx.db.insert("paystack_unmatched", {
           reference: args.reference,
@@ -308,8 +308,8 @@ export const reconcilePaystackPayment = internalMutation({
       }
 
       if (deposit.status !== "completed") {
-        await ctx.db.patch(deposit._id, { status: "completed", metadata: args.metadata });
-        await ctx.db.patch(user._id, {
+        await ctx.db.patch("deposits", deposit._id, { status: "completed", metadata: args.metadata });
+        await ctx.db.patch("users", user._id, {
           balance: (user.balance || 0) + args.amountKobo,
         });
 
@@ -388,7 +388,7 @@ export const reconcilePaystackPayment = internalMutation({
       metadata: args.metadata,
     });
 
-    await ctx.db.patch(user._id, {
+    await ctx.db.patch("users", user._id, {
       balance: (user.balance || 0) + args.amountKobo,
     });
 
@@ -489,15 +489,15 @@ export const handlePaystackRefundProcessed = internalMutation({
     const holdAmount = hold?.amount ?? 0;
     const delta = args.amountKobo - holdAmount;
 
-    const user = await ctx.db.get(creditedUserId);
+    const user = await ctx.db.get("users", creditedUserId);
     if (user) {
-      await ctx.db.patch(user._id, { balance: (user.balance || 0) - (hold ? delta : args.amountKobo) });
+      await ctx.db.patch("users", user._id, { balance: (user.balance || 0) - (hold ? delta : args.amountKobo) });
     }
 
     if (depositId) {
-      const deposit = await ctx.db.get(depositId);
+      const deposit = await ctx.db.get("deposits", depositId);
       if (deposit && deposit.status !== "failed") {
-        await ctx.db.patch(depositId, {
+        await ctx.db.patch("deposits", depositId, {
           status: "failed",
           metadata: { ...(deposit.metadata ?? {}), refundedAt: now, refund: args.metadata },
         });
@@ -519,7 +519,7 @@ export const handlePaystackRefundProcessed = internalMutation({
             t.description.includes(args.reference),
         );
         if (pendingHold) {
-          await ctx.db.patch(pendingHold._id, {
+          await ctx.db.patch("transactions", pendingHold._id, {
             status: "completed",
             description: `Paystack refund processed: ${args.reference}`,
           });
@@ -555,7 +555,7 @@ export const handlePaystackRefundProcessed = internalMutation({
     }
 
     if (hold && hold.status !== "processed") {
-      await ctx.db.patch(hold._id, { status: "processed", metadata: args.metadata });
+      await ctx.db.patch("paystack_reversals", hold._id, { status: "processed", metadata: args.metadata });
     }
 
     await ctx.db.insert("paystack_reversals", {
@@ -670,10 +670,10 @@ export const handlePaystackDisputeCreate = internalMutation({
       return { ok: true, message: "Dispute recorded (no credited user found)." };
     }
 
-    const user = await ctx.db.get(creditedUserId);
+    const user = await ctx.db.get("users", creditedUserId);
     if (!user) return { ok: true, message: "Dispute recorded (user missing)." };
 
-    await ctx.db.patch(user._id, { balance: (user.balance || 0) - args.amountKobo });
+    await ctx.db.patch("users", user._id, { balance: (user.balance || 0) - args.amountKobo });
     await ctx.db.insert("transactions", {
       userId: user._id,
       amount: -args.amountKobo,
@@ -726,9 +726,9 @@ export const handlePaystackDisputeResolve = internalMutation({
       normalized === "merchant_won";
 
     if (hold && hold.creditedUserId && merchantWon) {
-      const user = await ctx.db.get(hold.creditedUserId);
+      const user = await ctx.db.get("users", hold.creditedUserId);
       if (user) {
-        await ctx.db.patch(user._id, { balance: (user.balance || 0) + hold.amount });
+        await ctx.db.patch("users", user._id, { balance: (user.balance || 0) + hold.amount });
         await ctx.db.insert("transactions", {
           userId: user._id,
           amount: hold.amount,
@@ -747,7 +747,7 @@ export const handlePaystackDisputeResolve = internalMutation({
       }
     }
     if (hold && hold.status !== "processed") {
-      await ctx.db.patch(hold._id, {
+      await ctx.db.patch("paystack_reversals", hold._id, {
         status: "processed",
         metadata: { resolution: args.resolution, ...(args.metadata ?? {}) },
       });
@@ -969,7 +969,7 @@ export const markPaystackUnmatchedResolved = internalMutation({
   args: { unmatchedId: v.id("paystack_unmatched") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.unmatchedId, { resolved: true });
+    await ctx.db.patch("paystack_unmatched", args.unmatchedId, { resolved: true });
     return null;
   },
 });
@@ -1084,7 +1084,7 @@ export const requestWithdrawal = mutation({
     const userId = await auth.getUserId(ctx);
     if (!userId) throw new Error("Unauthorized");
 
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("User not found");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
@@ -1093,7 +1093,7 @@ export const requestWithdrawal = mutation({
     }
 
     // Deduct balance immediately (Escrow)
-    await ctx.db.patch(userId, { balance: user.balance - args.amount });
+    await ctx.db.patch("users", userId, { balance: user.balance - args.amount });
 
     await ctx.db.insert("withdrawals", {
       userId,
@@ -1179,7 +1179,7 @@ export const getBalance = query({
   handler: async (ctx) => {
     const userId = await auth.getUserId(ctx);
     if (!userId) return 0;
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     return user?.balance || 0;
   },
 });

@@ -1,5 +1,5 @@
-import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internalMutation } from "./_generated/server";
 
 /**
  * GOAL EVALUATION ENGINE
@@ -62,10 +62,10 @@ export const midnightSweep = internalMutation({
         }
 
         if (breached) {
-          const user = await ctx.db.get(vault.userId);
+          const user = await ctx.db.get("users", vault.userId);
           if (user && user.shields > 0) {
               // AUTO-DEPLOY SHIELD
-              await ctx.db.patch(user._id, { shields: user.shields - 1 });
+              await ctx.db.patch("users", user._id, { shields: user.shields - 1 });
               await ctx.db.insert("notifications", {
                   userId: user._id,
                   title: "Protocol Shield Deployed",
@@ -85,7 +85,7 @@ export const midnightSweep = internalMutation({
 });
 
 async function applyPain(ctx: any, vault: any, goal: any) {
-    const user = await ctx.db.get(vault.userId);
+    const user = await ctx.db.get("users", vault.userId);
     
     // Tier Mapping
     const tierMap = {
@@ -130,7 +130,7 @@ async function applyPain(ctx: any, vault: any, goal: any) {
           total_penalties_collected: 0,
           total_reward_pool_contributed: 0,
         };
-        await ctx.db.patch(statsId, {
+        await ctx.db.patch("system_stats", statsId, {
           total_revenue: (current.total_revenue || 0) + platformShare,
           total_penalties_collected: (current.total_penalties_collected || 0) + penaltyAmount,
           total_reward_pool_contributed: (current.total_reward_pool_contributed || 0) + rewardShare,
@@ -146,7 +146,7 @@ async function applyPain(ctx: any, vault: any, goal: any) {
         });
 
         // Deduct from vault principal
-        await ctx.db.patch(vault._id, {
+        await ctx.db.patch("vaults", vault._id, {
             amount: vault.amount - penaltyAmount
         });
 
@@ -159,7 +159,7 @@ async function applyPain(ctx: any, vault: any, goal: any) {
         });
     }
 
-    await ctx.db.patch(vault.userId, { 
+    await ctx.db.patch("users", vault.userId, { 
         streak_count: 0,
         integrityScore: Math.max(0, (user?.integrityScore ?? 100) - 10),
         tier:

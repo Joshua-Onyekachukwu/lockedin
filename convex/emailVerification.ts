@@ -1,5 +1,5 @@
-import { action, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import { action, internalMutation, internalQuery } from "./_generated/server";
 import { auth } from "./auth";
 import { internal } from "./_generated/api";
 
@@ -74,8 +74,8 @@ export const markEmailVerified = internalMutation({
   args: { userId: v.id("users"), tokenId: v.id("email_verification_tokens") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, { emailVerificationTime: Date.now() });
-    await ctx.db.patch(args.tokenId, { usedAt: Date.now() });
+    await ctx.db.patch("users", args.userId, { emailVerificationTime: Date.now() });
+    await ctx.db.patch("email_verification_tokens", args.tokenId, { usedAt: Date.now() });
     return null;
   },
 });
@@ -91,7 +91,7 @@ export const getEmailVerificationUser = internalQuery({
     }),
   ),
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
+    const user = await ctx.db.get("users", args.userId);
     if (!user) return null;
     return {
       _id: user._id,

@@ -1,36 +1,36 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
-import { useMutation, useAction, useConvexAuth } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import { useToast } from '~/components/toast';
-import { toUserMessage } from '~/lib/errors';
-import { AppTopNav } from '~/components/app-top-nav';
+import { useAction, useConvexAuth, useMutation } from 'convex/react';
 import { 
-  Target, 
-  ShieldCheck, 
-  Plus, 
-  Wallet,
-  X,
-  Camera,
-  AlertCircle,
-  Trophy,
-  CreditCard,
-  ArrowDownLeft,
+  AlertCircle, 
+  ArrowDownLeft, 
+  ArrowRight, 
   ArrowUpRight,
-  History,
   Building2,
+  Camera,
+  Clock,
+  CreditCard,
+  Eye,
+  History,
+  Plus,
+  ShieldCheck,
+  Target,
+  Trophy,
   User,
   Users,
-  Eye,
-  Clock,
-  ArrowRight
+  Wallet,
+  X
 } from 'lucide-react';
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { usePaystackPayment } from 'react-paystack';
+import { api } from '../../convex/_generated/api';
 import { GOAL_TEMPLATES } from '../lib/goalTemplates';
+import { AppTopNav } from '~/components/app-top-nav';
+import { toUserMessage } from '~/lib/errors';
+import { useToast } from '~/components/toast';
 
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY;
 const EMPTY_ARGS: Record<string, never> = {};
@@ -55,12 +55,12 @@ function Dashboard() {
   }, [isAuthenticated, authLoading, navigate]);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user && !(user as any).emailVerificationTime) {
+    if (!authLoading && isAuthenticated && user && !(user).emailVerificationTime) {
       navigate({ to: '/verify-required' });
     }
   }, [authLoading, isAuthenticated, navigate, user]);
 
-  if (authLoading || !isAuthenticated || !user || !(user as any).emailVerificationTime) {
+  if (authLoading || !isAuthenticated || !user || !(user).emailVerificationTime) {
     return (
       <div className="min-h-screen bg-[#050810] flex items-center justify-center">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full" />
@@ -105,42 +105,42 @@ function DashboardContent({ user }: { user: any }) {
     enabled: true,
     placeholderData: [],
     staleTime: 1000 * 15,
-  } as any)
+  })
 
   const { data: discoverableVaults } = useQuery({
     ...(convexQuery(api.goals.listDiscoverable, EMPTY_ARGS as any) as any),
     enabled: activeTab === 'witnessing',
     placeholderData: [],
     staleTime: 1000 * 15,
-  } as any)
+  })
 
   const { data: pendingVerifications } = useQuery({
     ...(convexQuery(api.verifications.getPendingVerifications, EMPTY_ARGS as any) as any),
     enabled: activeTab === 'witnessing',
     placeholderData: [],
     staleTime: 1000 * 10,
-  } as any)
+  })
 
   const { data: myWitnessProtocols } = useQuery({
     ...(convexQuery((api as any).partners.listMyWitnessProtocols, EMPTY_ARGS as any) as any),
     enabled: activeTab === 'witnessing',
     placeholderData: [],
     staleTime: 1000 * 10,
-  } as any)
+  })
 
   const { data: incomingRequests } = useQuery({
     ...(convexQuery(api.partners.listIncomingRequests, EMPTY_ARGS as any) as any),
     enabled: activeTab === 'witnessing',
     placeholderData: [],
     staleTime: 1000 * 10,
-  } as any)
+  })
 
   const { data: incomingApplications } = useQuery({
     ...(convexQuery((api as any).partners.listIncomingApplications, EMPTY_ARGS as any) as any),
     enabled: activeTab === 'witnessing',
     placeholderData: [],
     staleTime: 1000 * 10,
-  } as any)
+  })
 
   const { data: transactions } = useQuery({
     ...(convexQuery((api as any).payments.getTransactionsPage, {
@@ -150,7 +150,7 @@ function DashboardContent({ user }: { user: any }) {
     enabled: activeTab === 'wallet',
     placeholderData: { page: [], isDone: true, continueCursor: null },
     staleTime: 1000 * 10,
-  } as any)
+  })
 
   const txPage = (transactions as any)?.page ?? []
   const txIsDone = !!(transactions as any)?.isDone
@@ -234,7 +234,7 @@ function DashboardContent({ user }: { user: any }) {
                     className="space-y-12"
                 >
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
-                        {(vaults as any[]).map((vault: any) => (
+                        {(vaults as Array<any>).map((vault: any) => (
                             <VaultCard key={vault._id} vault={vault} onCheckIn={() => setCheckingInGoal(vault)} />
                         ))}
                         
@@ -342,14 +342,14 @@ function DashboardContent({ user }: { user: any }) {
                         ) : null}
                     </AnimatePresence>
 
-                    {((incomingApplications as any[])?.length || 0) > 0 && (
+                    {((incomingApplications as Array<any>)?.length || 0) > 0 && (
                         <section className="text-left">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
                                 Incoming Witness Applications
                                 <div className="h-px flex-1 bg-white/5 text-left" />
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-                                {(incomingApplications as any[]).map((req: any) => (
+                                {(incomingApplications as Array<any>).map((req: any) => (
                                     <div key={req._id} className="p-8 rounded-[3rem] border border-white/5 bg-white/[0.02] flex items-center justify-between group hover:border-blue-500/20 transition-all text-left shadow-2xl">
                                         <div className="flex items-center gap-6">
                                             <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20">
@@ -376,14 +376,14 @@ function DashboardContent({ user }: { user: any }) {
                         </section>
                     )}
 
-                    {((incomingRequests as any[])?.length || 0) > 0 && (
+                    {((incomingRequests as Array<any>)?.length || 0) > 0 && (
                         <section className="text-left">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
                                 Incoming Witness Requests
                                 <div className="h-px flex-1 bg-white/5 text-left" />
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-                                {(incomingRequests as any[]).map((req: any) => (
+                                {(incomingRequests as Array<any>).map((req: any) => (
                                     <div key={req._id} className="p-8 rounded-[3rem] border border-white/5 bg-white/[0.02] flex items-center justify-between group hover:border-blue-500/20 transition-all text-left shadow-2xl">
                                         <div className="flex items-center gap-6">
                                             <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20">
@@ -406,14 +406,14 @@ function DashboardContent({ user }: { user: any }) {
                         </section>
                     )}
 
-                    {((myWitnessProtocols as any[])?.length || 0) > 0 && (
+                    {((myWitnessProtocols as Array<any>)?.length || 0) > 0 && (
                         <section className="text-left">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-10 flex items-center gap-6 text-left font-black italic">
                                 Your Witness Assignments
                                 <div className="h-px flex-1 bg-white/5 text-left" />
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
-                                {(myWitnessProtocols as any[]).map((row: any) => (
+                                {(myWitnessProtocols as Array<any>).map((row: any) => (
                                     <div key={row?.partnership?._id ?? row?.vault?._id} className="p-8 rounded-[3rem] border border-white/5 bg-white/[0.02] text-left shadow-2xl">
                                         <div className="flex items-center justify-between gap-6">
                                             <div className="flex items-center gap-6 min-w-0">
@@ -458,14 +458,14 @@ function DashboardContent({ user }: { user: any }) {
                             <div className="h-px flex-1 bg-white/5 text-left" />
                         </h3>
                         
-                        {(pendingVerifications as any[]).length === 0 ? (
+                        {(pendingVerifications as Array<any>).length === 0 ? (
                             <div className="p-24 rounded-[4rem] border border-white/5 bg-white/[0.01] text-center shadow-inner group">
                                 <ShieldCheck size={60} className="mx-auto text-white/5 mb-8 opacity-10 group-hover:scale-110 transition-transform" />
                                 <p className="text-sm text-white/20 italic font-black uppercase tracking-widest">No evidence logs awaiting authorization</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-                                {(pendingVerifications as any[]).map((log: any) => (
+                                {(pendingVerifications as Array<any>).map((log: any) => (
                                     <div
                                         key={log._id}
                                         onClick={() => setActiveEvidenceLog(log)}
@@ -528,7 +528,7 @@ function DashboardContent({ user }: { user: any }) {
                         </h3>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
-                            {(discoverableVaults as any[])
+                            {(discoverableVaults as Array<any>)
                                 .filter((v: any) => v.userId !== user._id)
                                 .map((v: any) => (
                                 <div key={v._id} className="p-10 rounded-[3.5rem] border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all text-left shadow-2xl relative overflow-hidden group">
@@ -644,12 +644,12 @@ function DashboardContent({ user }: { user: any }) {
                             </div>
 
                             <div className="space-y-4">
-                                {(txPage as any[]).length === 0 ? (
+                                {(txPage as Array<any>).length === 0 ? (
                                     <div className="py-24 text-center">
                                         <p className="text-sm text-white/10 italic font-black uppercase tracking-widest italic">No transaction history detected</p>
                                     </div>
                                 ) : (
-                                    (txPage as any[]).map((tx: any) => (
+                                    (txPage as Array<any>).map((tx: any) => (
                                         <div key={tx._id} className="p-8 rounded-[2.5rem] bg-[#050810]/40 border border-white/5 flex items-center justify-between hover:bg-white/[0.03] transition-all group shadow-xl">
                                             <div className="flex items-center gap-6">
                                                 <div className={`h-14 w-14 rounded-2xl flex items-center justify-center shadow-2xl ${tx.amount > 0 ? 'bg-green-500/10 text-green-500 shadow-green-900/10' : 'bg-red-500/10 text-red-500 shadow-red-900/10'}`}>
@@ -739,7 +739,7 @@ function DashboardContent({ user }: { user: any }) {
 function VaultCard({ vault, onCheckIn }: { vault: any, onCheckIn: () => void }) {
   const isFailed = vault.status === 'failed';
   const [timeLeft, setTimeLeft] = useState<string>('');
-  const principalKoboRaw = Number((vault as any)?.amount)
+  const principalKoboRaw = Number((vault)?.amount)
   const principalKobo = Number.isFinite(principalKoboRaw) ? principalKoboRaw : 0
 
   useEffect(() => {
@@ -930,7 +930,7 @@ function CreateVaultModal({
                 description: description || `Automatic protocol for ${title}. Adherence is strictly monitored.`,
                 stakedAmount: parseInt(amount) * 100, // NGN in Kobo
                 category,
-                frequency_type: frequency as any,
+                frequency_type: frequency,
                 target_count: parseInt(targetCount),
                 duration_weeks: parseInt(durationWeeks), 
                 painTier: painTier
@@ -1170,7 +1170,7 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
                     throw new Error(text || 'Image upload failed.');
                 }
                 const json = await result.json();
-                const storageId = (json as any)?.storageId as string | undefined;
+                const storageId = (json)?.storageId as string | undefined;
                 if (!storageId) throw new Error('Image upload failed (missing storage id).');
                 proofImageId = storageId;
             }
@@ -1340,11 +1340,11 @@ function FundWalletModal({ user, onClose }: { user: any, onClose: () => void }) 
       reference: pollRef ?? '',
     } as any) as any;
     const { data: depositStatus }: { data: any } = useQuery({
-      ...(depositStatusQuery as any),
+      ...(depositStatusQuery),
       enabled: !!pollRef,
       refetchInterval: 5000,
       refetchIntervalInBackground: false,
-    } as any) as any;
+    });
 
     useEffect(() => {
       if (!pollRef) return;

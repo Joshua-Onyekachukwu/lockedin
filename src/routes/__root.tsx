@@ -7,7 +7,6 @@ import {
   useRouterState,
 } from '@tanstack/react-router'
 import * as React from 'react'
-// @ts-ignore
 import { Analytics } from '@vercel/analytics/react'
 import type { QueryClient } from '@tanstack/react-query'
 import '~/styles/app.css'
@@ -84,7 +83,7 @@ function RouterAssetLinks() {
       const links: Array<{ tag: 'link'; attrs: Record<string, any> }> = []
 
       state.matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
+        .map((match) => router.looseRoutesById[match.routeId])
         .forEach((route) => {
           manifest.routes[route.id]?.assets
             ?.filter((d: any) => d?.tag === 'link')

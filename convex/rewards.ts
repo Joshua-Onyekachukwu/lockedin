@@ -1,5 +1,5 @@
-import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { internalMutation } from "./_generated/server";
 
 /**
  * Distributes 30% of the weekly penalty pool to high-integrity users as Protocol Credits.
@@ -35,7 +35,7 @@ export const distributeWeeklyRewards = internalMutation({
         const creditsPerUser = Math.floor(totalPool / finalWinners.length);
 
         for (const user of finalWinners) {
-            await ctx.db.patch(user._id, {
+            await ctx.db.patch("users", user._id, {
                 credits: (user.credits || 0) + creditsPerUser
             });
 
@@ -65,7 +65,7 @@ export const distributeWeeklyRewards = internalMutation({
             total_penalties_collected: 0,
             total_reward_pool_contributed: 0,
           }));
-        await ctx.db.patch(statsId, {
+        await ctx.db.patch("system_stats", statsId, {
           total_distributed: (stats?.total_distributed || 0) + totalPool,
         });
 

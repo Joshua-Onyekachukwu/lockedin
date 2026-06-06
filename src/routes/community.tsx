@@ -1,25 +1,25 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
-import { useMutation, useConvexAuth } from 'convex/react';
+import { useConvexAuth, useMutation } from 'convex/react';
+import { 
+  ArrowRight,
+  ChevronDown, 
+  ChevronRight, 
+  History,
+  Search,
+  ShieldCheck,
+  Target,
+  UserPlus,
+  Wallet,
+  X
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../../convex/_generated/api';
 import { useToast } from '~/components/toast';
 import { toUserMessage } from '~/lib/errors';
 import { AppTopNav } from '~/components/app-top-nav';
-import { 
-  ChevronDown,
-  Search, 
-  ShieldCheck, 
-  UserPlus,
-  X,
-  Target,
-  Wallet,
-  History,
-  ArrowRight,
-  ChevronRight
-} from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const EMPTY_ARGS: Record<string, never> = {};
 
@@ -35,7 +35,7 @@ export const Route = createFileRoute('/community')({
 function CommunityPage() {
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const navigate = useNavigate();
-  const search = Route.useSearch() as any
+  const search = Route.useSearch()
   const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any;
   const { data: user }: { data: any } = useSuspenseQuery({
     ...userQuery,
@@ -50,12 +50,12 @@ function CommunityPage() {
   }, [isAuthenticated, authLoading, navigate]);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user && !(user as any).emailVerificationTime) {
+    if (!authLoading && isAuthenticated && user && !(user).emailVerificationTime) {
       navigate({ to: '/verify-required' });
     }
   }, [authLoading, isAuthenticated, navigate, user]);
 
-  const isVerified = !!(user as any)?.emailVerificationTime;
+  const isVerified = !!(user)?.emailVerificationTime;
   const discoverableUsersQuery = convexQuery((api as any).users.listWitnessPool, EMPTY_ARGS as any) as any;
   const { data: discoverableUsers } = useQuery({
     ...discoverableUsersQuery,
@@ -153,13 +153,13 @@ function CommunityPage() {
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
                 >
-                    {((discoverableGoals ?? []) as any[]).length === 0 ? (
+                    {((discoverableGoals ?? []) as Array<any>).length === 0 ? (
                         <div className="col-span-full py-40 rounded-[4rem] border border-dashed border-white/10 text-center">
                             <History size={60} className="mx-auto text-white/5 mb-8 opacity-10" />
                             <p className="text-sm text-white/20 font-black uppercase tracking-[0.3em] italic">No discoverable goals found in this sector</p>
                         </div>
                     ) : (
-                        ((discoverableGoals ?? []) as any[])
+                        ((discoverableGoals ?? []) as Array<any>)
                           .filter((g: any) => {
                             const q = searchTerm.trim().toLowerCase();
                             if (!q) return true;
@@ -220,7 +220,7 @@ function CommunityPage() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                      {((discoverableUsers ?? []) as any[])
+                      {((discoverableUsers ?? []) as Array<any>)
                         .filter((u: any) => u._id !== userId)
                         .filter((u: any) => {
                           const q = searchTerm.trim().toLowerCase();
@@ -243,7 +243,7 @@ function CommunityPage() {
                               const preferredVaultId = search?.vaultId
                               if (preferredVaultId) {
                                 try {
-                                  await sendRequestDirect({ partnerId: u._id, vaultId: preferredVaultId } as any)
+                                  await sendRequestDirect({ partnerId: u._id, vaultId: preferredVaultId })
                                   toast.success('Witness request transmitted.', { title: 'Request Sent' })
                                 } catch (err: any) {
                                   toast.error(toUserMessage(err, 'Failed to transmit request.'), { title: 'Request Blocked' })

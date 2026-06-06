@@ -2,22 +2,22 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useConvexAuth, useMutation } from 'convex/react';
+import { 
+  ArrowLeft, 
+  Camera, 
+  Eye, 
+  EyeOff, 
+  Globe, 
+  Loader2,
+  Lock,
+  MapPin,
+  ShieldCheck,
+  User
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../../convex/_generated/api';
 import { useToast } from '~/components/toast';
 import { toUserMessage } from '~/lib/errors';
-import { 
-  User, 
-  MapPin, 
-  Camera, 
-  ShieldCheck, 
-  Globe, 
-  ArrowLeft,
-  Loader2,
-  Lock,
-  Eye,
-  EyeOff
-} from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 
 export const Route = createFileRoute('/profile')({
   component: ProfileSettings,
@@ -32,7 +32,7 @@ function ProfileSettings() {
   const { data: user }: { data: any } = useSuspenseQuery({
     ...userQuery,
     enabled: isAuthenticated,
-  } as any);
+  });
   const updateProfile = useMutation(api.users.updateProfile);
   const generateUploadUrl = useMutation(api.users.generateProfileImageUploadUrl as any);
   const setProfileImage = useMutation(api.users.setProfileImage as any);
