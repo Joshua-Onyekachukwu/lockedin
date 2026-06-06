@@ -14,7 +14,9 @@ import {
 import { useEffect, useState } from 'react';
 import { api } from '../../convex/_generated/api';
 import { ConfirmModal } from '~/components/confirm-modal';
+import { SharePresets } from '~/components/share-presets';
 import { useToast } from '~/components/toast';
+import { useBodyScrollLock } from '~/lib/useBodyScrollLock';
 
 const EMPTY_ARGS: Record<string, never> = {};
 
@@ -52,6 +54,7 @@ function VaultPage() {
 
   const removeWitness = useMutation((api as any).partners.removeWitness);
   const [activeLog, setActiveLog] = useState<any>(null);
+  const [shareUrl, setShareUrl] = useState<string>('');
   const [confirm, setConfirm] = useState<{
     open: boolean;
     title: string;
@@ -60,6 +63,13 @@ function VaultPage() {
     confirmLabel: string;
     run: null | (() => Promise<void>);
   }>({ open: false, title: '', confirmLabel: '', run: null });
+
+  useBodyScrollLock(!!activeLog);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setShareUrl(window.location.href);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -358,6 +368,8 @@ function VaultPage() {
                           </div>
                         )}
                     </div>
+
+                    <SharePresets title={String(vault.goal?.title ?? '')} status={status} url={shareUrl} />
 
                     {!isAwaitingFunding ? (
                       <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">

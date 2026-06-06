@@ -35,6 +35,8 @@ function VerifyRequiredPage() {
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const emailBackendOffline =
+    status === 'error' && (message ?? '').toLowerCase().includes('not configured');
   const pendingToken = useMemo(() => {
     try {
       return localStorage.getItem('pendingEmailVerificationToken');
@@ -136,6 +138,15 @@ function VerifyRequiredPage() {
             <p className="text-xs font-black italic text-white mt-2 break-all">{user?.email ?? '—'}</p>
           </div>
 
+          <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 mb-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] italic text-white/40">How Verification Works</p>
+            <div className="mt-4 space-y-2 text-xs text-white/40 font-bold italic tracking-tight uppercase">
+              <p>1) Send the verification email.</p>
+              <p>2) Open the link in your inbox (same account).</p>
+              <p>3) Return here and press “I Already Verified”.</p>
+            </div>
+          </div>
+
           <AnimatePresence mode="wait">
             {message ? (
               <motion.div
@@ -154,6 +165,12 @@ function VerifyRequiredPage() {
               </motion.div>
             ) : null}
           </AnimatePresence>
+
+          {emailBackendOffline ? (
+            <div className="mb-6 p-5 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-200 text-xs font-bold uppercase italic tracking-tight">
+              Email verification is currently manual. Please contact an admin/support to verify your email.
+            </div>
+          ) : null}
 
           <div className="flex flex-col gap-3">
             <button

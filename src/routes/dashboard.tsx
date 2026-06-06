@@ -25,6 +25,7 @@ import { GOAL_TEMPLATES } from '../lib/goalTemplates';
 import { AppTopNav } from '~/components/app-top-nav';
 import { toUserMessage } from '~/lib/errors';
 import { useToast } from '~/components/toast';
+import { useBodyScrollLock } from '~/lib/useBodyScrollLock';
 
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY;
 const EMPTY_ARGS: Record<string, never> = {};
@@ -995,6 +996,7 @@ function CheckInModal({ vault, onClose }: { vault: any, onClose: () => void }) {
     const generateUploadUrl = useMutation(api.goals.generateUploadUrl);
     const checkIn = useMutation(api.goals.checkIn);
     const toast = useToast();
+    useBodyScrollLock(true);
     const [note, setNote] = useState('');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);

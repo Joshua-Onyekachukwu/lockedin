@@ -26,7 +26,13 @@ function VerifyEmailPage() {
 
   const token = useMemo(() => {
     if (typeof window === 'undefined') return null;
-    return new URLSearchParams(window.location.search).get('token');
+    const fromQuery = new URLSearchParams(window.location.search).get('token');
+    if (fromQuery) return fromQuery;
+    try {
+      return localStorage.getItem('pendingEmailVerificationToken');
+    } catch {
+      return null;
+    }
   }, []);
 
   const [state, setState] = useState<'verifying' | 'success' | 'error'>('verifying');
@@ -41,7 +47,7 @@ function VerifyEmailPage() {
       }
       navigate({ to: '/login' });
     }
-  }, [authLoading, isAuthenticated, navigate]);
+  }, [authLoading, isAuthenticated, navigate, token]);
 
   useEffect(() => {
     let cancelled = false;
