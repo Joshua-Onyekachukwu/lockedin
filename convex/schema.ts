@@ -109,6 +109,17 @@ export default defineSchema({
     type: v.union(v.literal("penalty"), v.literal("distribution")),
   }).index("by_week_and_type", ["week_number", "type"]),
 
+  weekly_reward_distributions: defineTable({
+    week_number: v.number(),
+    userId: v.id("users"),
+    credits: v.number(),
+    points: v.number(),
+    pool_credits: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_week", ["week_number"])
+    .index("by_week_and_user", ["week_number", "userId"]),
+
   penalty_events: defineTable({
     userId: v.id("users"),
     vaultId: v.id("vaults"),

@@ -1,6 +1,9 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const KOBO_PER_CREDIT = 100;
+
 /**
  * Distributes 30% of the weekly penalty pool to high-integrity users as Protocol Credits.
  */
@@ -8,52 +11,94 @@ export const distributeWeeklyRewards = internalMutation({
     args: {},
     returns: v.null(),
     handler: async (ctx) => {
-        const weekNumber = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
-        
-        // 1. Calculate Pool using index
-        const poolEntries = await ctx.db
-            .query("reward_pool")
-            .withIndex("by_week_and_type", (q) => q.eq("week_number", weekNumber).eq("type", "penalty"))
-            .collect();
-        
-        const totalPool = poolEntries.reduce((sum, entry) => sum + entry.amount, 0);
-        if (totalPool <= 0) return null;
+        const nowTs = Date.now();
+        const weekNumber = Math.floor(nowTs / WEEK_MS);
 
-        // 2. Identify High-Integrity Recipients (Score > 90 for credits)
+        const existingDistribution = await ctx.db
+          .query("weekly_reward_distributions")
+          .withIndex("by_week", (q) => q.eq("week_number", weekNumber))
+          .order("desc")
+          .first();
+        if (existingDistribution) return null;
+        
+        const penaltyEntries = await ctx.db
+          .query("reward_pool")
+          .withIndex("by_week_and_type", (q) =>
+            q.eq("week_number", weekNumber).eq("type", "penalty"),
+          )
+          .collect();
+        
+        const distributionEntries = await ctx.db
+          .query("reward_pool")
+          .withIndex("by_week_and_type", (q) =>
+            q.eq("week_number", weekNumber).eq("type", "distribution"),
+          )
+          .collect();
+
+        const totalPenaltyKobo = penaltyEntries.reduce((sum, entry) => sum + entry.amount, 0);
+        const totalDistributedKobo = distributionEntries.reduce(
+          (sum, entry) => sum + entry.amount,
+          0,
+        );
+        const netPoolKobo = totalPenaltyKobo + totalDistributedKobo;
+        if (netPoolKobo <= 0) return null;
+
+        const poolCredits = Math.floor(netPoolKobo / KOBO_PER_CREDIT);
+        if (poolCredits <= 0) return null;
+
         const eligibleUsers = await ctx.db
-            .query("users")
-            .withIndex("by_integrity", (q) => q.gt("integrityScore", 90))
-            .collect();
+          .query("users")
+          .withIndex("by_integrity", (q) => q.gt("integrityScore", 90))
+          .collect();
 
-        const finalWinners = eligibleUsers.filter(u => u.streak_count > 0);
+        const candidateUsers = eligibleUsers.filter(
+          (u) => u.streak_count > 0 && !!u.emailVerificationTime,
+        );
+        if (candidateUsers.length === 0) return null;
 
-        if (finalWinners.length === 0) return null;
+        const candidateSet = new Set(candidateUsers.map((u) => u._id));
+        const activeVaults = await ctx.db
+          .query("vaults")
+          .withIndex("by_status", (q) => q.eq("status", "active"))
+          .collect();
 
-        // 3. Distribute Credits (The user specified 30% share for users)
-        // Since the poolEntries are already the 30% contribution (based on penalties.ts logic),
-        // we distribute the entire amount as credits.
-        const creditsPerUser = Math.floor(totalPool / finalWinners.length);
-
-        for (const user of finalWinners) {
-            await ctx.db.patch("users", user._id, {
-                credits: (user.credits || 0) + creditsPerUser
-            });
-
-            await ctx.db.insert("notifications", {
-                userId: user._id,
-                title: "Protocol Credits Received",
-                message: `You've earned ${creditsPerUser.toLocaleString()} credits for maintaining 90%+ integrity. Use them to acquire Protocol Shields.`,
-                type: "streak_alert",
-                read: false
-            });
+        const pointsByUser: Map<string, number> = new Map();
+        for (const vault of activeVaults) {
+          if (!candidateSet.has(vault.userId)) continue;
+          const stake = Math.max(0, vault.amount - (vault.penaltyAccrued ?? 0));
+          const points = Math.sqrt(stake);
+          pointsByUser.set(vault.userId, (pointsByUser.get(vault.userId) ?? 0) + points);
         }
 
-        // Mark this week's pool as distributed
-        await ctx.db.insert("reward_pool", {
-            week_number: weekNumber,
-            amount: -totalPool,
-            type: "distribution"
+        const entries = candidateUsers
+          .map((u) => ({
+            user: u,
+            points: pointsByUser.get(u._id) ?? 0,
+          }))
+          .filter((x) => x.points > 0);
+
+        if (entries.length === 0) return null;
+
+        const totalPoints = entries.reduce((sum, e) => sum + e.points, 0);
+        if (totalPoints <= 0) return null;
+
+        const allocations = entries.map((e) => {
+          const exact = (poolCredits * e.points) / totalPoints;
+          const base = Math.floor(exact);
+          const remainder = exact - base;
+          return { ...e, base, remainder };
         });
+
+        const allocated = allocations.reduce((sum, a) => sum + a.base, 0);
+        let remaining = poolCredits - allocated;
+        allocations.sort((a, b) => {
+          if (b.remainder !== a.remainder) return b.remainder - a.remainder;
+          return String(a.user._id).localeCompare(String(b.user._id));
+        });
+        for (let i = 0; i < allocations.length && remaining > 0; i++) {
+          allocations[i].base += 1;
+          remaining -= 1;
+        }
 
         const stats = await ctx.db.query("system_stats").unique();
         const statsId =
@@ -65,9 +110,43 @@ export const distributeWeeklyRewards = internalMutation({
             total_penalties_collected: 0,
             total_reward_pool_contributed: 0,
           }));
-        await ctx.db.patch("system_stats", statsId, {
-          total_distributed: (stats?.total_distributed || 0) + totalPool,
-        });
+        let creditsDistributed = 0;
+        for (const a of allocations) {
+          if (a.base <= 0) continue;
+          creditsDistributed += a.base;
+          await ctx.db.patch("users", a.user._id, {
+            credits: (a.user.credits || 0) + a.base,
+          });
+
+          await ctx.db.insert("weekly_reward_distributions", {
+            week_number: weekNumber,
+            userId: a.user._id,
+            credits: a.base,
+            points: a.points,
+            pool_credits: poolCredits,
+            createdAt: nowTs,
+          });
+
+          await ctx.db.insert("notifications", {
+            userId: a.user._id,
+            title: "Protocol Credits Received",
+            message: `You've earned ${a.base.toLocaleString()} credits for maintaining 90%+ integrity.`,
+            type: "streak_alert",
+            read: false,
+          });
+        }
+
+        const usedKobo = creditsDistributed * KOBO_PER_CREDIT;
+        if (usedKobo > 0) {
+          await ctx.db.insert("reward_pool", {
+            week_number: weekNumber,
+            amount: -usedKobo,
+            type: "distribution",
+          });
+          await ctx.db.patch("system_stats", statsId, {
+            total_distributed: (stats?.total_distributed || 0) + usedKobo,
+          });
+        }
 
         return null;
     }
