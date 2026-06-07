@@ -21,6 +21,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../../convex/_generated/api';
 import { AppTopNav } from '~/components/app-top-nav';
 import { toUserMessage } from '~/lib/errors';
+import { SharePromptModal } from '~/components/share-prompt-modal';
 import { useToast } from '~/components/toast';
 
 const EMPTY_ARGS: Record<string, never> = {};
@@ -79,6 +80,13 @@ function DashboardContent({ user }: { user: any }) {
   const [isCreating, setIsCreating] = useState(false);
   const [fundingVaultId, setFundingVaultId] = useState<string | null>(null);
   const [checkingInGoal, setCheckingInGoal] = useState<any>(null);
+  const [pendingFundVaultId, setPendingFundVaultId] = useState<string | null>(null);
+  const [sharePrompt, setSharePrompt] = useState<{
+    open: boolean;
+    title: string;
+    status?: string;
+    url: string;
+  }>({ open: false, title: '', url: '' });
   const [activeTab, setActiveTab] = useState<'protocols' | 'witnessing'>('protocols');
   const [activeEvidenceLog, setActiveEvidenceLog] = useState<any>(null);
   
@@ -664,7 +672,16 @@ function DashboardContent({ user }: { user: any }) {
               onClose={() => setIsCreating(false)}
               onCreated={(vaultId) => {
                 setIsCreating(false)
-                setFundingVaultId(vaultId)
+                const origin =
+                  typeof window !== 'undefined' ? window.location.origin : ''
+                const url = `${origin}/vault/${vaultId}`
+                setPendingFundVaultId(vaultId)
+                setSharePrompt({
+                  open: true,
+                  title: 'New Protocol',
+                  status: 'awaiting_funding',
+                  url,
+                })
               }}
             />
           </Suspense>
@@ -676,10 +693,38 @@ function DashboardContent({ user }: { user: any }) {
         ) : null}
         {checkingInGoal && (
           <Suspense fallback={null}>
-            <CheckInModal vault={checkingInGoal} onClose={() => setCheckingInGoal(null)} />
+            <CheckInModal
+              vault={checkingInGoal}
+              onClose={() => setCheckingInGoal(null)}
+              onSuccess={() => {
+                const origin =
+                  typeof window !== 'undefined' ? window.location.origin : ''
+                const url = `${origin}/vault/${checkingInGoal?._id}`
+                setSharePrompt({
+                  open: true,
+                  title: String(checkingInGoal?.goal?.title ?? 'Protocol'),
+                  status: String(checkingInGoal?.status ?? ''),
+                  url,
+                })
+              }}
+            />
           </Suspense>
         )}
       </AnimatePresence>
+
+      <SharePromptModal
+        open={sharePrompt.open}
+        title={sharePrompt.title}
+        status={sharePrompt.status}
+        url={sharePrompt.url}
+        onClose={() => {
+          setSharePrompt({ open: false, title: '', url: '' })
+          if (pendingFundVaultId) {
+            setFundingVaultId(pendingFundVaultId)
+            setPendingFundVaultId(null)
+          }
+        }}
+      />
     </div>
   );
 }

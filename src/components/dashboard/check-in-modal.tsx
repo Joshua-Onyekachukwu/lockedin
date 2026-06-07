@@ -7,7 +7,15 @@ import { useToast } from '~/components/toast';
 import { toUserMessage } from '~/lib/errors';
 import { useBodyScrollLock } from '~/lib/useBodyScrollLock';
 
-export default function CheckInModal({ vault, onClose }: { vault: any; onClose: () => void }) {
+export default function CheckInModal({
+  vault,
+  onClose,
+  onSuccess,
+}: {
+  vault: any;
+  onClose: () => void;
+  onSuccess?: () => void;
+}) {
   const generateUploadUrl = useMutation(api.goals.generateUploadUrl);
   const checkIn = useMutation(api.goals.checkIn);
   const toast = useToast();
@@ -52,6 +60,7 @@ export default function CheckInModal({ vault, onClose }: { vault: any; onClose: 
       if (proofImageId) args.proofImageId = proofImageId;
       await checkIn(args);
       toast.success('Execution log transmitted.', { title: 'Log Submitted' });
+      onSuccess?.();
       onClose();
     } catch (err: any) {
       toast.error(toUserMessage(err, 'Log transmission failed.'), { title: 'Transmission Failed' });
@@ -65,14 +74,17 @@ export default function CheckInModal({ vault, onClose }: { vault: any; onClose: 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-[#050810]/95 backdrop-blur-3xl p-4 sm:p-6"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-[#050810]/95 backdrop-blur-3xl p-4 sm:p-6 overflow-y-auto"
     >
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        className="w-full max-w-xl bg-[#0a0f1a] border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+        className="w-full max-w-xl bg-[#0a0f1a] border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] flex flex-col max-h-[90vh] my-6"
       >
-        <form onSubmit={handleSubmit} className="p-6 sm:p-12 text-left font-black italic uppercase">
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 sm:p-12 text-left font-black italic uppercase overflow-y-auto custom-scrollbar"
+        >
           <div className="flex items-center justify-between mb-12 text-left">
             <div className="flex items-center gap-4 text-left">
               <div className="h-12 w-12 rounded-2xl bg-[#ff7a00]/10 text-[#ff7a00] flex items-center justify-center italic font-black border border-[#ff7a00]/20 shadow-xl">
@@ -155,4 +167,3 @@ export default function CheckInModal({ vault, onClose }: { vault: any; onClose: 
     </motion.div>
   );
 }
-
