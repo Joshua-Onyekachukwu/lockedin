@@ -21,43 +21,49 @@ export default function CheckInModal({
   const toast = useToast();
   useBodyScrollLock(true);
   const [note, setNote] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<Array<File>>([]);
+  const [previewUrls, setPreviewUrls] = useState<Array<string>>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!selectedFile) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(selectedFile);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [selectedFile]);
+    const urls = selectedFiles.map((f) => URL.createObjectURL(f));
+    setPreviewUrls(urls);
+    return () => {
+      for (const u of urls) URL.revokeObjectURL(u);
+    };
+  }, [selectedFiles]);
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     try {
-      let proofImageId: string | undefined = undefined;
-      if (selectedFile) {
-        const postUrl = await generateUploadUrl();
-        const result = await fetch(postUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': selectedFile.type },
-          body: selectedFile,
-        });
-        if (!result.ok) {
-          const text = await result.text().catch(() => '');
-          throw new Error(text || 'Image upload failed.');
+      let proofImageIds: Array<string> = [];
+      if (selectedFiles.length > 0) {
+        if (selectedFiles.length > 3) {
+          throw new Error('Maximum 3 images per log.');
         }
-        const json = await result.json();
-        const storageId = json?.storageId as string | undefined;
-        if (!storageId) throw new Error('Image upload failed (missing storage id).');
-        proofImageId = storageId;
+
+        const ids: Array<string> = [];
+        for (const file of selectedFiles) {
+          const postUrl = await generateUploadUrl();
+          const result = await fetch(postUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': file.type },
+            body: file,
+          });
+          if (!result.ok) {
+            const text = await result.text().catch(() => '');
+            throw new Error(text || 'Image upload failed.');
+          }
+          const json = await result.json();
+          const storageId = json?.storageId as string | undefined;
+          if (!storageId) throw new Error('Image upload failed (missing storage id).');
+          ids.push(storageId);
+        }
+        proofImageIds = ids;
       }
       const args: any = { goalId: vault.goal._id, note: note };
-      if (proofImageId) args.proofImageId = proofImageId;
+      if (proofImageIds.length > 0) args.proofImageIds = proofImageIds;
       await checkIn(args);
       toast.success('Execution log transmitted.', { title: 'Log Submitted' });
       onSuccess?.();
@@ -127,23 +133,52 @@ export default function CheckInModal({
                 <input
                   type="file"
                   accept="image/*"
+                  multiple
                   className="hidden"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const next = Array.from(e.target.files ?? []);
+                    if (next.length === 0) return;
+                    setSelectedFiles((prev) => [...prev, ...next].slice(0, 3));
+                    e.target.value = '';
+                  }}
                 />
                 <Camera
                   size={40}
                   className={`mx-auto mb-6 transition-transform ${
-                    selectedFile ? 'text-blue-500 scale-110' : 'text-white/10 group-hover:scale-110'
+                    selectedFiles.length > 0 ? 'text-blue-500 scale-110' : 'text-white/10 group-hover:scale-110'
                   }`}
                 />
-                <p className={`text-[10px] font-black uppercase tracking-widest italic ${selectedFile ? 'text-white' : 'text-white/20'}`}>
-                  {selectedFile ? selectedFile.name : 'Attach Photographic Evidence'}
+                <p
+                  className={`text-[10px] font-black uppercase tracking-widest italic ${
+                    selectedFiles.length > 0 ? 'text-white' : 'text-white/20'
+                  }`}
+                >
+                  {selectedFiles.length > 0
+                    ? `${selectedFiles.length} image${selectedFiles.length === 1 ? '' : 's'} attached`
+                    : 'Attach Photographic Evidence (Max 3)'}
                 </p>
               </label>
 
-              {previewUrl ? (
-                <div className="w-full p-4 rounded-[2.5rem] border border-white/10 bg-white/[0.02]">
-                  <img src={previewUrl} alt="Evidence preview" className="w-full max-h-[320px] object-contain rounded-[2rem]" />
+              {previewUrls.length > 0 ? (
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {previewUrls.map((u, idx) => (
+                    <div key={u} className="relative p-3 rounded-[2.5rem] border border-white/10 bg-white/[0.02]">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedFiles((prev) => prev.filter((_, i) => i !== idx))
+                        }
+                        className="absolute top-4 right-4 h-9 w-9 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white transition-colors active:scale-95 flex items-center justify-center"
+                      >
+                        <X size={16} />
+                      </button>
+                      <img
+                        src={u}
+                        alt="Evidence preview"
+                        className="w-full max-h-[260px] object-contain rounded-[2rem]"
+                      />
+                    </div>
+                  ))}
                 </div>
               ) : null}
             </div>

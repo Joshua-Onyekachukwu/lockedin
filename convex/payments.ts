@@ -217,7 +217,7 @@ export const verifyPayment = action({
           return { success: true, message: "Payment already credited." };
         }
         if (result.status === "unmatched") {
-          return { success: false, message: "Payment received but could not be matched to a wallet yet." };
+          return { success: false, message: "Payment received but could not be matched to a protocol yet." };
         }
         return { success: false, message: "Payment could not be credited. Please contact support." };
       }

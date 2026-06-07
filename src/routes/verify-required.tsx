@@ -20,6 +20,7 @@ function VerifyRequiredPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const requestEmailVerification = useAction(api.emailVerification.requestEmailVerification);
+  const confirmEmailVerification = useAction(api.emailVerification.confirmEmailVerification);
 
   const userQuery = useMemo(
     () => convexQuery(api.users.current, EMPTY_ARGS as any) as any,
@@ -49,6 +50,7 @@ function VerifyRequiredPage() {
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [consuming, setConsuming] = useState(false);
   const emailBackendOffline = emailBackendConfigured === false && !emailBackendLoading && !emailBackendError;
   const pendingToken = useMemo(() => {
     try {
@@ -70,6 +72,40 @@ function VerifyRequiredPage() {
     }
   }, [authLoading, isAuthenticated, navigate, user]);
 
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    if (user?.emailVerificationTime) return;
+    if (!pendingToken) return;
+    if (consuming) return;
+
+    const run = async () => {
+      setConsuming(true);
+      try {
+        const res = await confirmEmailVerification({ token: pendingToken });
+        if (res?.success) {
+          try {
+            localStorage.removeItem('pendingEmailVerificationToken');
+          } catch {}
+          await queryClient.invalidateQueries({ queryKey: userQuery.queryKey });
+          navigate({ to: '/dashboard' });
+        }
+      } finally {
+        setConsuming(false);
+      }
+    };
+    run();
+  }, [
+    authLoading,
+    confirmEmailVerification,
+    consuming,
+    isAuthenticated,
+    navigate,
+    pendingToken,
+    queryClient,
+    user?.emailVerificationTime,
+    userQuery.queryKey,
+  ]);
+
   const send = async () => {
     setStatus('sending');
     setMessage(null);
@@ -87,6 +123,14 @@ function VerifyRequiredPage() {
     setChecking(true);
     setMessage(null);
     try {
+      if (pendingToken) {
+        const res = await confirmEmailVerification({ token: pendingToken });
+        if (res?.success) {
+          try {
+            localStorage.removeItem('pendingEmailVerificationToken');
+          } catch {}
+        }
+      }
       await queryClient.invalidateQueries({ queryKey: userQuery.queryKey });
       await queryClient.refetchQueries({ queryKey: userQuery.queryKey, exact: true });
       const refreshed = queryClient.getQueryData<any>(userQuery.queryKey);
@@ -95,7 +139,11 @@ function VerifyRequiredPage() {
         return;
       }
       setStatus('error');
-      setMessage('Still unverified. If you just clicked the email link, wait a moment and try again.');
+      setMessage(
+        pendingToken
+          ? 'Still unverified. If you just clicked the email link, wait a moment and try again.'
+          : 'Still unverified. Send the email, open the link, then try again.',
+      );
     } catch (e: any) {
       setStatus('error');
       setMessage(e?.message ?? 'Failed to refresh verification status.');
@@ -206,11 +254,11 @@ function VerifyRequiredPage() {
             ) : null}
             <button
               onClick={checkAgain}
-              disabled={checking}
+              disabled={checking || consuming}
               className="w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white/5 border border-white/10 text-white py-5 font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all disabled:opacity-60"
             >
-              {checking ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-              {checking ? 'Checking…' : 'I Already Verified'}
+              {checking || consuming ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
+              {checking || consuming ? 'Checking…' : 'I Already Verified'}
             </button>
           </div>
         </div>

@@ -20,6 +20,7 @@ import { Suspense, lazy, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../../convex/_generated/api';
 import { AppTopNav } from '~/components/app-top-nav';
+import { FundNowModal } from '~/components/fund-now-modal';
 import { toUserMessage } from '~/lib/errors';
 import { SharePromptModal } from '~/components/share-prompt-modal';
 import { useToast } from '~/components/toast';
@@ -80,15 +81,32 @@ function DashboardContent({ user }: { user: any }) {
   const [isCreating, setIsCreating] = useState(false);
   const [fundingVaultId, setFundingVaultId] = useState<string | null>(null);
   const [checkingInGoal, setCheckingInGoal] = useState<any>(null);
-  const [pendingFundVaultId, setPendingFundVaultId] = useState<string | null>(null);
+  const [fundPrompt, setFundPrompt] = useState<{
+    open: boolean;
+    vaultId: string | null;
+    url: string;
+  }>({ open: false, vaultId: null, url: '' });
+  const [shareAfterFunding, setShareAfterFunding] = useState<{
+    title: string;
+    status?: string;
+    url: string;
+  } | null>(null);
   const [sharePrompt, setSharePrompt] = useState<{
     open: boolean;
     title: string;
     status?: string;
     url: string;
   }>({ open: false, title: '', url: '' });
+  const [activationDismissed, setActivationDismissed] = useState(false);
   const [activeTab, setActiveTab] = useState<'protocols' | 'witnessing'>('protocols');
   const [activeEvidenceLog, setActiveEvidenceLog] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('activationChecklistDismissed');
+      if (raw === 'true') setActivationDismissed(true);
+    } catch {}
+  }, []);
   
   useEffect(() => {
     if (!fundVaultId) return;
@@ -116,6 +134,15 @@ function DashboardContent({ user }: { user: any }) {
     },
     staleTime: 1000 * 15,
   })
+
+  useEffect(() => {
+    if (activationStatus?.hasFundedVault) {
+      try {
+        localStorage.setItem('activationChecklistDismissed', 'true');
+      } catch {}
+      setActivationDismissed(true);
+    }
+  }, [activationStatus?.hasFundedVault]);
 
   const { data: discoverableVaults } = useQuery({
     ...(convexQuery(api.goals.listDiscoverable, EMPTY_ARGS as any) as any),
@@ -227,12 +254,7 @@ function DashboardContent({ user }: { user: any }) {
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                     className="space-y-12"
                 >
-                    {!(
-                      activationStatus?.hasVault &&
-                      activationStatus?.hasFundedVault &&
-                      activationStatus?.hasCheckIn &&
-                      activationStatus?.hasWitness
-                    ) ? (
+                    {activationDismissed || activationStatus?.hasFundedVault ? null : (
                       <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/10 shadow-2xl">
                         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
                           <div className="text-left">
@@ -262,6 +284,18 @@ function DashboardContent({ user }: { user: any }) {
                                 /4
                               </p>
                             </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                try {
+                                  localStorage.setItem('activationChecklistDismissed', 'true');
+                                } catch {}
+                                setActivationDismissed(true);
+                              }}
+                              className="h-12 w-12 rounded-2xl bg-white/[0.02] border border-white/10 text-white/30 hover:text-white transition-colors active:scale-95"
+                            >
+                              <X size={18} className="mx-auto" />
+                            </button>
                           </div>
                         </div>
 
@@ -309,7 +343,7 @@ function DashboardContent({ user }: { user: any }) {
                           />
                         </div>
                       </div>
-                    ) : null}
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
                         {(vaults as Array<any>).map((vault: any) => (
@@ -672,23 +706,25 @@ function DashboardContent({ user }: { user: any }) {
               onClose={() => setIsCreating(false)}
               onCreated={(vaultId) => {
                 setIsCreating(false)
-                const origin =
-                  typeof window !== 'undefined' ? window.location.origin : ''
+                const origin = typeof window !== 'undefined' ? window.location.origin : ''
                 const url = `${origin}/vault/${vaultId}`
-                setPendingFundVaultId(vaultId)
-                setSharePrompt({
-                  open: true,
-                  title: 'New Protocol',
-                  status: 'awaiting_funding',
-                  url,
-                })
+                setFundPrompt({ open: true, vaultId, url })
               }}
             />
           </Suspense>
         )}
         {fundingVaultId ? (
           <Suspense fallback={null}>
-            <FundProtocolModal vaultId={fundingVaultId} user={user} onClose={() => setFundingVaultId(null)} />
+            <FundProtocolModal
+              vaultId={fundingVaultId}
+              user={user}
+              onClose={() => setFundingVaultId(null)}
+              onSuccess={() => {
+                if (!shareAfterFunding) return
+                setSharePrompt({ open: true, ...shareAfterFunding })
+                setShareAfterFunding(null)
+              }}
+            />
           </Suspense>
         ) : null}
         {checkingInGoal && (
@@ -719,10 +755,22 @@ function DashboardContent({ user }: { user: any }) {
         url={sharePrompt.url}
         onClose={() => {
           setSharePrompt({ open: false, title: '', url: '' })
-          if (pendingFundVaultId) {
-            setFundingVaultId(pendingFundVaultId)
-            setPendingFundVaultId(null)
-          }
+        }}
+      />
+
+      <FundNowModal
+        open={fundPrompt.open}
+        onFundNow={() => {
+          const id = fundPrompt.vaultId
+          const url = fundPrompt.url
+          setFundPrompt({ open: false, vaultId: null, url: '' })
+          if (id) setFundingVaultId(id)
+          setShareAfterFunding({ title: 'New Protocol', status: 'active', url })
+        }}
+        onLater={() => {
+          const url = fundPrompt.url
+          setFundPrompt({ open: false, vaultId: null, url: '' })
+          setSharePrompt({ open: true, title: 'New Protocol', status: 'awaiting_funding', url })
         }}
       />
     </div>

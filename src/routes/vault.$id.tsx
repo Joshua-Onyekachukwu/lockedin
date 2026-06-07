@@ -46,8 +46,9 @@ function VaultPage() {
     enabled: isAuthenticated && isVerified,
   });
 
+  const partnersQuery = convexQuery(api.partners.getPartners as any, { vaultId: vaultId }) as any;
   const { data: witnesses } = useQuery({
-    ...(convexQuery(api.partners.getPartners as any, { vaultId: vaultId }) as any),
+    ...(partnersQuery),
     enabled: isAuthenticated && isVerified && vault?.access === 'full',
     placeholderData: [],
     staleTime: 1000 * 15,
@@ -98,7 +99,9 @@ function VaultPage() {
   const access = vault?.access === 'full' ? 'full' : 'preview'
 
   const isOwner = vault?.userId === user?._id;
-  const witnessRows: Array<any> = Array.isArray(witnesses) ? witnesses : [];
+  const witnessRows: Array<any> = (Array.isArray(witnesses) ? witnesses : []).filter(
+    (w) => w?.status !== 'ended',
+  );
   const status = String(vault?.status ?? '')
   const isAwaitingFunding = status === 'awaiting_funding'
   const penaltyEvents: Array<any> = Array.isArray(vault?.penaltyEvents) ? vault.penaltyEvents : []
@@ -374,24 +377,6 @@ function VaultPage() {
                         )}
                     </div>
 
-                    {canExecuteLog ? (
-                      <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
-                          Execute Log
-                        </p>
-                        <p className="text-xs text-white/40 italic leading-relaxed font-medium">
-                          Submit evidence for this cycle. This is the only action that updates your protocol performance.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setCheckInOpen(true)}
-                          className="mt-8 w-full px-8 py-4 rounded-2xl bg-[#ff7a00] text-white font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all"
-                        >
-                          Execute Log
-                        </button>
-                      </div>
-                    ) : null}
-
                     {!isAwaitingFunding ? (
                       <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
@@ -529,7 +514,7 @@ function VaultPage() {
                                                             await removeWitness({ partnerShipId: w._id } as any)
                                                             toast.success('Witness removed.', { title: 'Witness Protocol' })
                                                             await queryClient.invalidateQueries({ queryKey: vaultQuery.queryKey })
-                                                            await queryClient.invalidateQueries()
+                                                            await queryClient.invalidateQueries({ queryKey: partnersQuery.queryKey })
                                                         },
                                                     })
                                                 }
@@ -560,6 +545,24 @@ function VaultPage() {
                           Missed requirements accrue penalties based on your tier and settle when the vault ends.
                         </p>
                     </div>
+
+                    {canExecuteLog ? (
+                      <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
+                          Enforcement
+                        </p>
+                        <p className="text-xs text-white/40 italic leading-relaxed font-medium">
+                          Submit evidence for this cycle. This is the only action that updates your protocol performance.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setCheckInOpen(true)}
+                          className="mt-8 w-full px-8 py-4 rounded-2xl bg-[#ff7a00] text-white font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all"
+                        >
+                          Execute Log
+                        </button>
+                      </div>
+                    ) : null}
                 </div>
 
                 <div className="lg:col-span-8 text-left">
@@ -737,9 +740,28 @@ function VaultPage() {
                     </button>
                   </div>
                   <div className="p-10 overflow-y-auto custom-scrollbar">
-                    {activeLog.proofUrl ? (
-                      <div className="w-full max-h-[60vh] rounded-[2.5rem] overflow-hidden border border-white/10 bg-black">
-                        <img src={activeLog.proofUrl} className="w-full h-full object-contain" alt="Evidence" />
+                    {(
+                      Array.isArray(activeLog.proofUrls)
+                        ? activeLog.proofUrls
+                        : activeLog.proofUrl
+                          ? [activeLog.proofUrl]
+                          : []
+                    ).length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {(
+                          Array.isArray(activeLog.proofUrls)
+                            ? activeLog.proofUrls
+                            : activeLog.proofUrl
+                              ? [activeLog.proofUrl]
+                              : []
+                        ).map((u: string) => (
+                          <div
+                            key={u}
+                            className="w-full rounded-[2.5rem] overflow-hidden border border-white/10 bg-black"
+                          >
+                            <img src={u} className="w-full h-full object-contain" alt="Evidence" />
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <div className="p-10 rounded-[2.5rem] border border-white/10 bg-white/[0.02]">

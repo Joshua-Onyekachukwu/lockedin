@@ -7,6 +7,7 @@ export function ConfirmModal({
   title,
   description,
   confirmLabel,
+  cancelLabel = 'Cancel',
   tone = 'primary',
   onConfirm,
   onClose,
@@ -15,6 +16,7 @@ export function ConfirmModal({
   title: string
   description?: string
   confirmLabel: string
+  cancelLabel?: string
   tone?: 'primary' | 'danger'
   onConfirm: () => Promise<void> | void
   onClose: () => void
@@ -90,7 +92,7 @@ export function ConfirmModal({
                     working ? 'opacity-60 pointer-events-none' : ''
                   }`}
                 >
-                  Cancel
+                  {cancelLabel}
                 </button>
               </div>
             </div>
