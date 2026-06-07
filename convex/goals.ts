@@ -105,6 +105,7 @@ export const checkIn = mutation({
   args: {
     goalId: v.id("goals"),
     proofImageId: v.optional(v.id("_storage")),
+    proofImageIds: v.optional(v.array(v.id("_storage"))),
     note: v.optional(v.string()),
   },
   returns: v.object({ success: v.boolean(), message: v.string() }),
@@ -134,15 +135,28 @@ export const checkIn = mutation({
     const week_number = Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
 
     const today = new Date().toISOString().split('T')[0];
-    
-    await ctx.db.insert("goal_logs", {
+
+    const proofImageIdsRaw = args.proofImageIds ?? (args.proofImageId ? [args.proofImageId] : null);
+    if (proofImageIdsRaw && proofImageIdsRaw.length > 3) {
+      throw new Error("Maximum 3 images per log.");
+    }
+
+    const payload: any = {
       goalId: args.goalId,
       week_number,
       date: today,
       status: "pending",
-      proofImageId: args.proofImageId,
       note: args.note,
-    });
+    };
+
+    if (proofImageIdsRaw && proofImageIdsRaw.length > 0) {
+      payload.proofImageId = proofImageIdsRaw[0];
+      payload.proofImageIds = proofImageIdsRaw;
+    } else if (args.proofImageId) {
+      payload.proofImageId = args.proofImageId;
+    }
+
+    await ctx.db.insert("goal_logs", payload);
 
     return { success: true, message: "Evidence logged. Pending witness approval." };
   },
@@ -242,12 +256,25 @@ export const getFullContext = query({
       .order("desc")
       .collect();
 
-    const logsWithUrls = await Promise.all(logs.map(async (log) => {
+    const logsWithUrls = await Promise.all(
+      logs.map(async (log) => {
+        const ids: Array<any> = Array.isArray((log as any).proofImageIds)
+          ? ((log as any).proofImageIds as Array<any>)
+          : log.proofImageId
+            ? [log.proofImageId]
+            : [];
+
+        const urls = (
+          await Promise.all(ids.map(async (id) => (id ? await ctx.storage.getUrl(id) : null)))
+        ).filter(Boolean) as Array<string>;
+
         return {
-            ...log,
-            proofUrl: log.proofImageId ? await ctx.storage.getUrl(log.proofImageId) : null
+          ...log,
+          proofUrls: urls,
+          proofUrl: urls[0] ?? null,
         };
-    }));
+      }),
+    );
 
     const penaltyEvents = await ctx.db
       .query("penalty_events")

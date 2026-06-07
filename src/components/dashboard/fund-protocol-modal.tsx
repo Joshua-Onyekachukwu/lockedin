@@ -13,7 +13,17 @@ import { useBodyScrollLock } from '~/lib/useBodyScrollLock';
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY;
 const EMPTY_ARGS: Record<string, never> = {};
 
-export default function FundProtocolModal({ vaultId, user, onClose }: { vaultId: string; user: any; onClose: () => void }) {
+export default function FundProtocolModal({
+  vaultId,
+  user,
+  onClose,
+  onSuccess,
+}: {
+  vaultId: string;
+  user: any;
+  onClose: () => void;
+  onSuccess?: () => void;
+}) {
   const initializeVaultFunding = useMutation(api.payments.initializeVaultFunding);
   const verifyPayment = useAction(api.payments.verifyPayment);
   const queryClient = useQueryClient();
@@ -36,11 +46,11 @@ export default function FundProtocolModal({ vaultId, user, onClose }: { vaultId:
 
   useEffect(() => {
     if (!shouldOpenPaystack || !depositReference) return;
-    initializePayment({ onSuccess, onClose: onClosePaystack });
+    initializePayment({ onSuccess: onPaystackSuccess, onClose: onClosePaystack });
     setShouldOpenPaystack(false);
   }, [depositReference, initializePayment, shouldOpenPaystack]);
 
-  const onSuccess = async (reference: any) => {
+  const onPaystackSuccess = async (reference: any) => {
     setLoading(true);
     try {
       const result = await verifyPayment({ reference: reference.reference });
@@ -53,6 +63,7 @@ export default function FundProtocolModal({ vaultId, user, onClose }: { vaultId:
         });
         toast.success(result.message, { title: 'Protocol Activated' });
         setLoading(false);
+        onSuccess?.();
         onClose();
       } else {
         toast.info('Awaiting confirmation...', { title: 'Processing' });
@@ -114,6 +125,7 @@ export default function FundProtocolModal({ vaultId, user, onClose }: { vaultId:
       toast.success('Funding confirmed.', { title: 'Protocol Activated' });
       setLoading(false);
       setPollRef(null);
+      onSuccess?.();
       onClose();
     })();
   }, [depositStatus, onClose, pollRef, queryClient, toast]);

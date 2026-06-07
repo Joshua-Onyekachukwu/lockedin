@@ -78,6 +78,7 @@ export default defineSchema({
     date: v.string(), // YYYY-MM-DD
     status: v.union(v.literal("pending"), v.literal("completed"), v.literal("missed"), v.literal("disputed")),
     proofImageId: v.optional(v.id("_storage")),
+    proofImageIds: v.optional(v.array(v.id("_storage"))),
     note: v.optional(v.string()),
     approvals: v.optional(v.array(v.id("users"))),
     rejections: v.optional(v.array(v.id("users"))),
