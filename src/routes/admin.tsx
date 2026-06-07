@@ -170,6 +170,7 @@ function AdminDashboard() {
   const previewPaystackTransaction = useAction((api as any).admin.previewPaystackTransaction);
   const recoverPaystackTransaction = useAction((api as any).admin.recoverPaystackTransaction);
   const paymentsExplorerLookup = useAction((api as any).admin.paymentsExplorerLookup);
+  const retryUnmatchedPaystackPaymentsNow = useAction((api as any).admin.retryUnmatchedPaystackPaymentsNow);
   const [confirm, setConfirm] = useState<{ open: boolean; title: string; description?: string; tone?: 'primary' | 'danger'; confirmLabel: string; run: (() => Promise<void>) | null }>({ open: false, title: '', confirmLabel: '', run: null });
   const [waitlistDetail, setWaitlistDetail] = useState<any>(null);
   const [seedOpen, setSeedOpen] = useState(false);
@@ -187,6 +188,17 @@ function AdminDashboard() {
   const [paymentsExplorerQuery, setPaymentsExplorerQuery] = useState('');
   const [paymentsExplorerLoading, setPaymentsExplorerLoading] = useState(false);
   const [paymentsExplorerResult, setPaymentsExplorerResult] = useState<any>(null);
+  const [unmatchedOpen, setUnmatchedOpen] = useState(false);
+  const [unmatchedCursor, setUnmatchedCursor] = useState<string | null>(null);
+  const [unmatchedCursorStack, setUnmatchedCursorStack] = useState<Array<string | null>>([]);
+  const unmatchedPageSize = 25;
+  const [unmatchedResolve, setUnmatchedResolve] = useState<{
+    open: boolean;
+    unmatchedId: any;
+    reference: string;
+    reason: string;
+  }>({ open: false, unmatchedId: null, reference: '', reason: '' });
+  const [unmatchedRunning, setUnmatchedRunning] = useState(false);
 
   const [userSearch, setUserSearch] = useState('');
   const [verifyLookup, setVerifyLookup] = useState('');
@@ -205,6 +217,7 @@ function AdminDashboard() {
   const makeUsersVisibleByEmailDomain = useMutation((api as any).admin.makeUsersVisibleByEmailDomain);
   const repairDuplicatePartnerships = useMutation((api as any).admin.repairDuplicatePartnerships);
   const recomputeUserTiers = useMutation((api as any).admin.recomputeUserTiers);
+  const markPaystackUnmatchedResolved = useMutation((api as any).admin.markPaystackUnmatchedResolved);
   const [statsDetail, setStatsDetail] = useState<null | 'revenue' | 'staked' | 'citizens' | 'health'>(null);
 
   const searchUsersQuery = convexQuery((api as any).admin.searchUsers, { q: userSearch, limit: 20 } as any) as any;
@@ -213,23 +226,30 @@ function AdminDashboard() {
     enabled: isAuthenticated && isVerified && isAdmin && userSearch.trim().length > 0,
   });
 
-  const allUsersQuery = convexQuery(
-    (api as any).admin.listUsersPage,
-    { cursor: usersCursor ?? undefined, limit: usersPageSize } as any,
-  ) as any;
+  const allUsersArgs: any = { limit: usersPageSize };
+  if (usersCursor) allUsersArgs.cursor = usersCursor;
+  const allUsersQuery: any = convexQuery((api as any).admin.listUsersPage, allUsersArgs);
   const { data: allUsersPage } = useQuery({
     ...(allUsersQuery),
     enabled: isAuthenticated && isVerified && isAdmin && userSearch.trim().length === 0,
     placeholderData: { page: [], isDone: false, continueCursor: null },
   });
 
-  const transactionsPageQuery = convexQuery(
-    (api as any).admin.listTransactionsPage,
-    { cursor: txCursor ?? undefined, limit: txPageSize } as any,
-  ) as any;
+  const transactionsArgs: any = { limit: txPageSize };
+  if (txCursor) transactionsArgs.cursor = txCursor;
+  const transactionsPageQuery: any = convexQuery((api as any).admin.listTransactionsPage, transactionsArgs);
   const { data: transactionsPage } = useQuery({
     ...(transactionsPageQuery),
     enabled: isAuthenticated && isVerified && isAdmin && activeTab === 'transactions',
+    placeholderData: { page: [], isDone: false, continueCursor: null },
+  });
+
+  const unmatchedArgs: any = { limit: unmatchedPageSize };
+  if (unmatchedCursor) unmatchedArgs.cursor = unmatchedCursor;
+  const unmatchedPageQuery: any = convexQuery((api as any).admin.listUnresolvedPaystackUnmatchedPage, unmatchedArgs);
+  const { data: unmatchedPage }: { data: any } = useQuery({
+    ...(unmatchedPageQuery),
+    enabled: isAuthenticated && isVerified && isAdmin && unmatchedOpen,
     placeholderData: { page: [], isDone: false, continueCursor: null },
   });
 
@@ -257,6 +277,15 @@ function AdminDashboard() {
       setUsersCursorStack([]);
     }
   }, [userSearch]);
+
+  useEffect(() => {
+    if (!unmatchedOpen) {
+      setUnmatchedCursor(null);
+      setUnmatchedCursorStack([]);
+      setUnmatchedResolve({ open: false, unmatchedId: null, reference: '', reason: '' });
+      setUnmatchedRunning(false);
+    }
+  }, [unmatchedOpen]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -1147,6 +1176,17 @@ function AdminDashboard() {
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-green-600/10 hover:border-green-500/30 transition-all text-center active:scale-95 flex items-center justify-center gap-3"
                         >
                             <ReceiptText size={16} /> Payments Explorer
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                              setUnmatchedCursor(null)
+                              setUnmatchedCursorStack([])
+                              setUnmatchedOpen(true)
+                            }}
+                            className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-green-600/10 hover:border-green-500/30 transition-all text-center active:scale-95 flex items-center justify-center gap-3"
+                        >
+                            <Wallet size={16} /> Unmatched Paystack
                         </button>
                         <button
                             type="button"
@@ -2194,6 +2234,267 @@ function AdminDashboard() {
                       )}
                     </div>
                   ) : null}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {unmatchedOpen ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => (unmatchedRunning ? null : setUnmatchedOpen(false))}
+              className="fixed inset-0 z-[70] bg-[#050810]/70 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[75] flex items-center justify-center p-6"
+            >
+              <div className="w-full max-w-5xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
+                <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6">
+                  <div className="text-left">
+                    <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
+                      Unmatched Paystack
+                    </p>
+                    <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed">
+                      Unresolved Paystack references that could not be reconciled automatically. Use this console to retry sweep, inspect details, and mark resolved (reason required).
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button
+                      type="button"
+                      disabled={unmatchedRunning}
+                      onClick={async () => {
+                        try {
+                          setUnmatchedRunning(true);
+                          const res = await retryUnmatchedPaystackPaymentsNow({ limit: unmatchedPageSize });
+                          toast.success(
+                            `Processed ${res?.processed ?? 0}. Credited ${res?.credited ?? 0}. Still unmatched ${res?.stillUnmatched ?? 0}.`,
+                            { title: 'Retry Sweep Complete' },
+                          );
+                          await queryClient.invalidateQueries({ queryKey: unmatchedPageQuery.queryKey });
+                        } catch (e: any) {
+                          toast.error(e?.message || 'Retry sweep failed.', { title: 'Retry Sweep Failed' });
+                        } finally {
+                          setUnmatchedRunning(false);
+                        }
+                      }}
+                      className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] italic transition-all active:scale-95 ${
+                        unmatchedRunning ? 'opacity-60 pointer-events-none bg-white/5 border border-white/10 text-white/40' : 'bg-green-500 text-black hover:scale-[1.02]'
+                      }`}
+                    >
+                      Retry Sweep
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => (unmatchedRunning ? null : setUnmatchedOpen(false))}
+                      className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-10 space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic">
+                      Showing {(unmatchedPage?.page ?? []).length} items
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={unmatchedCursorStack.length === 0 || unmatchedRunning}
+                        onClick={() => {
+                          const prev = unmatchedCursorStack[unmatchedCursorStack.length - 1] ?? null;
+                          setUnmatchedCursorStack((s) => s.slice(0, -1));
+                          setUnmatchedCursor(prev);
+                        }}
+                        className={`px-5 py-3 rounded-2xl bg-white/5 border border-white/10 font-black text-[10px] uppercase tracking-[0.3em] italic transition-all active:scale-95 ${
+                          unmatchedCursorStack.length === 0 || unmatchedRunning ? 'text-white/20 opacity-60 pointer-events-none' : 'text-white/60 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        Prev
+                      </button>
+                      <button
+                        type="button"
+                        disabled={(unmatchedPage?.isDone ?? false) || unmatchedRunning}
+                        onClick={() => {
+                          const next = unmatchedPage?.continueCursor ?? null;
+                          if (!next) return;
+                          setUnmatchedCursorStack((s) => [...s, unmatchedCursor ?? null]);
+                          setUnmatchedCursor(next);
+                        }}
+                        className={`px-5 py-3 rounded-2xl bg-white/5 border border-white/10 font-black text-[10px] uppercase tracking-[0.3em] italic transition-all active:scale-95 ${
+                          (unmatchedPage?.isDone ?? false) || unmatchedRunning ? 'text-white/20 opacity-60 pointer-events-none' : 'text-white/60 hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-[60vh] overflow-y-auto pr-1 space-y-3">
+                    {(unmatchedPage?.page ?? []).map((r: any) => (
+                      <div
+                        key={r._id}
+                        className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic break-all">
+                            {r.reference}
+                          </p>
+                          <p className="mt-3 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black break-all">
+                            ₦{((r.amount ?? 0) / 100).toLocaleString()} • {r.customerEmail || '—'} • {r.source}
+                          </p>
+                          <p className="mt-3 text-[10px] text-orange-300/70 uppercase tracking-[0.25em] italic font-black break-all">
+                            {r.reason}
+                          </p>
+                          <p className="mt-3 text-[10px] text-white/20 uppercase tracking-[0.25em] italic font-black">
+                            {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col sm:items-end gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentsExplorerQuery(r.reference);
+                              setPaymentsExplorerResult(null);
+                              setPaymentsExplorerOpen(true);
+                            }}
+                            className="px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 font-black text-[10px] uppercase tracking-[0.3em] italic hover:text-white hover:bg-white/10 transition-all active:scale-95"
+                          >
+                            Open
+                          </button>
+                          <button
+                            type="button"
+                            disabled={unmatchedRunning}
+                            onClick={() => setUnmatchedResolve({ open: true, unmatchedId: r._id, reference: r.reference, reason: '' })}
+                            className={`px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] italic transition-all active:scale-95 ${
+                              unmatchedRunning ? 'opacity-60 pointer-events-none bg-white/5 border border-white/10 text-white/30' : 'bg-white text-black hover:scale-[1.02]'
+                            }`}
+                          >
+                            Resolve
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {(unmatchedPage?.page ?? []).length === 0 ? (
+                      <div className="p-10 rounded-[2rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                          No unresolved unmatched transactions.
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {unmatchedResolve.open ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => (unmatchedRunning ? null : setUnmatchedResolve((s) => ({ ...s, open: false })))}
+              className="fixed inset-0 z-[80] bg-[#050810]/80 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.98 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 z-[85] flex items-center justify-center p-6"
+            >
+              <div className="w-full max-w-xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
+                <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6">
+                  <div className="text-left min-w-0">
+                    <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
+                      Resolve Unmatched Reference
+                    </p>
+                    <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed break-all">
+                      {unmatchedResolve.reference}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => (unmatchedRunning ? null : setUnmatchedResolve((s) => ({ ...s, open: false })))}
+                    className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="p-10 space-y-6">
+                  <div>
+                    <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic mb-3">
+                      Resolution Reason
+                    </p>
+                    <input
+                      value={unmatchedResolve.reason}
+                      onChange={(e) => setUnmatchedResolve((s) => ({ ...s, reason: e.target.value }))}
+                      placeholder="E.g. Verified manually, refunded, duplicate, user confirmed non-payment"
+                      className="w-full bg-white/[0.02] border border-white/10 rounded-2xl px-5 py-4 text-[10px] font-black uppercase tracking-[0.25em] italic text-white/70 outline-none focus:border-green-500"
+                    />
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      disabled={unmatchedRunning}
+                      onClick={() => setUnmatchedResolve((s) => ({ ...s, open: false }))}
+                      className={`flex-1 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-[10px] uppercase tracking-[0.3em] italic hover:bg-white/10 active:scale-95 transition-all ${
+                        unmatchedRunning ? 'opacity-60 pointer-events-none' : ''
+                      }`}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={unmatchedRunning}
+                      onClick={async () => {
+                        const reason = unmatchedResolve.reason.trim();
+                        if (!reason) {
+                          toast.error('Reason required.', { title: 'Missing Reason' });
+                          return;
+                        }
+                        try {
+                          setUnmatchedRunning(true);
+                          const res = await markPaystackUnmatchedResolved({
+                            unmatchedId: unmatchedResolve.unmatchedId,
+                            reason,
+                          } as any);
+                          if (res?.success) {
+                            toast.success(res?.message || 'Marked resolved.', { title: 'Resolved' });
+                            setUnmatchedResolve({ open: false, unmatchedId: null, reference: '', reason: '' });
+                            await queryClient.invalidateQueries({ queryKey: unmatchedPageQuery.queryKey });
+                          } else {
+                            toast.error(res?.message || 'Resolve failed.', { title: 'Resolve Failed' });
+                          }
+                        } catch (e: any) {
+                          toast.error(e?.message || 'Resolve failed.', { title: 'Resolve Failed' });
+                        } finally {
+                          setUnmatchedRunning(false);
+                        }
+                      }}
+                      className={`flex-1 py-5 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-95 transition-all ${
+                        unmatchedRunning ? 'opacity-60 pointer-events-none bg-white/5 border border-white/10 text-white/30' : 'bg-green-500 text-black'
+                      }`}
+                    >
+                      Mark Resolved
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>

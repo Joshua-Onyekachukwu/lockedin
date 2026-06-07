@@ -1077,6 +1077,112 @@ export const paymentsExplorerLookup = action({
   },
 });
 
+export const listUnresolvedPaystackUnmatchedPage = query({
+  args: { cursor: v.optional(v.string()), limit: v.optional(v.number()) },
+  returns: v.object({
+    page: v.array(
+      v.object({
+        _id: v.id("paystack_unmatched"),
+        reference: v.string(),
+        amount: v.number(),
+        customerEmail: v.optional(v.string()),
+        source: v.union(v.literal("verify"), v.literal("webhook"), v.literal("admin"), v.literal("cron")),
+        reason: v.string(),
+        resolved: v.boolean(),
+        createdAt: v.number(),
+        metadata: v.optional(v.any()),
+      }),
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.union(v.null(), v.string()),
+  }),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const limit = Math.max(1, Math.min(args.limit ?? 25, 100));
+    const result = await (ctx.db
+      .query("paystack_unmatched")
+      .withIndex("by_resolved", (q) => q.eq("resolved", false))
+      .order("desc") as any).paginate({
+      cursor: args.cursor ?? null,
+      numItems: limit,
+    });
+    return {
+      page: result.page.map((r: any) => ({
+        _id: r._id,
+        reference: r.reference,
+        amount: r.amount,
+        customerEmail: r.customerEmail,
+        source: r.source,
+        reason: r.reason,
+        resolved: r.resolved,
+        createdAt: r.createdAt,
+        metadata: r.metadata,
+      })),
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
+    };
+  },
+});
+
+export const markPaystackUnmatchedResolved = mutation({
+  args: { unmatchedId: v.id("paystack_unmatched"), reason: v.string() },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const admin = await checkAdmin(ctx);
+    const row = await ctx.db.get("paystack_unmatched", args.unmatchedId);
+    if (!row) return { success: false, message: "Row not found." };
+    const reason = args.reason.trim();
+    if (!reason) return { success: false, message: "Reason required." };
+
+    await ctx.db.patch("paystack_unmatched", row._id, { resolved: true });
+
+    await ctx.db.insert("admin_audit", {
+      adminUserId: admin._id,
+      action: "paystack_unmatched_resolved",
+      message: `Paystack unmatched resolved by admin. Ref: ${row.reference} (Reason: ${reason})`,
+      targetType: "paystack_unmatched",
+      targetId: row._id,
+      metadata: { reference: row.reference, amount: row.amount, customerEmail: row.customerEmail, reason },
+    });
+
+    return { success: true, message: "Marked resolved." };
+  },
+});
+
+export const retryUnmatchedPaystackPaymentsNow = action({
+  args: { limit: v.optional(v.number()) },
+  returns: v.object({
+    success: v.boolean(),
+    message: v.string(),
+    processed: v.optional(v.number()),
+    credited: v.optional(v.number()),
+    alreadyCredited: v.optional(v.number()),
+    stillUnmatched: v.optional(v.number()),
+    mismatched: v.optional(v.number()),
+  }),
+  handler: async (ctx, args): Promise<any> => {
+    const adminStatus = await ctx.runQuery(api.admin.checkAdminStatus, {});
+    if (!adminStatus?.isAdmin || !adminStatus?.user) {
+      throw new Error("SECURITY ALERT: Administrative privileges required.");
+    }
+
+    const result = await ctx.runAction(internal.payments.retryUnmatchedPaystackPayments, {
+      limit: args.limit ?? 25,
+    });
+
+    await ctx.runMutation(internal.admin.logAudit, {
+      adminUserId: (adminStatus.user)._id as Id<"users">,
+      action: "paystack_unmatched_retry_sweep",
+      message: `Admin triggered unmatched Paystack retry sweep. Processed: ${(result as any).processed ?? 0}. Credited: ${(result as any).credited ?? 0}.`,
+      targetType: "paystack_unmatched",
+      targetId: "sweep",
+      metadata: { result },
+    });
+
+    return { success: true, message: "Retry sweep completed.", ...(result as any) };
+  },
+});
+
 export const getSystemStats = query({
   args: {},
   returns: v.any(),
