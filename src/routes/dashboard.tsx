@@ -73,6 +73,7 @@ function Dashboard() {
 function DashboardContent({ user }: { user: any }) {
   const toast = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { fundVaultId } = Route.useSearch();
   
   const [isCreating, setIsCreating] = useState(false);
@@ -90,6 +91,21 @@ function DashboardContent({ user }: { user: any }) {
     ...(convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any),
     enabled: true,
     placeholderData: [],
+    staleTime: 1000 * 15,
+  })
+
+  const { data: activationStatus }: { data: any } = useQuery({
+    ...(convexQuery((api as any).growth.getActivationStatus, EMPTY_ARGS as any) as any),
+    enabled: true,
+    placeholderData: {
+      hasVault: false,
+      hasFundedVault: false,
+      hasCheckIn: false,
+      hasWitness: false,
+      firstVaultId: null,
+      firstAwaitingFundingVaultId: null,
+      firstActiveVaultId: null,
+    },
     staleTime: 1000 * 15,
   })
 
@@ -203,6 +219,90 @@ function DashboardContent({ user }: { user: any }) {
                     initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
                     className="space-y-12"
                 >
+                    {!(
+                      activationStatus?.hasVault &&
+                      activationStatus?.hasFundedVault &&
+                      activationStatus?.hasCheckIn &&
+                      activationStatus?.hasWitness
+                    ) ? (
+                      <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/10 shadow-2xl">
+                        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
+                          <div className="text-left">
+                            <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                              Activation Checklist
+                            </p>
+                            <p className="mt-4 text-white font-black uppercase italic tracking-tight text-2xl">
+                              First Protocol Win
+                            </p>
+                            <p className="mt-4 text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic leading-relaxed max-w-2xl">
+                              Complete the steps below to activate your first protocol and unlock the full enforcement loop.
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="px-5 py-4 rounded-2xl bg-white/[0.02] border border-white/10">
+                              <p className="text-[9px] text-white/20 font-black uppercase tracking-widest italic">
+                                Progress
+                              </p>
+                              <p className="mt-2 text-[10px] text-blue-500 font-black uppercase tracking-widest italic">
+                                {[
+                                  activationStatus?.hasVault,
+                                  activationStatus?.hasFundedVault,
+                                  activationStatus?.hasCheckIn,
+                                  activationStatus?.hasWitness,
+                                ].filter(Boolean).length}
+                                /4
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <ChecklistRow
+                            done={!!activationStatus?.hasVault}
+                            label="Create your first protocol"
+                            ctaLabel="Create"
+                            onCta={() => setIsCreating(true)}
+                          />
+                          <ChecklistRow
+                            done={!!activationStatus?.hasFundedVault}
+                            label="Fund your protocol"
+                            ctaLabel="Fund"
+                            disabled={!activationStatus?.firstAwaitingFundingVaultId}
+                            onCta={() => {
+                              if (!activationStatus?.firstAwaitingFundingVaultId) return
+                              setFundingVaultId(activationStatus.firstAwaitingFundingVaultId)
+                            }}
+                          />
+                          <ChecklistRow
+                            done={!!activationStatus?.hasCheckIn}
+                            label="Submit your first check-in"
+                            ctaLabel="Check-in"
+                            disabled={!activationStatus?.firstActiveVaultId}
+                            onCta={() => {
+                              const v = (vaults as Array<any>).find((x) => x._id === activationStatus?.firstActiveVaultId)
+                              if (!v) return
+                              setCheckingInGoal(v)
+                            }}
+                          />
+                          <ChecklistRow
+                            done={!!activationStatus?.hasWitness}
+                            label="Invite a witness"
+                            ctaLabel="Invite"
+                            disabled={!(activationStatus?.firstActiveVaultId || activationStatus?.firstVaultId)}
+                            onCta={() => {
+                              const vaultId = activationStatus?.firstActiveVaultId || activationStatus?.firstVaultId
+                              if (!vaultId) return
+                              navigate({
+                                to: '/community',
+                                search: { view: 'witnesses', vaultId: String(vaultId) } as any,
+                              })
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
                         {(vaults as Array<any>).map((vault: any) => (
                             <VaultCard
@@ -582,6 +682,51 @@ function DashboardContent({ user }: { user: any }) {
       </AnimatePresence>
     </div>
   );
+}
+
+function ChecklistRow({
+  done,
+  label,
+  ctaLabel,
+  disabled,
+  onCta,
+}: {
+  done: boolean;
+  label: string;
+  ctaLabel: string;
+  disabled?: boolean;
+  onCta: () => void;
+}) {
+  return (
+    <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 flex items-center justify-between gap-6">
+      <div className="flex items-center gap-4 min-w-0">
+        <div
+          className={`h-11 w-11 rounded-2xl flex items-center justify-center border transition-all ${
+            done ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-white/30'
+          }`}
+        >
+          <ShieldCheck size={18} />
+        </div>
+        <p className="text-[10px] text-white/60 font-black uppercase tracking-[0.28em] italic truncate">
+          {label}
+        </p>
+      </div>
+      <button
+        type="button"
+        disabled={done || disabled}
+        onClick={onCta}
+        className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] italic transition-all active:scale-95 ${
+          done
+            ? 'bg-white/5 border border-white/10 text-white/20 pointer-events-none'
+            : disabled
+              ? 'bg-white/5 border border-white/10 text-white/20 opacity-60 pointer-events-none'
+              : 'bg-white text-black hover:scale-[1.02]'
+        }`}
+      >
+        {done ? 'Done' : ctaLabel}
+      </button>
+    </div>
+  )
 }
 
 function VaultCard({ vault, onCheckIn, onFund }: { vault: any, onCheckIn: () => void, onFund: () => void }) {
