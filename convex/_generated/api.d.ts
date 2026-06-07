@@ -23,6 +23,7 @@ import type * as penalties from "../penalties.js";
 import type * as rewards from "../rewards.js";
 import type * as security from "../security.js";
 import type * as seed from "../seed.js";
+import type * as sentry from "../sentry.js";
 import type * as users from "../users.js";
 import type * as vaultLifecycle from "../vaultLifecycle.js";
 import type * as verifications from "../verifications.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   rewards: typeof rewards;
   security: typeof security;
   seed: typeof seed;
+  sentry: typeof sentry;
   users: typeof users;
   vaultLifecycle: typeof vaultLifecycle;
   verifications: typeof verifications;

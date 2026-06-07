@@ -25,6 +25,7 @@ import { Route as VaultIdImport } from './routes/vault.$id'
 import { Route as InviteVaultIdImport } from './routes/invite.$vaultId'
 import { Route as AuthCallbackImport } from './routes/auth.callback'
 import { Route as AdminSettingsImport } from './routes/admin.settings'
+import { Route as AdminUsersUserIdImport } from './routes/admin.users.$userId'
 import { Route as AdminTxTxIdImport } from './routes/admin.tx.$txId'
 import { Route as AdminAuditAuditIdImport } from './routes/admin.audit.$auditId'
 
@@ -111,6 +112,12 @@ const AuthCallbackRoute = AuthCallbackImport.update({
 const AdminSettingsRoute = AdminSettingsImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+
+const AdminUsersUserIdRoute = AdminUsersUserIdImport.update({
+  id: '/users/$userId',
+  path: '/users/$userId',
   getParentRoute: () => AdminRoute,
 } as any)
 
@@ -242,6 +249,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTxTxIdImport
       parentRoute: typeof AdminImport
     }
+    '/admin/users/$userId': {
+      id: '/admin/users/$userId'
+      path: '/users/$userId'
+      fullPath: '/admin/users/$userId'
+      preLoaderRoute: typeof AdminUsersUserIdImport
+      parentRoute: typeof AdminImport
+    }
   }
 }
 
@@ -251,12 +265,14 @@ interface AdminRouteChildren {
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminAuditAuditIdRoute: typeof AdminAuditAuditIdRoute
   AdminTxTxIdRoute: typeof AdminTxTxIdRoute
+  AdminUsersUserIdRoute: typeof AdminUsersUserIdRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminSettingsRoute: AdminSettingsRoute,
   AdminAuditAuditIdRoute: AdminAuditAuditIdRoute,
   AdminTxTxIdRoute: AdminTxTxIdRoute,
+  AdminUsersUserIdRoute: AdminUsersUserIdRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
@@ -278,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/vault/$id': typeof VaultIdRoute
   '/admin/audit/$auditId': typeof AdminAuditAuditIdRoute
   '/admin/tx/$txId': typeof AdminTxTxIdRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
 }
 
 export interface FileRoutesByTo {
@@ -297,6 +314,7 @@ export interface FileRoutesByTo {
   '/vault/$id': typeof VaultIdRoute
   '/admin/audit/$auditId': typeof AdminAuditAuditIdRoute
   '/admin/tx/$txId': typeof AdminTxTxIdRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
 }
 
 export interface FileRoutesById {
@@ -317,6 +335,7 @@ export interface FileRoutesById {
   '/vault/$id': typeof VaultIdRoute
   '/admin/audit/$auditId': typeof AdminAuditAuditIdRoute
   '/admin/tx/$txId': typeof AdminTxTxIdRoute
+  '/admin/users/$userId': typeof AdminUsersUserIdRoute
 }
 
 export interface FileRouteTypes {
@@ -338,6 +357,7 @@ export interface FileRouteTypes {
     | '/vault/$id'
     | '/admin/audit/$auditId'
     | '/admin/tx/$txId'
+    | '/admin/users/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -356,6 +376,7 @@ export interface FileRouteTypes {
     | '/vault/$id'
     | '/admin/audit/$auditId'
     | '/admin/tx/$txId'
+    | '/admin/users/$userId'
   id:
     | '__root__'
     | '/'
@@ -374,6 +395,7 @@ export interface FileRouteTypes {
     | '/vault/$id'
     | '/admin/audit/$auditId'
     | '/admin/tx/$txId'
+    | '/admin/users/$userId'
   fileRoutesById: FileRoutesById
 }
 
@@ -442,7 +464,8 @@ export const routeTree = rootRoute
       "children": [
         "/admin/settings",
         "/admin/audit/$auditId",
-        "/admin/tx/$txId"
+        "/admin/tx/$txId",
+        "/admin/users/$userId"
       ]
     },
     "/community": {
@@ -488,6 +511,10 @@ export const routeTree = rootRoute
     },
     "/admin/tx/$txId": {
       "filePath": "admin.tx.$txId.tsx",
+      "parent": "/admin"
+    },
+    "/admin/users/$userId": {
+      "filePath": "admin.users.$userId.tsx",
       "parent": "/admin"
     }
   }

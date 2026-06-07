@@ -383,6 +383,85 @@ export const listUsersPage = query({
   },
 });
 
+export const getUserDetail = query({
+  args: { userId: v.id("users") },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("users"),
+      _creationTime: v.number(),
+      name: v.optional(v.string()),
+      email: v.optional(v.string()),
+      emailVerificationTime: v.optional(v.number()),
+      tier: v.union(v.literal("bronze"), v.literal("silver"), v.literal("gold")),
+      integrityScore: v.number(),
+      streak_count: v.number(),
+      goals_completed: v.number(),
+      balance: v.number(),
+      shields: v.number(),
+      credits: v.number(),
+      bvn_verified: v.boolean(),
+      bvn_last4: v.optional(v.string()),
+      is_discoverable: v.boolean(),
+      witness_discoverable: v.optional(v.boolean()),
+      isAdmin: v.optional(v.boolean()),
+      vaultStats: v.object({
+        total: v.number(),
+        awaiting_funding: v.number(),
+        active: v.number(),
+        completed: v.number(),
+        failed: v.number(),
+      }),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const user = await ctx.db.get("users", args.userId);
+    if (!user) return null;
+
+    const vaults = await ctx.db
+      .query("vaults")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const vaultStats = {
+      total: vaults.length,
+      awaiting_funding: 0,
+      active: 0,
+      completed: 0,
+      failed: 0,
+    };
+
+    for (const v of vaults) {
+      if (v.status === "awaiting_funding") vaultStats.awaiting_funding += 1;
+      else if (v.status === "active") vaultStats.active += 1;
+      else if (v.status === "completed") vaultStats.completed += 1;
+      else if (v.status === "failed") vaultStats.failed += 1;
+    }
+
+    return {
+      _id: user._id,
+      _creationTime: user._creationTime,
+      name: user.name,
+      email: user.email,
+      emailVerificationTime: user.emailVerificationTime,
+      tier: user.tier,
+      integrityScore: user.integrityScore,
+      streak_count: user.streak_count,
+      goals_completed: user.goals_completed,
+      balance: user.balance,
+      shields: user.shields,
+      credits: user.credits,
+      bvn_verified: user.bvn_verified,
+      bvn_last4: user.bvn_last4,
+      is_discoverable: user.is_discoverable,
+      witness_discoverable: user.witness_discoverable,
+      isAdmin: user.isAdmin,
+      vaultStats,
+    };
+  },
+});
+
 export const getAuditById = query({
   args: { auditId: v.id("admin_audit") },
   returns: v.union(

@@ -189,30 +189,22 @@ function AdminDashboard() {
   const [paymentsExplorerResult, setPaymentsExplorerResult] = useState<any>(null);
 
   const [userSearch, setUserSearch] = useState('');
-  const [selectedUser, setSelectedUser] = useState<any>(null);
   const [verifyLookup, setVerifyLookup] = useState('');
   const [verifyPicked, setVerifyPicked] = useState<any>(null);
   const [verifyRunning, setVerifyRunning] = useState(false);
   const [verifyFeedback, setVerifyFeedback] = useState<null | { tone: 'success' | 'error'; message: string }>(null);
   const [verifyQuickOpen, setVerifyQuickOpen] = useState(false);
   const [verifyReason, setVerifyReason] = useState('');
-  const [emailOverride, setEmailOverride] = useState<{
-    open: boolean;
-    mode: 'verify' | 'clear';
-    reason: string;
-  }>({ open: false, mode: 'verify', reason: '' });
   const [usersCursor, setUsersCursor] = useState<string | null>(null);
   const [usersCursorStack, setUsersCursorStack] = useState<Array<string | null>>([]);
   const usersPageSize = 25;
   const [txCursor, setTxCursor] = useState<string | null>(null);
   const [txCursorStack, setTxCursorStack] = useState<Array<string | null>>([]);
   const txPageSize = 25;
-  const updateUserVerifications = useMutation((api as any).admin.updateUserVerifications);
   const markUserEmailVerified = useMutation((api as any).admin.markUserEmailVerified);
   const makeUsersVisibleByEmailDomain = useMutation((api as any).admin.makeUsersVisibleByEmailDomain);
   const repairDuplicatePartnerships = useMutation((api as any).admin.repairDuplicatePartnerships);
   const recomputeUserTiers = useMutation((api as any).admin.recomputeUserTiers);
-  const [userEditRunning, setUserEditRunning] = useState(false);
   const [statsDetail, setStatsDetail] = useState<null | 'revenue' | 'staked' | 'citizens' | 'health'>(null);
 
   const searchUsersQuery = convexQuery((api as any).admin.searchUsers, { q: userSearch, limit: 20 } as any) as any;
@@ -256,16 +248,6 @@ function AdminDashboard() {
         verifyPicked &&
         (verifyPicked.email ?? "").toLowerCase() === verifyLookup.trim().toLowerCase()
       ),
-    placeholderData: [],
-  });
-
-  const selectedUserProtocolsQuery = convexQuery(
-    (api as any).admin.getUserProtocols,
-    { userId: selectedUser?._id, limit: 50 } as any,
-  ) as any;
-  const { data: selectedUserProtocols } = useQuery({
-    ...(selectedUserProtocolsQuery),
-    enabled: isAuthenticated && isVerified && isAdmin && !!selectedUser?._id,
     placeholderData: [],
   });
 
@@ -858,7 +840,12 @@ function AdminDashboard() {
                                       {((allUsersPage as any)?.page as Array<any>)?.map((u: any) => (
                                         <tr
                                           key={u._id}
-                                          onClick={() => setSelectedUser(u)}
+                                          onClick={() =>
+                                            navigate({
+                                              to: '/admin/users/$userId' as any,
+                                              params: { userId: u._id } as any,
+                                            })
+                                          }
                                           className="hover:bg-white/[0.03] transition-all cursor-pointer"
                                         >
                                           <td className="px-4 sm:px-8 py-4 sm:py-6">
@@ -912,7 +899,12 @@ function AdminDashboard() {
                                 <button
                                   type="button"
                                   key={u._id}
-                                  onClick={() => setSelectedUser(u)}
+                                  onClick={() =>
+                                    navigate({
+                                      to: '/admin/users/$userId' as any,
+                                      params: { userId: u._id } as any,
+                                    })
+                                  }
                                   className="w-full p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:border-white/20 transition-all text-left active:scale-[0.99]"
                                 >
                                   <div className="flex items-center justify-between gap-6">
@@ -1234,102 +1226,6 @@ function AdminDashboard() {
       />
 
       <AnimatePresence>
-        {emailOverride.open && selectedUser ? (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
-                if (userEditRunning) return
-                setEmailOverride({ open: false, mode: 'verify', reason: '' })
-              }}
-              className="fixed inset-0 z-[90] bg-[#050810]/70 backdrop-blur-xl"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.98 }}
-              transition={{ duration: 0.18 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center p-6"
-            >
-              <div className="w-full max-w-xl rounded-[3rem] bg-[#0a0f1a]/95 backdrop-blur-3xl border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
-                <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6">
-                  <div className="text-left min-w-0">
-                    <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
-                      {emailOverride.mode === 'verify' ? 'Mark Email Verified' : 'Clear Email Verified'}
-                    </p>
-                    <p className="text-[10px] text-white/30 uppercase tracking-[0.28em] font-black italic mt-3 leading-relaxed truncate">
-                      {selectedUser.email || selectedUser._id}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (userEditRunning) return
-                      setEmailOverride({ open: false, mode: 'verify', reason: '' })
-                    }}
-                    className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <div className="p-10">
-                  <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic mb-3">
-                    Reason
-                  </p>
-                  <textarea
-                    value={emailOverride.reason}
-                    onChange={(e) => setEmailOverride((s) => ({ ...s, reason: e.target.value }))}
-                    placeholder="WHY ARE YOU OVERRIDING VERIFICATION?"
-                    rows={3}
-                    className="w-full bg-white/[0.02] border border-white/10 rounded-[2rem] px-6 py-5 text-[10px] font-black uppercase tracking-[0.25em] italic text-white/70 outline-none focus:border-blue-500 resize-none"
-                  />
-
-                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                    <button
-                      type="button"
-                      disabled={userEditRunning}
-                      onClick={() => setEmailOverride({ open: false, mode: 'verify', reason: '' })}
-                      className="flex-1 px-8 py-5 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      disabled={userEditRunning || !emailOverride.reason.trim()}
-                      onClick={async () => {
-                        setUserEditRunning(true)
-                        try {
-                          const res = await updateUserVerifications({
-                            userId: selectedUser._id,
-                            emailVerified: emailOverride.mode === 'verify',
-                            reason: emailOverride.reason.trim(),
-                          })
-                          if (res?.user) setSelectedUser(res.user)
-                          await queryClient.invalidateQueries()
-                          toast.success(res?.message ?? 'Updated.')
-                          setEmailOverride({ open: false, mode: 'verify', reason: '' })
-                        } catch (e: any) {
-                          toast.error(sanitizeMessage(e?.message ?? '', 'Update failed.'))
-                        } finally {
-                          setUserEditRunning(false)
-                        }
-                      }}
-                      className="flex-1 px-8 py-5 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                    >
-                      {userEditRunning ? 'RUNNING...' : emailOverride.mode === 'verify' ? 'Mark Verified' : 'Clear Verified'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        ) : null}
-      </AnimatePresence>
-
-      <AnimatePresence>
         {waitlistDetail ? (
           <>
             <motion.div
@@ -1544,7 +1440,10 @@ function AdminDashboard() {
                       disabled={!verifyPicked}
                       onClick={() => {
                         if (!verifyPicked) return
-                        setSelectedUser(verifyPicked)
+                        navigate({
+                          to: '/admin/users/$userId' as any,
+                          params: { userId: verifyPicked._id } as any,
+                        })
                         setVerifyQuickOpen(false)
                       }}
                       className="flex-1 px-8 py-5 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
@@ -2523,245 +2422,6 @@ function AdminDashboard() {
                       </div>
                     </>
                   ) : null}
-                </div>
-              </div>
-            </motion.div>
-          </>
-        ) : null}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {selectedUser ? (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedUser(null)}
-              className="fixed inset-0 bg-[#050810]/70 backdrop-blur-sm z-40"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98, y: 14 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: 14 }}
-              transition={{ duration: 0.18 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8"
-            >
-              <div className="w-full max-w-5xl bg-[#0a0f1a] border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] shadow-[0_0_120px_rgba(0,0,0,1)] overflow-hidden">
-                <div className="p-6 sm:p-10 border-b border-white/5 flex items-start justify-between gap-6">
-                  <div className="text-left min-w-0">
-                    <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                      User Detail
-                    </p>
-                    <p className="mt-2 text-white font-black uppercase italic tracking-tight text-2xl truncate">
-                      {selectedUser.name || 'Anonymous'}
-                    </p>
-                    <p className="mt-2 text-[10px] text-white/30 uppercase tracking-[0.25em] italic font-black truncate">
-                      {selectedUser.email || '—'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedUser(null)}
-                    className="h-11 w-11 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90 shrink-0"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <div className="p-6 sm:p-10 max-h-[75vh] overflow-y-auto">
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    <div className="lg:col-span-5 space-y-6">
-                      <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                        Overview
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {[
-                          { k: 'Tier', v: selectedUser.tier },
-                          { k: 'Integrity', v: `${selectedUser.integrityScore}%` },
-                          { k: 'Streak', v: `${selectedUser.streak_count}W` },
-                          { k: 'Missions', v: selectedUser.goals_completed },
-                          { k: 'Balance', v: `₦${((selectedUser.balance ?? 0) / 100).toLocaleString()}` },
-                          { k: 'BVN Verified', v: selectedUser.bvn_verified ? 'Yes' : 'No' },
-                          { k: 'Discoverable', v: selectedUser.is_discoverable ? 'Yes' : 'No' },
-                          { k: 'Witness Pool', v: selectedUser.witness_discoverable ? 'Yes' : 'No' },
-                          { k: 'Admin', v: selectedUser.isAdmin ? 'Yes' : 'No' },
-                        ].map((row) => (
-                          <div key={row.k} className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
-                            <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                              {row.k}
-                            </p>
-                            <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
-                              {String(row.v ?? '')}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
-                        <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                          Manual Overrides
-                        </p>
-                        <p className="mt-3 text-[9px] text-white/30 font-black uppercase tracking-[0.3em] italic leading-relaxed">
-                          Email {selectedUser.emailVerificationTime ? 'On' : 'Off'} • BVN {selectedUser.bvn_verified ? 'On' : 'Off'} • Admin{' '}
-                          {selectedUser.isAdmin ? 'On' : 'Off'} • Community {selectedUser.is_discoverable ? 'On' : 'Off'} • Witness{' '}
-                          {selectedUser.witness_discoverable !== false ? 'On' : 'Off'}
-                        </p>
-                        <div className="mt-6 grid grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            disabled={userEditRunning}
-                            onClick={() => setEmailOverride({ open: true, mode: 'verify', reason: '' })}
-                            className="px-5 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest italic text-[10px] hover:scale-105 active:scale-95 transition-all disabled:opacity-40"
-                          >
-                            Mark Email Verified
-                          </button>
-                          <button
-                            type="button"
-                            disabled={userEditRunning}
-                            onClick={() => setEmailOverride({ open: true, mode: 'clear', reason: '' })}
-                            className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
-                          >
-                            Clear Email Verified
-                          </button>
-                          <button
-                            type="button"
-                            disabled={userEditRunning}
-                            onClick={async () => {
-                              setUserEditRunning(true);
-                              try {
-                                const res = await updateUserVerifications({
-                                  userId: selectedUser._id,
-                                  bvn_verified: !selectedUser.bvn_verified,
-                                });
-                                if (res?.user) setSelectedUser(res.user);
-                                await queryClient.invalidateQueries();
-                                toast.success(res?.message ?? "Updated.");
-                              } catch (e: any) {
-                                toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
-                              } finally {
-                                setUserEditRunning(false);
-                              }
-                            }}
-                            className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
-                          >
-                            Toggle BVN
-                          </button>
-                          <button
-                            type="button"
-                            disabled={userEditRunning}
-                            onClick={async () => {
-                              setUserEditRunning(true);
-                              try {
-                                const res = await updateUserVerifications({
-                                  userId: selectedUser._id,
-                                  isAdmin: !selectedUser.isAdmin,
-                                });
-                                if (res?.user) setSelectedUser(res.user);
-                                await queryClient.invalidateQueries();
-                                toast.success(res?.message ?? "Updated.");
-                              } catch (e: any) {
-                                toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
-                              } finally {
-                                setUserEditRunning(false);
-                              }
-                            }}
-                            className="px-5 py-4 rounded-2xl bg-blue-600/10 border border-blue-500/20 text-blue-500 font-black uppercase tracking-widest italic text-[10px] hover:bg-blue-600/20 active:scale-95 transition-all disabled:opacity-40"
-                          >
-                            Toggle Admin
-                          </button>
-                          <button
-                            type="button"
-                            disabled={userEditRunning}
-                            onClick={async () => {
-                              setUserEditRunning(true);
-                              try {
-                                const res = await updateUserVerifications({
-                                  userId: selectedUser._id,
-                                  is_discoverable: !selectedUser.is_discoverable,
-                                });
-                                if (res?.user) setSelectedUser(res.user);
-                                await queryClient.invalidateQueries();
-                                toast.success(res?.message ?? "Updated.");
-                              } catch (e: any) {
-                                toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
-                              } finally {
-                                setUserEditRunning(false);
-                              }
-                            }}
-                            className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
-                          >
-                            Toggle Community
-                          </button>
-                          <button
-                            type="button"
-                            disabled={userEditRunning}
-                            onClick={async () => {
-                              const current = selectedUser.witness_discoverable !== false;
-                              setUserEditRunning(true);
-                              try {
-                                const res = await updateUserVerifications({
-                                  userId: selectedUser._id,
-                                  witness_discoverable: !current,
-                                });
-                                if (res?.user) setSelectedUser(res.user);
-                                await queryClient.invalidateQueries();
-                                toast.success(res?.message ?? "Updated.");
-                              } catch (e: any) {
-                                toast.error(sanitizeMessage(e?.message ?? "", "Update failed."));
-                              } finally {
-                                setUserEditRunning(false);
-                              }
-                            }}
-                            className="px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase tracking-widest italic text-[10px] hover:bg-white/10 active:scale-95 transition-all disabled:opacity-40"
-                          >
-                            Toggle Witness
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="lg:col-span-7">
-                      <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                        User Protocols
-                      </p>
-                      <div className="mt-6 space-y-4">
-                        {(selectedUserProtocols as Array<any>)?.length ? (
-                          (selectedUserProtocols as Array<any>).map((v: any) => (
-                            <Link
-                              key={v._id}
-                              to="/vault/$id"
-                              params={{ id: v._id }}
-                              className="block p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:bg-white/[0.04] hover:border-white/20 transition-all"
-                            >
-                              <div className="flex items-start justify-between gap-6">
-                                <div className="min-w-0">
-                                  <p className="text-white font-black uppercase italic tracking-tight truncate">
-                                    {v.goal?.title || 'Untitled'}
-                                  </p>
-                                  <p className="mt-2 text-[10px] text-white/30 font-black uppercase tracking-[0.25em] italic truncate">
-                                    {v.goal?.category} • {v.goal?.frequency_type || 'daily'} • {v.goal?.target_count ?? 1}/period
-                                  </p>
-                                </div>
-                                <div className="text-right shrink-0">
-                                  <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest italic">
-                                    {v.status}
-                                  </p>
-                                  <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                                    ₦{((v.amount ?? 0) / 100).toLocaleString()}
-                                  </p>
-                                </div>
-                              </div>
-                            </Link>
-                          ))
-                        ) : (
-                          <div className="p-10 rounded-[2rem] bg-white/[0.01] border border-white/10 text-white/20 font-black uppercase tracking-widest italic text-center">
-                            No protocols found.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </motion.div>
