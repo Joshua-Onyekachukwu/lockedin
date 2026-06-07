@@ -11,14 +11,15 @@ import {
   Users,
   X
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { api } from '../../convex/_generated/api';
 import { ConfirmModal } from '~/components/confirm-modal';
-import { SharePresets } from '~/components/share-presets';
+import { SharePromptModal } from '~/components/share-prompt-modal';
 import { useToast } from '~/components/toast';
 import { useBodyScrollLock } from '~/lib/useBodyScrollLock';
 
 const EMPTY_ARGS: Record<string, never> = {};
+const CheckInModal = lazy(() => import('~/components/dashboard/check-in-modal'));
 
 export const Route = createFileRoute('/vault/$id')({
   component: VaultPage,
@@ -54,7 +55,10 @@ function VaultPage() {
 
   const removeWitness = useMutation((api as any).partners.removeWitness);
   const [activeLog, setActiveLog] = useState<any>(null);
+  const [checkInOpen, setCheckInOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string>('');
+  const [sharePromptOpen, setSharePromptOpen] = useState(false);
+  const [witnessEditOpen, setWitnessEditOpen] = useState(false);
   const [confirm, setConfirm] = useState<{
     open: boolean;
     title: string;
@@ -117,6 +121,7 @@ function VaultPage() {
   }).length
 
   const remainingThisPeriod = Math.max(0, targetCount - completedThisPeriod)
+  const canExecuteLog = isOwner && !isAwaitingFunding && remainingThisPeriod > 0
 
   const endOfToday = () => {
     const d = new Date(now)
@@ -369,7 +374,23 @@ function VaultPage() {
                         )}
                     </div>
 
-                    <SharePresets title={String(vault.goal?.title ?? '')} status={status} url={shareUrl} />
+                    {canExecuteLog ? (
+                      <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
+                          Execute Log
+                        </p>
+                        <p className="text-xs text-white/40 italic leading-relaxed font-medium">
+                          Submit evidence for this cycle. This is the only action that updates your protocol performance.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setCheckInOpen(true)}
+                          className="mt-8 w-full px-8 py-4 rounded-2xl bg-[#ff7a00] text-white font-black uppercase tracking-widest text-[10px] italic hover:scale-105 active:scale-95 transition-all"
+                        >
+                          Execute Log
+                        </button>
+                      </div>
+                    ) : null}
 
                     {!isAwaitingFunding ? (
                       <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
@@ -494,7 +515,7 @@ function VaultPage() {
                                             </div>
                                         </div>
 
-                                        {isOwner && w.status === 'active' ? (
+                                        {isOwner && witnessEditOpen && w.status !== 'ended' ? (
                                             <button
                                                 type="button"
                                                 onClick={() =>
@@ -519,6 +540,15 @@ function VaultPage() {
                                         ) : null}
                                     </div>
                                 ))}
+                                {isOwner ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setWitnessEditOpen((v) => !v)}
+                                    className="w-full px-8 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] italic hover:bg-white/10 transition-all"
+                                  >
+                                    {witnessEditOpen ? 'Done Editing' : 'Edit Witnesses'}
+                                  </button>
+                                ) : null}
                             </div>
                         )}
                     </div>
@@ -688,8 +718,8 @@ function VaultPage() {
                   className="absolute inset-0 bg-[#050810]/75 backdrop-blur-xl"
                   onClick={() => setActiveLog(null)}
                 />
-                <div className="relative w-full max-w-3xl rounded-[3rem] bg-[#0a0f1a]/95 border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden">
-                  <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6">
+                <div className="relative w-full max-w-3xl rounded-[3rem] bg-[#0a0f1a]/95 border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden max-h-[90vh] flex flex-col">
+                  <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6 shrink-0">
                     <div className="text-left">
                       <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
                         {activeLog.date ? `Check-in • ${activeLog.date}` : `Week ${activeLog.week_number} Check-in`}
@@ -706,7 +736,7 @@ function VaultPage() {
                       <X size={18} />
                     </button>
                   </div>
-                  <div className="p-10">
+                  <div className="p-10 overflow-y-auto custom-scrollbar">
                     {activeLog.proofUrl ? (
                       <div className="w-full max-h-[60vh] rounded-[2.5rem] overflow-hidden border border-white/10 bg-black">
                         <img src={activeLog.proofUrl} className="w-full h-full object-contain" alt="Evidence" />
@@ -730,6 +760,27 @@ function VaultPage() {
                 </div>
               </div>
             ) : null}
+
+            {checkInOpen ? (
+              <Suspense fallback={null}>
+                <CheckInModal
+                  vault={vault}
+                  onClose={() => setCheckInOpen(false)}
+                  onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: vaultQuery.queryKey })
+                    setSharePromptOpen(true)
+                  }}
+                />
+              </Suspense>
+            ) : null}
+
+            <SharePromptModal
+              open={sharePromptOpen}
+              title={String(vault.goal?.title ?? '')}
+              status={status}
+              url={shareUrl}
+              onClose={() => setSharePromptOpen(false)}
+            />
         </main>
     </div>
   );

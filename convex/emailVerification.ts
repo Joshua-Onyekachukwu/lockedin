@@ -139,6 +139,15 @@ export const requestEmailVerification = action({
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Not authenticated");
 
+    const rate = await ctx.runMutation((internal as any).rateLimit.consume, {
+      key: `user:${userId}:request_email_verification`,
+      limit: 3,
+      windowMs: 10 * 60_000,
+    });
+    if (!rate.allowed) {
+      return { success: false, message: "Too many requests. Please wait and try again." };
+    }
+
     const user = await ctx.runQuery(internal.emailVerification.getEmailVerificationUser, {
       userId,
     });

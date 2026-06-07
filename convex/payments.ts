@@ -66,6 +66,15 @@ export const initializeDeposit = mutation({
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
     assertPaystackConfig();
 
+    const rate = await ctx.runMutation((internal as any).rateLimit.consume, {
+      key: `user:${userId}:initialize_deposit`,
+      limit: 5,
+      windowMs: 5 * 60_000,
+    });
+    if (!rate.allowed) {
+      throw new Error("Too many payment attempts. Please wait and try again.");
+    }
+
     const reference = `LKD-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 
     await ctx.db.insert("deposits", {
@@ -112,6 +121,15 @@ export const initializeVaultFunding = mutation({
       throw new Error("Protocol is not awaiting funding");
     }
 
+    const rate = await ctx.runMutation((internal as any).rateLimit.consume, {
+      key: `user:${userId}:initialize_vault_funding`,
+      limit: 5,
+      windowMs: 5 * 60_000,
+    });
+    if (!rate.allowed) {
+      throw new Error("Too many payment attempts. Please wait and try again.");
+    }
+
     const reference = `LKD-VLT-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
 
     await ctx.db.insert("deposits", {
@@ -155,6 +173,16 @@ export const verifyPayment = action({
     } catch (e: any) {
       return { success: false, message: e?.message || "Payment backend misconfigured." };
     }
+
+    const rate = await ctx.runMutation((internal as any).rateLimit.consume, {
+      key: `user:${user._id}:verify_payment`,
+      limit: 10,
+      windowMs: 60_000,
+    });
+    if (!rate.allowed) {
+      return { success: false, message: "Too many verification attempts. Please wait and try again." };
+    }
+
     try {
       const response = await fetch(`https://api.paystack.co/transaction/verify/${args.reference}`, {
         method: "GET",

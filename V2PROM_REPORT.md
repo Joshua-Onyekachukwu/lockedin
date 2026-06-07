@@ -1,4 +1,4 @@
-# V2PROM Report (Lockedin) + Improvement Plan
+# V2PROM Report (Lockedin) — Detailed Score Uplift Playbook
 
 Date: 2026-06-07
 
@@ -9,209 +9,265 @@ This report uses the V2PROM framework:
 - O = Objectives
 - M = Metrics
 
-It includes:
+Primary goal: explain why the score is currently ~7.5/10 and provide a concrete, step-by-step playbook to push it to 8.5/10+ with specific, verifiable improvements for each dimension.
+
+## 0) How to Read This (Scoring Rubric)
+
+Each dimension is scored 0–10 using the same rubric:
+- 0–3: unclear, not evidenced, high risk, no repeatability
+- 4–6: idea is plausible, some evidence, still fragile
+- 7–8: strong product logic, credible delivery, early repeatability
+- 9–10: sharp wedge + proof + operational maturity + predictable scaling levers
+
+For each dimension below you’ll see:
 - Current score and why
-- What evidence we already have in the product
-- Gaps preventing a higher score
-- Concrete recommendations to push each dimension above 8.5/10
+- What’s already true in the product (evidence)
+- The specific gaps that prevent a higher score
+- Recommended steps to close each gap (and why each step increases the score)
+- “Acceptance checks” so we can tell it’s done
 
-## 0) Summary Score (Current)
-Overall V2PROM Score (today): 7.5/10
+## 1) Summary Score (Current) + The Fastest Path to 8.5/10+
 
-Target: 8.5/10+
+Current overall V2PROM Score: **7.5/10**  
+Target: **8.5/10+**
 
-Fastest path to 8.5+:
-1) Make the “money story” and settlement rules extremely simple and explicit everywhere.
-2) Improve operational reliability + trust signals (support/dispute + system transparency).
-3) Instrument the funnel and optimize activation → first funded vault → week-1 retention.
-4) Narrow the initial wedge (one segment, one job-to-be-done) and prove retention.
+The score is pulled down mostly by:
+- **R (Risks)**: operational trust gaps (payments reconciliation, disputes, abuse throttles)
+- **M (Metrics)**: insufficient funnel + ops instrumentation surfaced to admin
+- **P (Positioning)**: needs sharper wedge + consistent non-custodial language to prevent “betting” interpretations
 
-## 1) V — Value
+Fastest path to 8.5+ (highest leverage first):
+1) Make the “money story” + settlement rules extremely simple and repeated everywhere.
+2) Harden payments operations and edge cases (reconciliation cockpit + clear statuses).
+3) Add baseline trust/safety throttles + auditability.
+4) Instrument the funnel and optimize activation → first funded vault → week-1 retention.
+5) Narrow the wedge and ship a small, compelling “first win” flow.
 
-### Score: 8.5/10 (Potential), 8.0/10 (Current execution)
+## 2) V — Value
 
-### What Lockedin’s core value is
-Lockedin is an accountability system that increases the probability users follow through on goals by combining:
-- Stakes per goal (commitment pressure)
-- Social verification (witnesses)
-- Visible consequences and progress tracking
-- A structured lifecycle (“protocols” / vaults) instead of vague to-do lists
+### Current score: 8.0/10 (execution), 8.5/10 (potential)
 
-The product’s true value is not “money loss”.
-The value is: higher follow-through, identity-level habit change, and credible commitment.
+Value answers: “Why does this deserve to exist and why will users keep coming back?”
 
-### Evidence we already have in the build
-- Stake-per-vault funding and clear vault lifecycle states (e.g., `awaiting_funding` → active).
-- Penalty transparency: penalties accrue visibly (ledger/timeline) with settlement at end-of-vault.
-- Witness verification workflow for evidence logs.
+#### What Lockedin’s real value is (plain language)
+Lockedin increases follow-through on goals by combining:
+- Stakes per vault (credible commitment pressure)
+- Social verification (witnesses) for evidence-based accountability
+- A structured protocol lifecycle (check-ins, outcomes, settlement) rather than vague “tasks”
 
-### Gaps lowering Value score
-- Too much cognitive load early: users must understand several concepts before the first “win”.
-- The “what happens to my money” story is not yet presented as a simple, repeated guarantee.
-- The first 10 minutes experience doesn’t force a fast activation (create + fund + first check-in).
+The value is not “money loss”.
+The value is a credible system that changes behavior: *commitment, accountability, and follow-through*.
 
-### Recommendations to push Value to 9/10
-1) Create a single “First Win” flow:
-   - Login → Choose template → Fund vault → Schedule first check-in → Done.
-2) Add a “Vault Summary Card” shown everywhere:
-   - Stake, status, next check-in, what happens if missed, settlement rule.
-3) Introduce “micro-proofs”:
-   - Immediate feedback after first check-in submitted (status, what witness sees, next step).
-4) Reduce feature spread in early UX:
-   - Hide advanced features until a user funds their first vault.
+#### Evidence already in the product (what’s already true)
+- Stake-per-vault funding with clear lifecycle states (e.g., awaiting funding → active).
+- Penalties accrue transparently and settle at end-of-vault (non-custodial posture).
+- Witness flow exists (requests, acceptance, evidence review).
 
-## 2) P — Positioning
+#### Gaps preventing Value from reaching 9/10
+- **Activation friction:** too many concepts before the first “win”.
+- **First 10 minutes are not deterministic:** users can wander without completing create → fund → first check-in.
+- **“What happens to my money?” is not a repeated guarantee:** users must infer rules instead of seeing them everywhere.
 
-### Score: 7.5/10 (Current)
+#### Recommendations (step-by-step) + why each lifts the score
+1) Standardize a “First Win” path
+   - Step: Login → pick goal template → create vault → fund vault → schedule first check-in
+   - Why it lifts score: increases time-to-value, reduces cognitive load, increases activation rate (which is the strongest proof of value)
+   - Acceptance checks: a new user can reach “active + first check-in scheduled” in one guided flow without leaving the page
+2) Add a “Vault Summary Card” on all vault surfaces
+   - Must show: stake, next check-in, consequence if missed, settlement rule, what witnesses do
+   - Why it lifts score: value becomes explicit and repeatable; fewer support issues; more user confidence
+   - Acceptance checks: the same 5–7 lines are visible on create, fund, vault details, and “awaiting funding” states
+3) Add “micro-proofs” after actions
+   - Step: after first check-in submit, show “what happens next” + witness visibility
+   - Why it lifts score: users feel progress and trust; reduces drop-off after “I submitted proof, now what?”
+   - Acceptance checks: post-check-in confirmation has next-step CTA and explains witness review timing
+4) Reduce early UI surface area
+   - Step: hide advanced options until first vault is funded (or at least until first check-in submitted)
+   - Why it lifts score: improves clarity, accelerates onboarding, reduces failure modes
+   - Acceptance checks: fewer CTAs on dashboard for brand-new users; one dominant CTA “Start your first protocol”
 
-### Current positioning (implicit)
-- A behavioral commitment platform with stake-backed goals and witness verification.
-- Compliance-aware, non-custodial posture (stake-per-vault, no wallet top-up).
+## 3) P — Positioning
 
-### What is strong
-- Differentiation: most habit apps do not have credible commitment mechanisms.
-- The “protocol” framing can become a strong brand identity.
+### Current score: 7.5/10
 
-### Gaps lowering Positioning score
-- The product message can be interpreted as “betting” or “investment-like” unless carefully framed.
-- The target customer segment is not yet “one sentence clear”.
-- We need consistent language on every high-visibility surface:
-  - landing
-  - dashboard create flow
-  - vault details
-  - support/FAQ
+Positioning answers: “Who is this for, what category is it, and why is it different?”
 
-### Recommendations to push Positioning to 9/10
-1) Write and enforce a “Positioning One-Liner” everywhere:
+#### Current positioning (implicit)
+- A goal accountability system using financial stakes and witness verification.
+- Non-custodial posture: stake-per-vault, no stored wallet balance.
+
+#### What’s strong already
+- Differentiation: most habit apps are passive trackers without enforcement.
+- “Protocol” framing can be a strong identity if consistently expressed.
+
+#### Gaps preventing Positioning from reaching 9/10
+- **Category confusion risk:** can be misread as “betting”, “gambling”, or “investment-like” without careful language.
+- **Wedge not narrow enough:** target segment is not one-sentence clear.
+- **Copy consistency:** key surfaces don’t repeat a consistent promise and “non-custodial” explanation.
+
+#### Recommendations (step-by-step) + why each lifts the score
+1) Lock a single “Positioning One-Liner”
    - Example: “Lockedin helps you keep your goals by turning them into a protocol with real accountability.”
-2) Add a “Non-custodial clarity” block in-product:
-   - “Funds are staked per protocol; no stored wallet balance; settlement rules are shown upfront.”
-3) Narrow the first wedge:
-   - Pick one initial segment (e.g., Nigerian young professionals building consistency) and speak directly to it.
-4) Create a 60-second demo narrative:
-   - Create → Fund → Check-in → Witness review → Outcome.
+   - Why it lifts score: makes the product easy to explain, easier to sell, reduces category confusion
+   - Acceptance checks: the same one-liner appears on landing, dashboard empty state, and vault creation
+2) Add a non-custodial clarity block everywhere money is involved
+   - Must say: “Funds are staked per protocol. No stored wallet balance. Settlement rules shown upfront.”
+   - Why it lifts score: prevents misunderstanding and reduces risk perceptions
+   - Acceptance checks: the copy appears in create vault, fund vault, vault details
+3) Choose one initial wedge and speak directly to it
+   - Example wedges: creator-led challenges, fitness accountability cohorts, professional certification study streaks
+   - Why it lifts score: increases conversion and retention; makes growth loops easier
+   - Acceptance checks: onboarding templates and language match the wedge (not generic)
+4) Create a 60-second “product story”
+   - Create → Fund → Check-in → Witness review → Outcome → Settlement
+   - Why it lifts score: sales + virality increases; support load decreases
+   - Acceptance checks: we can capture this flow in 6 screenshots or a short screen recording
 
-## 3) R — Risks
+## 4) R — Risks
 
-### Score: 6.5/10 (Current)
+### Current score: 6.5/10
 
-### Main risk categories
-1) Payment reliability + reconciliation
-2) Disputes/chargebacks and user trust
-3) Fraud/abuse (fake evidence, collusion, witness gaming)
-4) Compliance perception (language + product posture)
-5) Operational readiness (support loops)
+Risks answers: “Will this break under scale — financially, operationally, or reputationally?”
 
-### Evidence we already have in the build
+#### Primary risk categories (what matters most)
+1) Payments reliability + reconciliation
+2) Disputes / chargebacks / refunds clarity
+3) Fraud and abuse (fake evidence, collusion, witness gaming, harassment)
+4) Compliance perception (language, UX, settlement clarity)
+5) Operational readiness (support workflows, audit logs, admin tooling)
+
+#### Evidence already in the product (what’s already true)
 - Strict Paystack test/live enforcement server-side.
-- Penalties accrue but settle at end (reduces “live custody” perception).
-- Witness lifecycle and periodic sweeps exist.
+- Penalties accrue transparently and settle at end-of-vault (non-custodial posture).
+- Admin audit logging exists for manual overrides (reason-required).
 
-### Gaps lowering Risks score
-- Missing admin “reconciliation cockpit” for payment failures and unmatched transactions.
-- Not enough rate limiting and abuse throttles in sensitive flows.
-- Dispute process not yet visible and standardized.
+#### Gaps preventing Risks from reaching 8.5/10
+- No complete “reconciliation cockpit” for unmatched Paystack transactions and recovery workflows.
+- No consistent dispute playbook exposed to users/admin.
+- Missing baseline throttles and fraud flags for high-risk actions.
 
-### Recommendations to push Risks to 8.5/10
-1) Build an Admin Payments Console:
-   - List unmatched Paystack references
-   - Re-verify/reconcile buttons (audited)
-   - Clear statuses and failure reasons
-2) Introduce a “Dispute Playbook”:
-   - In-app text: how to report a payment issue, expected response time, evidence required.
-3) Add anti-abuse throttles:
-   - Rate limit email verification requests and payment initialization retries.
-4) Add basic fraud flags:
-   - Repeated failed evidence attempts
-   - Suspiciously frequent vault creation/funding patterns
+#### Recommendations (step-by-step) + why each lifts the score
+1) Admin Payments Console (reconciliation cockpit)
+   - Step: list unmatched Paystack refs, show state/reason, allow audited re-verify/retry, mark resolved with reason
+   - Why it lifts score: operational reliability becomes visible, reduces catastrophic trust events
+   - Acceptance checks: admin can go from “user says paid” → “verified and activated or refunded” with clear UI steps
+2) Dispute playbook (v1)
+   - Step: define timeboxed process and show it in-product (what users do, what admin does, what evidence is needed)
+   - Why it lifts score: chargeback risk reduces; trust improves
+   - Acceptance checks: there is a consistent policy text that support/admin follows
+3) Throttles on sensitive flows
+   - Step: rate limit payment initialize retries, evidence submissions spam, witness requests spam, email verification resends
+   - Why it lifts score: reduces abuse and infra cost, improves fairness
+   - Acceptance checks: repeated abuse attempts are blocked and logged with reason
+4) Basic fraud flags and invariants
+   - Step: add flags for suspicious patterns (many vaults quickly, many failed proofs, repeated disputes, unusual witness patterns)
+   - Why it lifts score: creates early warning system without overbuilding ML
+   - Acceptance checks: admin can view “flagged users/events” and see why flagged
 
-## 4) O — Objectives
+## 5) O — Objectives
 
-### Score: 8/10 (Current)
+### Current score: 8.0/10
 
-### Current product objectives (implied)
-MVP objective: prove that “stake + witness verification” increases follow-through and retention.
+Objectives answer: “What are we trying to prove in the next 30–90 days, and is the product designed to prove it?”
 
-To make this measurable, objectives must be explicit:
-- Activation objective: users reach “funded vault” quickly.
-- Retention objective: users complete multiple check-ins in week 1.
-- Trust objective: payments reconcile smoothly; disputes are handled predictably.
+#### Current implied objective (good, but needs tighter operationalization)
+MVP objective: prove that “stake + verification” increases follow-through and retention.
 
-### Gaps lowering Objectives score
-- Funnel objectives aren’t yet enforced by UX (users can wander).
-- Admin objectives (support/reconciliation speed) aren’t operationalized with tools.
+#### Gaps preventing Objectives from reaching 9/10
+- Objectives aren’t explicitly enforced by UX (users can wander without reaching activation).
+- Admin objectives (payment resolution SLA, dispute handling) aren’t measured.
 
-### Recommendations to push Objectives to 9/10
-1) Define 3 MVP Objectives for the next 30 days:
-   - Activation: improve % of signups that fund a vault within 24 hours.
-   - Retention: improve week-1 “kept check-in schedule” rate.
-   - Trust: reduce “payment status confusion” to near zero.
-2) Make the dashboard UX objective-driven:
-   - Show a single next step CTA depending on state (create → fund → check-in → review).
+#### Recommendations (step-by-step) + why each lifts the score
+1) Define 3 explicit MVP objectives (and make them first-class)
+   - Activation: % of signups that fund a vault within 24 hours
+   - Retention: week-1 adherence rate (check-ins completed / scheduled)
+   - Trust: median time from payment to vault activation, and dispute resolution time
+   - Why it lifts score: makes iteration measurable and repeatable
+   - Acceptance checks: each objective has a metric, owner, and weekly review cadence
+2) Make dashboard state machine drive a single “next step”
+   - Create → Fund → Check-in → Witness review → Continue
+   - Why it lifts score: forces the product to prove its own objectives
+   - Acceptance checks: for each state, there is one dominant CTA and it’s hard to get lost
 
-## 5) M — Metrics
+## 6) M — Metrics
 
-### Score: 7/10 (Current)
+### Current score: 7.0/10
 
-### Metrics Lockedin should track (minimum viable analytics)
-Activation and conversion:
+Metrics answer: “Do we know what’s happening and can we improve it?”
+
+#### Minimum viable metrics (the ones that must exist before scale)
+Activation funnel:
 - Signup → Create vault conversion
 - Create vault → Fund vault conversion
-- Fund vault → First check-in submitted conversion
+- Fund vault → First check-in scheduled conversion
+- First check-in scheduled → First check-in submitted conversion
 
-Retention and behavior:
-- Week-1 retention (D1/D7)
-- Check-in adherence rate (completed / expected)
-- Witness review turnaround time
+Retention and outcomes:
+- D1 / D7 retention
+- Week-1 adherence rate (completed check-ins / scheduled check-ins)
+- Vault completion rate
+- Penalty event rate and penalty→churn correlation
 
-Payment reliability:
+Payments reliability:
 - Webhook failure rate
-- Reconciliation time (time from payment → vault active)
 - Unmatched payment count
-- Dispute rate / chargeback rate
+- Median time-to-activation after payment
+- Refund/dispute rate
 
-Support and trust:
+Trust and operations:
 - Support request rate per 1,000 users
 - Median time-to-resolution for payment issues
+- Witness review turnaround time
 
-### Gaps lowering Metrics score
-- Metrics aren’t explicitly instrumented and displayed to admin.
-- “One dashboard” for the business isn’t defined yet (even a basic one).
+#### Gaps preventing Metrics from reaching 8.5/10
+- Metrics are not consistently logged as events (funnel steps missing).
+- Admin doesn’t have a basic business health panel.
 
-### Recommendations to push Metrics to 8.5/10
-1) Add a simple “Business Health” admin dashboard:
-   - activation, funding conversion, retention proxy, unmatched payments
-2) Add event logging for core funnel steps:
-   - created_vault, started_funding, funding_verified, first_checkin, vault_completed
-3) Add operational metrics:
-   - witness review times, disputes, failed webhooks
+#### Recommendations (step-by-step) + why each lifts the score
+1) Add event logging for core funnel steps
+   - created_vault, started_funding, funding_verified, scheduled_first_checkin, submitted_first_checkin, vault_completed
+   - Why it lifts score: turns product iteration into an engineering system; removes guesswork
+   - Acceptance checks: events exist in a table and can be aggregated
+2) Build a basic admin “Business Health” view
+   - Must show: activation, funding conversion, unmatched payments, adherence proxy
+   - Why it lifts score: operational and growth tuning become possible
+   - Acceptance checks: admin can see last 7 days stats without manual queries
+3) Track operational SLAs
+   - Payment reconciliation time, dispute resolution time, witness review time
+   - Why it lifts score: makes trust measurable and improvable
+   - Acceptance checks: each SLA has a chart + current median
 
-## 6) Packaging Recommendations (to reinforce V2PROM)
+## 7) Packaging (How Pricing Reinforces V2PROM)
+
 Packaging should increase:
 - Value (better outcomes)
 - Trust (support, tools)
-- Positioning (premium “protocol operations”)
+- Positioning (premium protocol operations)
 
-Recommended tiers are documented in:
+Detailed tiering recommendations live in:
 - PRICING_AND_PACKAGING.md
 
-To improve V2PROM via packaging:
-- Operator tier should reduce friction and increase consistency (templates + reminders + analytics).
-- Elite tier should buy trust (priority support + reconciliation/dispute priority + higher limits).
+How packaging specifically increases the V2PROM score:
+- Value: templates, coaching/community bundles, better reminders/check-in workflows
+- Positioning: “protocols” as premium lifecycle products (not generic habit tracking)
+- Risks: higher tiers can fund better support and dispute handling
+- Metrics: tiers create clear segmentation for cohort analysis
 
-## 7) Action Plan to Reach 8.5/10+
-Step 1: Make the “money story” explicit and repeated
-- Add short, consistent copy blocks in key flows (create/fund/vault details).
+## 8) Action Plan to Reach 8.5/10+ (Concrete Workstream Checklist)
 
-Step 2: Build operational tooling for payments + support
-- Admin payments console + audited reconciliation.
+Workstream A — Clarity (Value + Positioning)
+- Create consistent “money story” copy blocks in every money surface.
+- Add vault summary card with stake, next check-in, consequence, settlement rule.
 
-Step 3: Improve mobile UX for core flows
-- Fix the primary funnel experience on small screens.
+Workstream B — Reliability (Risks)
+- Finish unmatched payments tooling end-to-end (admin UI + recovery actions).
+- Publish dispute playbook v1 and make it discoverable in-product.
+- Add throttles and basic fraud flags.
 
-Step 4: Add growth system
-- Activation checklist + referral incentives (credits-only).
+Workstream C — Growth + Proof (Objectives + Metrics)
+- Instrument funnel events and build basic admin health panel.
+- Ship activation checklist and a lightweight referral loop (credits-only).
 
-Step 5: Instrument metrics
-- At minimum, track funnel steps and show a basic admin health panel.
+Workstream D — Wedge
+- Pick one segment and align templates, copy, and onboarding to it.
 
