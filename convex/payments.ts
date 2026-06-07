@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 import { api, internal } from "./_generated/api";
+import { captureToSentry } from "./sentry";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_MODE = process.env.PAYSTACK_MODE;
@@ -1209,49 +1210,58 @@ export const retryUnmatchedPaystackPayments = internalAction({
     stillUnmatched: number;
     mismatched: number;
   }> => {
-    const limit = args.limit ?? 25;
-    const rows = (await ctx.runQuery(internal.payments.listUnresolvedPaystackUnmatched, { limit })) as Array<{
+    try {
+      const limit = args.limit ?? 25;
+      const rows = (await ctx.runQuery(internal.payments.listUnresolvedPaystackUnmatched, { limit })) as Array<{
       _id: any;
       reference: string;
       amount: number;
       customerEmail?: string;
       metadata?: any;
-    }>;
+      }>;
 
-    let credited = 0;
-    let alreadyCredited = 0;
-    let stillUnmatched = 0;
-    let mismatched = 0;
+      let credited = 0;
+      let alreadyCredited = 0;
+      let stillUnmatched = 0;
+      let mismatched = 0;
 
-    for (const row of rows) {
-      const result = (await ctx.runMutation(internal.payments.reconcilePaystackPayment, {
-        reference: row.reference,
-        amountKobo: row.amount,
-        customerEmail: row.customerEmail,
-        source: "cron",
-        metadata: row.metadata,
-      })) as { status: "credited" | "already_credited" | "unmatched" | "mismatch" };
+      for (const row of rows) {
+        const result = (await ctx.runMutation(internal.payments.reconcilePaystackPayment, {
+          reference: row.reference,
+          amountKobo: row.amount,
+          customerEmail: row.customerEmail,
+          source: "cron",
+          metadata: row.metadata,
+        })) as { status: "credited" | "already_credited" | "unmatched" | "mismatch" };
 
-      if (result.status === "credited") {
-        credited += 1;
-        await ctx.runMutation(internal.payments.markPaystackUnmatchedResolved, { unmatchedId: row._id });
-      } else if (result.status === "already_credited") {
-        alreadyCredited += 1;
-        await ctx.runMutation(internal.payments.markPaystackUnmatchedResolved, { unmatchedId: row._id });
-      } else if (result.status === "mismatch") {
-        mismatched += 1;
-      } else {
-        stillUnmatched += 1;
+        if (result.status === "credited") {
+          credited += 1;
+          await ctx.runMutation(internal.payments.markPaystackUnmatchedResolved, { unmatchedId: row._id });
+        } else if (result.status === "already_credited") {
+          alreadyCredited += 1;
+          await ctx.runMutation(internal.payments.markPaystackUnmatchedResolved, { unmatchedId: row._id });
+        } else if (result.status === "mismatch") {
+          mismatched += 1;
+        } else {
+          stillUnmatched += 1;
+        }
       }
-    }
 
-    return {
-      processed: rows.length,
-      credited,
-      alreadyCredited,
-      stillUnmatched,
-      mismatched,
-    };
+      return {
+        processed: rows.length,
+        credited,
+        alreadyCredited,
+        stillUnmatched,
+        mismatched,
+      };
+    } catch (err) {
+      await captureToSentry({
+        message: "cron retryUnmatchedPaystackPayments failed",
+        tags: { area: "cron", job: "retryUnmatchedPaystackPayments" },
+        extra: { error: String(err) },
+      });
+      throw err;
+    }
   },
 });
 

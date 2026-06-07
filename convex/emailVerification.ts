@@ -1,11 +1,19 @@
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery } from "./_generated/server";
+import { action, internalMutation, internalQuery, query } from "./_generated/server";
 import { auth } from "./auth";
 import { internal } from "./_generated/api";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.AUTH_RESEND_KEY;
 const EMAIL_FROM = process.env.AUTH_EMAIL_FROM || process.env.EMAIL_FROM || "Lockedin <onboarding@resend.dev>";
 const SITE_URL = process.env.SITE_URL || process.env.VITE_SITE_URL || "https://lock3din.vercel.app";
+
+export const isEmailBackendConfigured = query({
+  args: {},
+  returns: v.boolean(),
+  handler: () => {
+    return !!RESEND_API_KEY;
+  },
+});
 
 function base64Url(bytes: Uint8Array) {
   let str = "";

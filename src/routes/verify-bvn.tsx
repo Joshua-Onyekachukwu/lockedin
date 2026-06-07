@@ -63,7 +63,7 @@ function VerifyBvnPage() {
           </div>
           <h1 className="text-3xl font-black tracking-tight uppercase italic text-center leading-none">Identity Anchor</h1>
           <p className="text-white/30 mt-4 text-center text-sm font-medium italic max-w-[280px]">
-            To participate in capital-backed goals, your identity must be verified via BVN-based identity verification.
+            Optional identity verification via BVN. You may be required to verify later for higher-stake features.
           </p>
         </div>
 
@@ -124,7 +124,7 @@ function VerifyBvnPage() {
         </form>
 
         <p className="mt-12 text-center text-[10px] text-white/5 leading-relaxed uppercase tracking-[0.4em] font-black italic">
-          Lockedin Operating Protocol v1.1 <br /> Federal Identity Compliant
+          Lockedin Operating Protocol v1.1 <br /> Identity Verification
         </p>
       </motion.div>
     </div>

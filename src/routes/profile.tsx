@@ -229,15 +229,17 @@ function ProfileSettings() {
                 {user?.emailVerificationTime ? `Verified: ${new Date(user.emailVerificationTime).toLocaleDateString()}` : 'Not verified'}
               </p>
             </div>
-            <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">BVN</p>
-              <p className="mt-4 text-sm text-white font-black italic uppercase tracking-tight">
-                {user?.bvn_last4 ? `•••• ${user.bvn_last4}` : 'Not linked'}
-              </p>
-              <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                {user?.bvn_verified ? 'Verified' : 'Pending verification'}
-              </p>
-            </div>
+            {user?.bvn_verified || user?.bvn_last4 ? (
+              <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">BVN</p>
+                <p className="mt-4 text-sm text-white font-black italic uppercase tracking-tight">
+                  {user?.bvn_last4 ? `•••• ${user.bvn_last4}` : 'Linked'}
+                </p>
+                <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
+                  {user?.bvn_verified ? 'Verified' : 'Pending verification'}
+                </p>
+              </div>
+            ) : null}
             <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Tier</p>
               <p className="mt-4 text-sm text-white font-black italic uppercase tracking-tight">{user?.tier || 'bronze'}</p>

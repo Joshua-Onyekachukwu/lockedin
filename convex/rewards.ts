@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { captureToSentry } from "./sentry";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const KOBO_PER_CREDIT = 100;
@@ -11,15 +12,16 @@ export const distributeWeeklyRewards = internalMutation({
     args: {},
     returns: v.null(),
     handler: async (ctx) => {
-        const nowTs = Date.now();
-        const weekNumber = Math.floor(nowTs / WEEK_MS);
+        try {
+          const nowTs = Date.now();
+          const weekNumber = Math.floor(nowTs / WEEK_MS);
 
         const existingDistribution = await ctx.db
           .query("weekly_reward_distributions")
           .withIndex("by_week", (q) => q.eq("week_number", weekNumber))
           .order("desc")
           .first();
-        if (existingDistribution) return null;
+          if (existingDistribution) return null;
         
         const penaltyEntries = await ctx.db
           .query("reward_pool")
@@ -41,10 +43,10 @@ export const distributeWeeklyRewards = internalMutation({
           0,
         );
         const netPoolKobo = totalPenaltyKobo + totalDistributedKobo;
-        if (netPoolKobo <= 0) return null;
+          if (netPoolKobo <= 0) return null;
 
         const poolCredits = Math.floor(netPoolKobo / KOBO_PER_CREDIT);
-        if (poolCredits <= 0) return null;
+          if (poolCredits <= 0) return null;
 
         const eligibleUsers = await ctx.db
           .query("users")
@@ -54,9 +56,9 @@ export const distributeWeeklyRewards = internalMutation({
         const candidateUsers = eligibleUsers.filter(
           (u) => u.streak_count > 0 && !!u.emailVerificationTime,
         );
-        if (candidateUsers.length === 0) return null;
+          if (candidateUsers.length === 0) return null;
 
-        const candidateSet = new Set(candidateUsers.map((u) => u._id));
+          const candidateSet = new Set(candidateUsers.map((u) => u._id));
         const activeVaults = await ctx.db
           .query("vaults")
           .withIndex("by_status", (q) => q.eq("status", "active"))
@@ -148,6 +150,14 @@ export const distributeWeeklyRewards = internalMutation({
           });
         }
 
-        return null;
+          return null;
+        } catch (err) {
+          await captureToSentry({
+            message: "cron distributeWeeklyRewards failed",
+            tags: { area: "cron", job: "distributeWeeklyRewards" },
+            extra: { error: String(err) },
+          });
+          throw err;
+        }
     }
 });

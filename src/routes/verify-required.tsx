@@ -2,7 +2,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useAction, useConvexAuth } from 'convex/react';
 import { convexQuery } from '@convex-dev/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useAuthActions } from '@convex-dev/auth/react';
 import { ArrowLeft, CheckCircle2, Loader2, Mail, RefreshCw } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -32,11 +32,24 @@ function VerifyRequiredPage() {
     refetchOnMount: 'always',
   });
 
+  const emailBackendQuery = useMemo(
+    () => convexQuery(api.emailVerification.isEmailBackendConfigured, EMPTY_ARGS as any) as any,
+    [],
+  );
+  const {
+    data: emailBackendConfigured,
+    isLoading: emailBackendLoading,
+    isError: emailBackendError,
+  }: { data: any; isLoading: boolean; isError: boolean } = useQuery({
+    ...emailBackendQuery,
+    enabled: isAuthenticated,
+    staleTime: 1000 * 60,
+  });
+
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
-  const emailBackendOffline =
-    status === 'error' && (message ?? '').toLowerCase().includes('not configured');
+  const emailBackendOffline = emailBackendConfigured === false && !emailBackendLoading && !emailBackendError;
   const pendingToken = useMemo(() => {
     try {
       return localStorage.getItem('pendingEmailVerificationToken');
@@ -173,14 +186,16 @@ function VerifyRequiredPage() {
           ) : null}
 
           <div className="flex flex-col gap-3">
-            <button
-              onClick={send}
-              disabled={status === 'sending' || checking}
-              className="w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white text-black py-5 font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/5 disabled:opacity-60"
-            >
-              {status === 'sending' ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
-              Send Verification Email
-            </button>
+            {!emailBackendOffline ? (
+              <button
+                onClick={send}
+                disabled={status === 'sending' || checking}
+                className="w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white text-black py-5 font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/5 disabled:opacity-60"
+              >
+                {status === 'sending' ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
+                Send Verification Email
+              </button>
+            ) : null}
             {pendingToken ? (
               <button
                 onClick={() => navigate({ to: `/verify-email?token=${encodeURIComponent(pendingToken)}` as any })}

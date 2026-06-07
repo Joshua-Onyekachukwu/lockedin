@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { auth } from "./auth";
+import { captureToSentry } from "./sentry";
 
 function hexToBytes(hex: string) {
   if (hex.length % 2 !== 0) return null;
@@ -210,6 +211,11 @@ http.route({
 
         return new Response("OK", { status: 200 });
     } catch (err) {
+        await captureToSentry({
+          message: "paystack-webhook handler error",
+          tags: { area: "paystack", source: "webhook" },
+          extra: { error: String(err) },
+        });
         return new Response("Internal Server Error", { status: 500 });
     }
   }),

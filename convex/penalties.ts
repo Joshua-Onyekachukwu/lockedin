@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
+import { captureToSentry } from "./sentry";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -22,60 +23,60 @@ export const midnightSweep = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    const nowTs = Date.now();
-    const now = new Date(nowTs);
-    const todayStr = toYmd(now);
-    const todayDayName = now
-      .toLocaleDateString("en-US", { weekday: "long" })
-      .toLowerCase();
-    const isSunday = todayDayName === "sunday";
-    
-    // Find all active vaults
-    const activeVaults = await ctx.db
-      .query("vaults")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .collect();
+    try {
+      const nowTs = Date.now();
+      const now = new Date(nowTs);
+      const todayStr = toYmd(now);
+      const todayDayName = now
+        .toLocaleDateString("en-US", { weekday: "long" })
+        .toLowerCase();
+      const isSunday = todayDayName === "sunday";
 
-    for (const vault of activeVaults) {
-      const goals = await ctx.db
-        .query("goals")
-        .withIndex("by_vault", (q) => q.eq("vaultId", vault._id))
+      const activeVaults = await ctx.db
+        .query("vaults")
+        .withIndex("by_status", (q) => q.eq("status", "active"))
         .collect();
 
-      for (const goal of goals) {
-        const frequency = goal.frequency_type ?? "daily";
-        let shouldEvaluate = false;
-        if (frequency === "daily") shouldEvaluate = true;
-        if (frequency === "weekly" && isSunday) shouldEvaluate = true;
-        if (frequency === "monthly" && now.getDate() === 1) shouldEvaluate = true;
-        if (!shouldEvaluate) continue;
+      for (const vault of activeVaults) {
+        const goals = await ctx.db
+          .query("goals")
+          .withIndex("by_vault", (q) => q.eq("vaultId", vault._id))
+          .collect();
 
-        let periodStartTs = 0;
-        let periodEndTs = 0;
-        let periodStartStr = "";
-        let periodEndStr = "";
-        let dueAt = 0;
-        let targetCount = 1;
-        let completedCount = 0;
-        let missedDateStr = todayStr;
+        for (const goal of goals) {
+          const frequency = goal.frequency_type ?? "daily";
+          let shouldEvaluate = false;
+          if (frequency === "daily") shouldEvaluate = true;
+          if (frequency === "weekly" && isSunday) shouldEvaluate = true;
+          if (frequency === "monthly" && now.getDate() === 1) shouldEvaluate = true;
+          if (!shouldEvaluate) continue;
 
-        if (frequency === "daily") {
-          periodStartTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-          periodEndTs = endOfDayTs(now);
-          periodStartStr = todayStr;
-          periodEndStr = todayStr;
-          dueAt = periodEndTs;
-          targetCount = 1;
+          let periodStartTs = 0;
+          let periodEndTs = 0;
+          let periodStartStr = "";
+          let periodEndStr = "";
+          let dueAt = 0;
+          let targetCount = 1;
+          let completedCount = 0;
+          let missedDateStr = todayStr;
 
-          const logs = await ctx.db
-            .query("goal_logs")
-            .withIndex("by_goal_and_date", (q) =>
-              q.eq("goalId", goal._id).eq("date", todayStr),
-            )
-            .collect();
-          completedCount = logs.filter((l: any) => l.status !== "missed").length;
-          missedDateStr = todayStr;
-        } else if (frequency === "weekly") {
+          if (frequency === "daily") {
+            periodStartTs = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            periodEndTs = endOfDayTs(now);
+            periodStartStr = todayStr;
+            periodEndStr = todayStr;
+            dueAt = periodEndTs;
+            targetCount = 1;
+
+            const logs = await ctx.db
+              .query("goal_logs")
+              .withIndex("by_goal_and_date", (q) =>
+                q.eq("goalId", goal._id).eq("date", todayStr),
+              )
+              .collect();
+            completedCount = logs.filter((l: any) => l.status !== "missed").length;
+            missedDateStr = todayStr;
+          } else if (frequency === "weekly") {
           const periodEnd = now;
           const periodStart = new Date(periodEnd);
           periodStart.setDate(periodEnd.getDate() - 7);
@@ -214,6 +215,14 @@ export const midnightSweep = internalMutation({
       }
     }
     return null;
+    } catch (err) {
+      await captureToSentry({
+        message: "cron midnightSweep failed",
+        tags: { area: "cron", job: "midnightSweep" },
+        extra: { error: String(err) },
+      });
+      throw err;
+    }
   },
 });
 
