@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { auth } from "./auth";
+import { internal } from "./_generated/api";
 
 async function countActiveWitnesses(ctx: any, vaultId: any) {
   const active = await ctx.db
@@ -72,6 +73,15 @@ export const request = mutation({
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
+    const rate = await ctx.runMutation((internal as any).rateLimit.consume, {
+      key: `user:${userId}:partners_request`,
+      limit: 10,
+      windowMs: 60 * 60_000,
+    });
+    if (!rate.allowed) {
+      throw new Error("Too many witness requests. Please wait and try again.");
+    }
+
     const goal = await ctx.db
         .query("goals")
         .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
@@ -136,6 +146,15 @@ export const applyToWitness = mutation({
     const user = await ctx.db.get("users", userId);
     if (!user) throw new Error("Identity verification failed");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
+
+    const rate = await ctx.runMutation((internal as any).rateLimit.consume, {
+      key: `user:${userId}:partners_apply`,
+      limit: 10,
+      windowMs: 60 * 60_000,
+    });
+    if (!rate.allowed) {
+      throw new Error("Too many witness applications. Please wait and try again.");
+    }
 
     const vault = await ctx.db.get("vaults", args.vaultId);
     if (!vault) throw new Error("Vault not found");

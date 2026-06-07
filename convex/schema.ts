@@ -306,6 +306,15 @@ export default defineSchema({
     metadata: v.optional(v.any()),
   }).index("by_admin", ["adminUserId"]),
 
+  rate_limit_buckets: defineTable({
+    key: v.string(),
+    windowStart: v.number(),
+    count: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_key_and_window_start", ["key", "windowStart"])
+    .index("by_updated_at", ["updatedAt"]),
+
   seed_runs: defineTable({
     domain: v.string(),
     startedAt: v.number(),
