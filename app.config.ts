@@ -16,6 +16,20 @@ export default defineConfig({
       port: 3000,
       allowedHosts: true,
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: (id: string) => {
+            if (!id.includes('node_modules')) return
+            if (id.includes('@tanstack')) return 'tanstack'
+            if (id.includes('convex') || id.includes('@convex-dev')) return 'convex'
+            if (id.includes('framer-motion')) return 'motion'
+            if (id.includes('lucide-react')) return 'icons'
+            return 'vendor'
+          },
+        },
+      },
+    },
     plugins: [
       tailwindcss(),
       tsConfigPaths({
