@@ -112,7 +112,7 @@ function AdminDashboard() {
     isLoading: userLoading,
   }: { data: any; isFetching: boolean; isLoading: boolean } = useQuery({
     ...(userQuery),
-    enabled: !authLoading,
+    enabled: isAuthenticated,
     staleTime: 0,
     refetchOnMount: 'always',
     placeholderData: null,
@@ -125,7 +125,9 @@ function AdminDashboard() {
     isLoading: adminStatusLoading,
   }: { data: any; isLoading: boolean } = useQuery({
     ...adminStatusQuery,
-    enabled: !authLoading,
+    enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
     placeholderData: null,
   });
 

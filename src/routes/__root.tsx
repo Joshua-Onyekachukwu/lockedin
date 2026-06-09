@@ -64,10 +64,11 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     [],
   )
 
-  const { data: user }: { data: any } = useQuery({
+  const { data: user, isLoading: userLoading }: { data: any; isLoading: boolean } = useQuery({
     ...(userQuery),
     enabled: isAuthenticated,
-    staleTime: 1000 * 20,
+    staleTime: 0,
+    refetchOnMount: 'always',
   })
 
   React.useEffect(() => {
@@ -95,11 +96,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return
     }
 
+    if (userLoading) return
+    if (!user) {
+      if (!allowUnauthed.has(pathname)) navigate({ to: '/login' })
+      return
+    }
+
     const isVerified = !!user?.emailVerificationTime
     if (!isVerified) {
       if (!allowUnverified.has(pathname)) navigate({ to: '/verify-required' })
     }
-  }, [authLoading, isAuthenticated, navigate, pathname, user])
+  }, [authLoading, isAuthenticated, navigate, pathname, user, userLoading])
 
   return <>{children}</>
 }
