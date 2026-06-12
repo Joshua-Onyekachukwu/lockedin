@@ -2008,6 +2008,10 @@ export const updateUserVerifications = mutation({
     if (args.isAdmin !== undefined) patch.isAdmin = args.isAdmin;
     if (args.is_discoverable !== undefined) patch.is_discoverable = args.is_discoverable;
     if (args.witness_discoverable !== undefined) patch.witness_discoverable = args.witness_discoverable;
+    if (args.isAdmin === true) {
+      if (args.is_discoverable === undefined) patch.is_discoverable = false;
+      if (args.witness_discoverable === undefined) patch.witness_discoverable = false;
+    }
 
     await ctx.db.patch("users", user._id, patch);
 

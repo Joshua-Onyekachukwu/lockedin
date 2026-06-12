@@ -425,12 +425,12 @@ function AdminDashboard() {
             <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-500 font-black uppercase tracking-widest text-[10px] italic">
                 <ShieldCheck size={14} /> Root Access Active
             </div>
-            <a
-              href="/admin/settings"
+            <Link
+              to="/admin/settings"
               className="p-3 rounded-xl bg-white/5 text-white/20 hover:text-white transition-all active:scale-95"
             >
               <Settings size={20} />
-            </a>
+            </Link>
         </div>
       </nav>
 

@@ -100,6 +100,7 @@ function DashboardContent({ user }: { user: any }) {
   const [activationDismissed, setActivationDismissed] = useState(false);
   const [activeTab, setActiveTab] = useState<'protocols' | 'witnessing'>('protocols');
   const [activeEvidenceLog, setActiveEvidenceLog] = useState<any>(null);
+  const [verificationComment, setVerificationComment] = useState('');
 
   useEffect(() => {
     try {
@@ -184,9 +185,9 @@ function DashboardContent({ user }: { user: any }) {
   const acceptApplication = useMutation((api as any).partners.acceptApplication);
   const applyToWitness = useMutation((api as any).partners.applyToWitness);
 
-  const handleVerify = async (logId: any, status: 'approved' | 'rejected') => {
+  const handleVerify = async (logId: any, status: 'approved' | 'rejected', comment?: string) => {
       try {
-          await verifyLog({ logId, status });
+          await verifyLog({ logId, status, comment });
           toast.success('Evidence processed.', { title: status === 'approved' ? 'Authorized' : 'Rejected' });
           await queryClient.invalidateQueries();
       } catch (err: any) {
@@ -378,7 +379,10 @@ function DashboardContent({ user }: { user: any }) {
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
-                                    onClick={() => setActiveEvidenceLog(null)}
+                                    onClick={() => {
+                                        setVerificationComment('')
+                                        setActiveEvidenceLog(null)
+                                    }}
                                     className="fixed inset-0 z-[90] bg-[#050810]/70 backdrop-blur-xl"
                                 />
                                 <motion.div
@@ -403,7 +407,10 @@ function DashboardContent({ user }: { user: any }) {
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => setActiveEvidenceLog(null)}
+                                                onClick={() => {
+                                                    setVerificationComment('')
+                                                    setActiveEvidenceLog(null)
+                                                }}
                                                 className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white/5 border border-white/10 text-white/30 hover:text-white transition-colors active:scale-90"
                                             >
                                                 <X size={18} />
@@ -430,24 +437,40 @@ function DashboardContent({ user }: { user: any }) {
                                                 </p>
                                             </div>
 
+                                            <div className="p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/10">
+                                                <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.35em] italic">
+                                                    Witness Report
+                                                </p>
+                                                <textarea
+                                                    value={verificationComment}
+                                                    onChange={(e) => setVerificationComment(e.target.value)}
+                                                    placeholder="Write why you are approving or rejecting this evidence."
+                                                    className="mt-4 h-32 w-full resize-none rounded-2xl border border-white/10 bg-[#050810]/80 px-5 py-4 text-xs text-white outline-none transition-all focus:border-blue-500"
+                                                />
+                                            </div>
+
                                             <div className="grid grid-cols-2 gap-4">
                                                 <button
                                                     type="button"
                                                     onClick={async () => {
-                                                        await handleVerify(activeEvidenceLog._id, 'rejected')
+                                                        await handleVerify(activeEvidenceLog._id, 'rejected', verificationComment)
+                                                        setVerificationComment('')
                                                         setActiveEvidenceLog(null)
                                                     }}
                                                     className="py-5 rounded-2xl border border-red-500/20 text-red-500/50 hover:text-red-500 hover:bg-red-500/5 transition-all font-black uppercase tracking-widest text-[10px] italic shadow-xl active:scale-95"
+                                                    disabled={!verificationComment.trim()}
                                                 >
                                                     Reject
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={async () => {
-                                                        await handleVerify(activeEvidenceLog._id, 'approved')
+                                                        await handleVerify(activeEvidenceLog._id, 'approved', verificationComment)
+                                                        setVerificationComment('')
                                                         setActiveEvidenceLog(null)
                                                     }}
                                                     className="py-5 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 transition-all font-black uppercase tracking-widest text-[10px] italic shadow-xl shadow-blue-900/40 active:scale-95"
+                                                    disabled={!verificationComment.trim()}
                                                 >
                                                     Approve
                                                 </button>
@@ -585,7 +608,10 @@ function DashboardContent({ user }: { user: any }) {
                                 {(pendingVerifications as Array<any>).map((log: any) => (
                                     <div
                                         key={log._id}
-                                        onClick={() => setActiveEvidenceLog(log)}
+                                        onClick={() => {
+                                            setVerificationComment('')
+                                            setActiveEvidenceLog(log)
+                                        }}
                                         role="button"
                                         tabIndex={0}
                                         className="p-10 rounded-[3.5rem] border border-white/10 bg-[#0a0f1a]/80 backdrop-blur-3xl overflow-hidden group hover:border-blue-500/20 transition-all text-left shadow-[0_20px_60px_rgba(0,0,0,0.4)] cursor-pointer active:scale-[0.99]"
@@ -615,7 +641,8 @@ function DashboardContent({ user }: { user: any }) {
                                                 type="button"
                                                 onClick={(e) => {
                                                     e.stopPropagation()
-                                                    handleVerify(log._id, 'rejected')
+                                                    setVerificationComment('')
+                                                    setActiveEvidenceLog(log)
                                                 }}
                                                 className="py-5 rounded-2xl border border-red-500/20 text-red-500/40 hover:text-red-500 hover:bg-red-500/5 transition-all font-black uppercase tracking-widest text-[10px] italic shadow-xl"
                                             >
@@ -625,7 +652,8 @@ function DashboardContent({ user }: { user: any }) {
                                                 type="button"
                                                 onClick={(e) => {
                                                     e.stopPropagation()
-                                                    handleVerify(log._id, 'approved')
+                                                    setVerificationComment('')
+                                                    setActiveEvidenceLog(log)
                                                 }}
                                                 className="py-5 rounded-2xl bg-blue-600 text-white hover:bg-blue-700 transition-all font-black uppercase tracking-widest text-[10px] italic shadow-xl shadow-blue-900/40"
                                             >

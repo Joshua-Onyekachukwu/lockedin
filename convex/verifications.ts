@@ -8,6 +8,24 @@ const tierForIntegrity = (score: number) => {
   return "bronze" as const;
 };
 
+const appendVerificationReport = (
+  log: any,
+  reviewerId: any,
+  verdict: "approved" | "rejected",
+  comment: string,
+  actorRole: "witness" | "owner",
+) => {
+  const reports = Array.isArray(log.verificationReports) ? [...log.verificationReports] : [];
+  reports.push({
+    reviewerId,
+    verdict,
+    comment,
+    createdAt: Date.now(),
+    actorRole,
+  });
+  return reports;
+};
+
 export const verifyLog = mutation({
   args: {
     logId: v.id("goal_logs"),
@@ -18,6 +36,8 @@ export const verifyLog = mutation({
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
+    const comment = args.comment?.trim();
+    if (!comment) throw new Error("A witness report is required.");
 
     const log = await ctx.db.get("goal_logs", args.logId);
     if (!log) throw new Error("Evidence not found");
@@ -49,6 +69,7 @@ export const verifyLog = mutation({
         const nextApprovals = approvals.includes(userId) ? approvals : [...approvals, userId];
         await ctx.db.patch("goal_logs", args.logId, {
           approvals: nextApprovals,
+          verificationReports: appendVerificationReport(log, userId, "approved", comment, "witness"),
           status: "completed",
           confirmed_by: userId,
           confirmed_at: now,
@@ -73,6 +94,7 @@ export const verifyLog = mutation({
     if (nextRejections.length >= 2) {
       await ctx.db.patch("goal_logs", args.logId, {
         rejections: nextRejections,
+        verificationReports: appendVerificationReport(log, userId, "rejected", comment, "witness"),
         status: "disputed",
         confirmed_by: userId,
         confirmed_at: now,
@@ -82,6 +104,7 @@ export const verifyLog = mutation({
 
     await ctx.db.patch("goal_logs", args.logId, {
       rejections: nextRejections,
+      verificationReports: appendVerificationReport(log, userId, "rejected", comment, "witness"),
     });
 
     return null;
@@ -97,6 +120,7 @@ export const ownerRejectLog = mutation({
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
+    const comment = args.comment?.trim();
 
     const log = await ctx.db.get("goal_logs", args.logId);
     if (!log) throw new Error("Evidence not found");
@@ -112,6 +136,9 @@ export const ownerRejectLog = mutation({
     const now = Date.now();
     await ctx.db.patch("goal_logs", args.logId, {
       rejections: nextRejections,
+      verificationReports: comment
+        ? appendVerificationReport(log, userId, "rejected", comment, "owner")
+        : log.verificationReports,
       status: "disputed",
       confirmed_by: userId,
       confirmed_at: now,

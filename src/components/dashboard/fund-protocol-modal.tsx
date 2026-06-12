@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CreditCard, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +34,7 @@ export default function FundProtocolModal({
   const [amountKobo, setAmountKobo] = useState<number>(0);
   const [shouldOpenPaystack, setShouldOpenPaystack] = useState(false);
   const [pollRef, setPollRef] = useState<string | null>(null);
+  const awaitingConfirmationRef = useRef(false);
 
   const config = {
     reference: depositReference ?? '',
@@ -51,6 +52,7 @@ export default function FundProtocolModal({
   }, [depositReference, initializePayment, shouldOpenPaystack]);
 
   const onPaystackSuccess = async (reference: any) => {
+    awaitingConfirmationRef.current = true;
     setLoading(true);
     try {
       const result = await verifyPayment({ reference: reference.reference });
@@ -62,6 +64,7 @@ export default function FundProtocolModal({
           queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey,
         });
         toast.success(result.message, { title: 'Protocol Activated' });
+        awaitingConfirmationRef.current = false;
         setLoading(false);
         onSuccess?.();
         onClose();
@@ -76,9 +79,11 @@ export default function FundProtocolModal({
   };
 
   const onClosePaystack = () => {
-    setLoading(false);
     setDepositReference(null);
-    setPollRef(null);
+    if (!awaitingConfirmationRef.current) {
+      setLoading(false);
+      setPollRef(null);
+    }
   };
 
   const handleStartPayment = async () => {
@@ -123,6 +128,7 @@ export default function FundProtocolModal({
         queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey,
       });
       toast.success('Funding confirmed.', { title: 'Protocol Activated' });
+      awaitingConfirmationRef.current = false;
       setLoading(false);
       setPollRef(null);
       onSuccess?.();

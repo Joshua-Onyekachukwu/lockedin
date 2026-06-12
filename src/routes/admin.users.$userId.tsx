@@ -137,7 +137,7 @@ function AdminUserDetailPage() {
             </Link>
             <div className="min-w-0">
               <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                User Detail
+                Identity Record
               </p>
               <h1 className="mt-2 text-2xl sm:text-3xl text-white font-black uppercase italic tracking-tight truncate">
                 {userDetail.name || 'Anonymous'}

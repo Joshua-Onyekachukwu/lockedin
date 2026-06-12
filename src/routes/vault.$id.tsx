@@ -650,7 +650,7 @@ function VaultPage() {
                                       iconWrap: 'bg-red-600/10 text-red-500 border-red-500/20',
                                     }
                                   : {
-                                      label: 'Disputed',
+                                      label: 'Rejected',
                                       wrap: 'bg-yellow-600/10 border-yellow-500/20 text-yellow-500',
                                       icon: <ShieldCheck size={14} />,
                                       iconWrap: 'bg-yellow-600/10 text-yellow-500 border-yellow-500/20',
@@ -706,6 +706,26 @@ function VaultPage() {
                                           </div>
                                         </div>
                                       ) : null}
+                                    </div>
+                                  ) : null}
+
+                                  {Array.isArray(log.verificationReports) && log.verificationReports.length > 0 ? (
+                                    <div className="mt-6 p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 shadow-inner">
+                                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
+                                        Decision Reports
+                                      </p>
+                                      <div className="mt-4 space-y-3">
+                                        {log.verificationReports.map((report: any, index: number) => (
+                                          <div key={`${report.reviewerId}-${index}`} className="rounded-2xl border border-white/10 bg-[#050810]/70 p-4">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.28em] text-white/30 italic">
+                                              {report.actorRole === 'owner' ? 'Owner' : report.reviewerName || 'Witness'} • {report.verdict}
+                                            </p>
+                                            <p className="mt-3 text-xs text-white/45 italic leading-relaxed">
+                                              {report.comment}
+                                            </p>
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
                                   ) : null}
                                 </div>
@@ -778,6 +798,25 @@ function VaultPage() {
                         {activeLog.note || 'No note provided.'}
                       </p>
                     </div>
+                    {Array.isArray(activeLog.verificationReports) && activeLog.verificationReports.length > 0 ? (
+                      <div className="mt-8 p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/10">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">
+                          Verification Reports
+                        </p>
+                        <div className="mt-4 space-y-4">
+                          {activeLog.verificationReports.map((report: any, index: number) => (
+                            <div key={`${report.reviewerId}-${index}`} className="rounded-[2rem] border border-white/10 bg-[#050810]/70 p-5">
+                              <p className="text-[9px] font-black uppercase tracking-[0.28em] text-white/30 italic">
+                                {report.actorRole === 'owner' ? 'Owner' : report.reviewerName || 'Witness'} • {report.verdict}
+                              </p>
+                              <p className="mt-3 text-xs text-white/45 italic leading-relaxed">
+                                {report.comment}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>

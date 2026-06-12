@@ -268,10 +268,24 @@ export const getFullContext = query({
           await Promise.all(ids.map(async (id) => (id ? await ctx.storage.getUrl(id) : null)))
         ).filter(Boolean) as Array<string>;
 
+        const verificationReportsRaw: Array<any> = Array.isArray((log as any).verificationReports)
+          ? ((log as any).verificationReports as Array<any>)
+          : [];
+        const verificationReports = await Promise.all(
+          verificationReportsRaw.map(async (report) => {
+            const reviewer = await ctx.db.get("users", report.reviewerId);
+            return {
+              ...report,
+              reviewerName: reviewer?.name ?? reviewer?.email ?? "Unknown reviewer",
+            };
+          }),
+        );
+
         return {
           ...log,
           proofUrls: urls,
           proofUrl: urls[0] ?? null,
+          verificationReports,
         };
       }),
     );
@@ -361,8 +375,9 @@ export const listDiscoverable = query({
           .withIndex("by_is_discoverable", (q) => q.eq("is_discoverable", true))
           .take(2000);
 
-        const userById = new Map(discoverableUsers.map((u) => [u._id, u]));
-        const discoverableIds = new Set(discoverableUsers.map((u) => u._id));
+        const eligibleUsers = discoverableUsers.filter((u) => u.isAdmin !== true);
+        const userById = new Map(eligibleUsers.map((u) => [u._id, u]));
+        const discoverableIds = new Set(eligibleUsers.map((u) => u._id));
 
         const activeVaults = await ctx.db
           .query("vaults")

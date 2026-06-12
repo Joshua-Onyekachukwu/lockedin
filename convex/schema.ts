@@ -82,6 +82,17 @@ export default defineSchema({
     note: v.optional(v.string()),
     approvals: v.optional(v.array(v.id("users"))),
     rejections: v.optional(v.array(v.id("users"))),
+    verificationReports: v.optional(
+      v.array(
+        v.object({
+          reviewerId: v.id("users"),
+          verdict: v.union(v.literal("approved"), v.literal("rejected")),
+          comment: v.string(),
+          createdAt: v.number(),
+          actorRole: v.union(v.literal("witness"), v.literal("owner")),
+        }),
+      ),
+    ),
     confirmed_by: v.optional(v.id("users")), // accountability partner ID
     confirmed_at: v.optional(v.number()),
   }).index("by_goal", ["goalId"])

@@ -402,6 +402,7 @@ function WitnessCard({ user, onInvite }: { user: any, onInvite: () => void }) {
 
 function VaultPickerModal({ partner, vaults, onClose }: any) {
     const sendRequest = useMutation(api.partners.request);
+    const navigate = useNavigate();
     const toast = useToast();
     const [sending, setSending] = useState<string | null>(null);
 
@@ -449,7 +450,15 @@ function VaultPickerModal({ partner, vaults, onClose }: any) {
                         {activeVaults.length === 0 ? (
                             <div className="p-12 rounded-[2.5rem] border border-dashed border-white/10 text-center bg-white/[0.01]">
                                 <p className="text-xs text-white/10 font-black uppercase tracking-[0.3em] italic">No active goals found in your identity</p>
-                                <button onClick={onClose} className="mt-8 px-8 py-3 rounded-2xl bg-white text-black font-black uppercase text-[10px] tracking-widest italic">Go Initiate Protocol</button>
+                                <button
+                                  onClick={() => {
+                                    onClose();
+                                    navigate({ to: '/dashboard' });
+                                  }}
+                                  className="mt-8 px-8 py-3 rounded-2xl bg-white text-black font-black uppercase text-[10px] tracking-widest italic"
+                                >
+                                  Go To Dashboard
+                                </button>
                             </div>
                         ) : (
                             activeVaults.map((vault: any) => (

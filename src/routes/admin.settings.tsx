@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
 import { useAction, useConvexAuth, useMutation } from 'convex/react'
 import { ArrowLeft, ShieldCheck } from 'lucide-react'
@@ -21,11 +21,16 @@ function AdminSettings() {
   const toast = useToast()
 
   const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any
-  const { data: user, isFetching: userFetching }: { data: any; isFetching: boolean } = useSuspenseQuery({
+  const {
+    data: user,
+    isFetching: userFetching,
+    isLoading: userLoading,
+  }: { data: any; isFetching: boolean; isLoading: boolean } = useQuery({
     ...(userQuery),
     enabled: isAuthenticated,
     staleTime: 0,
     refetchOnMount: 'always',
+    placeholderData: null,
   })
   const isVerified = !!user?.emailVerificationTime
 
@@ -46,9 +51,12 @@ function AdminSettings() {
   }>({ open: false, title: '', confirmLabel: '', run: null })
 
   const adminStatusQuery = convexQuery(api.admin.checkAdminStatus, EMPTY_ARGS as any) as any
-  const { data: adminStatus }: { data: any } = useSuspenseQuery({
+  const { data: adminStatus, isLoading: adminStatusLoading }: { data: any; isLoading: boolean } = useQuery({
     ...adminStatusQuery,
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    placeholderData: null,
   })
 
   useEffect(() => {
@@ -69,7 +77,7 @@ function AdminSettings() {
     }
   }, [adminStatus, authLoading, isAuthenticated, isVerified, navigate])
 
-  if (authLoading || !isAuthenticated || !user) {
+  if (authLoading || userLoading || adminStatusLoading || !isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center text-white/20 italic font-black uppercase tracking-[0.5em]">
         <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent animate-spin rounded-full mb-8" />

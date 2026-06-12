@@ -10,7 +10,29 @@ async function countActiveWitnesses(ctx: any, vaultId: any) {
       q.eq("vaultId", vaultId).eq("status", "active"),
     )
     .collect();
-  return active.length;
+  return new Set(active.map((row: any) => String(row.partnerId))).size;
+}
+
+async function listRelationshipsForVaultPartner(ctx: any, vaultId: any, partnerId: any) {
+  return await ctx.db
+    .query("accountability_partners")
+    .withIndex("by_vault_and_partner", (q: any) => q.eq("vaultId", vaultId).eq("partnerId", partnerId))
+    .order("desc")
+    .collect();
+}
+
+async function findOpenRelationship(ctx: any, vaultId: any, partnerId: any) {
+  const rows = await listRelationshipsForVaultPartner(ctx, vaultId, partnerId);
+  return rows.find((row: any) => row.status === "active" || row.status === "pending") ?? null;
+}
+
+async function closeDuplicateRelationships(ctx: any, keepId: any, vaultId: any, partnerId: any) {
+  const rows = await listRelationshipsForVaultPartner(ctx, vaultId, partnerId);
+  for (const row of rows) {
+    if (String(row._id) === String(keepId)) continue;
+    if (row.status === "ended") continue;
+    await ctx.db.patch("accountability_partners", row._id, { status: "ended" });
+  }
 }
 
 async function enforceMaxWitnesses(ctx: any, vaultId: any) {
@@ -95,15 +117,8 @@ export const request = mutation({
     }
 
     // Check if already exists
-    const existing = await ctx.db
-        .query("accountability_partners")
-        .withIndex("by_vault_and_partner", (q) =>
-          q.eq("vaultId", args.vaultId).eq("partnerId", args.partnerId),
-        )
-        .order("desc")
-        .first();
-    
-    if (existing && (existing.status === "active" || existing.status === "pending")) {
+    const existing = await findOpenRelationship(ctx, args.vaultId, args.partnerId);
+    if (existing) {
       return existing._id;
     }
 
@@ -168,13 +183,8 @@ export const applyToWitness = mutation({
       .unique();
     if (!goal) throw new Error("Goal not found");
 
-    const existing = await ctx.db
-      .query("accountability_partners")
-      .withIndex("by_vault_and_partner", (q) => q.eq("vaultId", args.vaultId).eq("partnerId", userId))
-      .order("desc")
-      .first();
-
-    if (existing && (existing.status === "active" || existing.status === "pending")) {
+    const existing = await findOpenRelationship(ctx, args.vaultId, userId);
+    if (existing) {
       return existing._id;
     }
 
@@ -227,6 +237,7 @@ export const acceptRequest = mutation({
             status: "active",
             partner_accepted: true
         });
+        await closeDuplicateRelationships(ctx, args.partnerShipId, partnership.vaultId, partnership.partnerId);
         return null;
     }
 });
@@ -255,6 +266,7 @@ export const acceptApplication = mutation({
       status: "active",
       requester_accepted: true,
     });
+    await closeDuplicateRelationships(ctx, args.partnerShipId, partnership.vaultId, partnership.partnerId);
 
     await ctx.db.insert("notifications", {
       userId: partnership.partnerId,
@@ -319,8 +331,17 @@ export const listIncomingRequests = query({
             .withIndex("by_partner_and_status", q => q.eq("partnerId", userId).eq("status", "pending"))
             .collect();
         
-        const results = [];
+        const latestByPair = new Map<string, any>();
         for (const req of requests) {
+            const key = `${String(req.vaultId)}:${String(req.partnerId)}`;
+            const existing = latestByPair.get(key);
+            if (!existing || req._creationTime > existing._creationTime) {
+                latestByPair.set(key, req);
+            }
+        }
+
+        const results = [];
+        for (const req of latestByPair.values()) {
             const requester = await ctx.db.get("users", req.requesterId);
             const goal = await ctx.db.get("goals", req.goalId);
             results.push({ ...req, requester, goal });
@@ -344,8 +365,17 @@ export const listIncomingApplications = query({
       .withIndex("by_requester_and_status", (q) => q.eq("requesterId", userId).eq("status", "pending"))
       .collect();
 
-    const results = [];
+    const latestByPair = new Map<string, any>();
     for (const req of requests) {
+      const key = `${String(req.vaultId)}:${String(req.partnerId)}`;
+      const existing = latestByPair.get(key);
+      if (!existing || req._creationTime > existing._creationTime) {
+        latestByPair.set(key, req);
+      }
+    }
+
+    const results = [];
+    for (const req of latestByPair.values()) {
       if (!req.partner_accepted || req.requester_accepted) continue;
       const partner = await ctx.db.get("users", req.partnerId);
       const goal = await ctx.db.get("goals", req.goalId);
@@ -370,8 +400,17 @@ export const listMyWitnessProtocols = query({
       .withIndex("by_partner_and_status", (q) => q.eq("partnerId", userId).eq("status", "active"))
       .collect();
 
-    const results: Array<any> = [];
+    const latestByVault = new Map<string, any>();
     for (const p of partnerships) {
+      const key = String(p.vaultId);
+      const existing = latestByVault.get(key);
+      if (!existing || p._creationTime > existing._creationTime) {
+        latestByVault.set(key, p);
+      }
+    }
+
+    const results: Array<any> = [];
+    for (const p of latestByVault.values()) {
       const vault = await ctx.db.get("vaults", p.vaultId);
       const goal = await ctx.db.get("goals", p.goalId);
       const owner = await ctx.db.get("users", p.requesterId);
@@ -424,15 +463,8 @@ export const joinByInvite = mutation({
         .unique();
     if (!goal) throw new Error("Goal not found");
 
-    const existing = await ctx.db
-      .query("accountability_partners")
-      .withIndex("by_vault_and_partner", (q) =>
-        q.eq("vaultId", args.vaultId).eq("partnerId", userId),
-      )
-      .order("desc")
-      .first();
-    
-    if (existing && (existing.status === "active" || existing.status === "pending")) {
+    const existing = await findOpenRelationship(ctx, args.vaultId, userId);
+    if (existing) {
       return { success: true, message: "You are already a witness for this goal." };
     }
 
@@ -489,9 +521,18 @@ export const getPartners = query({
             .query("accountability_partners")
             .withIndex("by_vault", q => q.eq("vaultId", args.vaultId))
             .collect();
-        
-        const results = [];
+
+        const latestByPartner = new Map<string, any>();
         for (const p of partners) {
+            const key = String(p.partnerId);
+            const existing = latestByPartner.get(key);
+            if (!existing || p._creationTime > existing._creationTime) {
+                latestByPartner.set(key, p);
+            }
+        }
+
+        const results = [];
+        for (const p of latestByPartner.values()) {
             const user = await ctx.db.get("users", p.partnerId);
             const profileUrl = user?.profileImageId ? await ctx.storage.getUrl(user.profileImageId) : null;
             results.push({ ...p, user: user ? { ...user, image: profileUrl ?? user.image } : null });

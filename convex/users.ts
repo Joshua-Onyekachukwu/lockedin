@@ -252,7 +252,7 @@ export const listDiscoverable = query({
       .take(limit);
 
     return await Promise.all(
-      discoverable.map(async (u) => {
+      discoverable.filter((u) => u.isAdmin !== true).map(async (u) => {
         const profileUrl = u.profileImageId ? await ctx.storage.getUrl(u.profileImageId) : null;
         return {
           _id: u._id,
@@ -301,6 +301,7 @@ export const listWitnessPool = query({
       .take(2000);
 
     const visible = candidates
+      .filter((u) => u.isAdmin !== true)
       .filter((u) => !!u.emailVerificationTime)
       .slice(0, limit);
 
@@ -361,7 +362,7 @@ export const getLeaderboard = query({
       .withIndex("by_is_discoverable", (q) => q.eq("is_discoverable", true))
       .take(5000);
     
-    const eligible = users.filter((u) => !!u.emailVerificationTime);
+    const eligible = users.filter((u) => !!u.emailVerificationTime && u.isAdmin !== true);
 
     const sorted = eligible
       .sort((a, b) => {
