@@ -85,7 +85,8 @@ function DashboardContent({ user }: { user: any }) {
     open: boolean;
     vaultId: string | null;
     url: string;
-  }>({ open: false, vaultId: null, url: '' });
+    title: string;
+  }>({ open: false, vaultId: null, url: '', title: '' });
   const [shareAfterFunding, setShareAfterFunding] = useState<{
     title: string;
     status?: string;
@@ -732,11 +733,11 @@ function DashboardContent({ user }: { user: any }) {
           <Suspense fallback={null}>
             <CreateVaultModal
               onClose={() => setIsCreating(false)}
-              onCreated={(vaultId) => {
+              onCreated={({ vaultId, title }) => {
                 setIsCreating(false)
                 const origin = typeof window !== 'undefined' ? window.location.origin : ''
-                const url = `${origin}/vault/${vaultId}`
-                setFundPrompt({ open: true, vaultId, url })
+                const url = `${origin}/share/${vaultId}`
+                setFundPrompt({ open: true, vaultId, url, title })
               }}
             />
           </Suspense>
@@ -763,7 +764,7 @@ function DashboardContent({ user }: { user: any }) {
               onSuccess={() => {
                 const origin =
                   typeof window !== 'undefined' ? window.location.origin : ''
-                const url = `${origin}/vault/${checkingInGoal?._id}`
+                const url = `${origin}/share/${checkingInGoal?._id}`
                 setSharePrompt({
                   open: true,
                   title: String(checkingInGoal?.goal?.title ?? 'Protocol'),
@@ -791,14 +792,15 @@ function DashboardContent({ user }: { user: any }) {
         onFundNow={() => {
           const id = fundPrompt.vaultId
           const url = fundPrompt.url
-          setFundPrompt({ open: false, vaultId: null, url: '' })
+          setFundPrompt({ open: false, vaultId: null, url: '', title: '' })
           if (id) setFundingVaultId(id)
-          setShareAfterFunding({ title: 'New Protocol', status: 'active', url })
+          setShareAfterFunding({ title: fundPrompt.title || 'New Protocol', status: 'active', url })
         }}
         onLater={() => {
           const url = fundPrompt.url
-          setFundPrompt({ open: false, vaultId: null, url: '' })
-          setSharePrompt({ open: true, title: 'New Protocol', status: 'awaiting_funding', url })
+          const title = fundPrompt.title || 'New Protocol'
+          setFundPrompt({ open: false, vaultId: null, url: '', title: '' })
+          setSharePrompt({ open: true, title, status: 'awaiting_funding', url })
         }}
       />
     </div>

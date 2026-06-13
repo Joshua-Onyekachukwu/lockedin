@@ -22,6 +22,7 @@ import { Route as CommunityImport } from './routes/community'
 import { Route as AdminImport } from './routes/admin'
 import { Route as IndexImport } from './routes/index'
 import { Route as VaultIdImport } from './routes/vault.$id'
+import { Route as ShareVaultIdImport } from './routes/share.$vaultId'
 import { Route as InviteVaultIdImport } from './routes/invite.$vaultId'
 import { Route as AuthCallbackImport } from './routes/auth.callback'
 import { Route as AdminSettingsImport } from './routes/admin.settings'
@@ -94,6 +95,12 @@ const IndexRoute = IndexImport.update({
 const VaultIdRoute = VaultIdImport.update({
   id: '/vault/$id',
   path: '/vault/$id',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const ShareVaultIdRoute = ShareVaultIdImport.update({
+  id: '/share/$vaultId',
+  path: '/share/$vaultId',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -228,6 +235,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteVaultIdImport
       parentRoute: typeof rootRoute
     }
+    '/share/$vaultId': {
+      id: '/share/$vaultId'
+      path: '/share/$vaultId'
+      fullPath: '/share/$vaultId'
+      preLoaderRoute: typeof ShareVaultIdImport
+      parentRoute: typeof rootRoute
+    }
     '/vault/$id': {
       id: '/vault/$id'
       path: '/vault/$id'
@@ -291,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
+  '/share/$vaultId': typeof ShareVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
   '/admin/audit/$auditId': typeof AdminAuditAuditIdRoute
   '/admin/tx/$txId': typeof AdminTxTxIdRoute
@@ -311,6 +326,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
+  '/share/$vaultId': typeof ShareVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
   '/admin/audit/$auditId': typeof AdminAuditAuditIdRoute
   '/admin/tx/$txId': typeof AdminTxTxIdRoute
@@ -332,6 +348,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
+  '/share/$vaultId': typeof ShareVaultIdRoute
   '/vault/$id': typeof VaultIdRoute
   '/admin/audit/$auditId': typeof AdminAuditAuditIdRoute
   '/admin/tx/$txId': typeof AdminTxTxIdRoute
@@ -354,6 +371,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
+    | '/share/$vaultId'
     | '/vault/$id'
     | '/admin/audit/$auditId'
     | '/admin/tx/$txId'
@@ -373,6 +391,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
+    | '/share/$vaultId'
     | '/vault/$id'
     | '/admin/audit/$auditId'
     | '/admin/tx/$txId'
@@ -392,6 +411,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
+    | '/share/$vaultId'
     | '/vault/$id'
     | '/admin/audit/$auditId'
     | '/admin/tx/$txId'
@@ -412,6 +432,7 @@ export interface RootRouteChildren {
   VerifyRequiredRoute: typeof VerifyRequiredRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   InviteVaultIdRoute: typeof InviteVaultIdRoute
+  ShareVaultIdRoute: typeof ShareVaultIdRoute
   VaultIdRoute: typeof VaultIdRoute
 }
 
@@ -428,6 +449,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyRequiredRoute: VerifyRequiredRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   InviteVaultIdRoute: InviteVaultIdRoute,
+  ShareVaultIdRoute: ShareVaultIdRoute,
   VaultIdRoute: VaultIdRoute,
 }
 
@@ -453,6 +475,7 @@ export const routeTree = rootRoute
         "/verify-required",
         "/auth/callback",
         "/invite/$vaultId",
+        "/share/$vaultId",
         "/vault/$id"
       ]
     },
@@ -501,6 +524,9 @@ export const routeTree = rootRoute
     },
     "/invite/$vaultId": {
       "filePath": "invite.$vaultId.tsx"
+    },
+    "/share/$vaultId": {
+      "filePath": "share.$vaultId.tsx"
     },
     "/vault/$id": {
       "filePath": "vault.$id.tsx"

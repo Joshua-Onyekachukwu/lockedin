@@ -16,7 +16,7 @@ export default function CreateVaultModal({
   onCreated,
 }: {
   onClose: () => void;
-  onCreated: (vaultId: string) => void;
+  onCreated: (created: { vaultId: string; title: string }) => void;
 }) {
   const createVault = useMutation(api.goals.create);
   const queryClient = useQueryClient();
@@ -63,7 +63,7 @@ export default function CreateVaultModal({
         queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey,
       });
       toast.success('Protocol created. Funding required to activate.', { title: 'Awaiting Funding' });
-      onCreated(vaultId);
+      onCreated({ vaultId, title });
     } catch (err: any) {
       toast.error(toUserMessage(err, 'Failed to create protocol.'), { title: 'Creation Failed' });
     } finally {

@@ -8,6 +8,15 @@ const tierForIntegrity = (score: number) => {
   return "bronze" as const;
 };
 
+const buildMissionCountMap = async (ctx: any) => {
+  const goals = await ctx.db.query("goals").collect();
+  const counts = new Map<any, number>();
+  for (const goal of goals) {
+    counts.set(goal.userId, (counts.get(goal.userId) ?? 0) + 1);
+  }
+  return counts;
+};
+
 export const updateBvnStatus = internalMutation({
   args: {
     userId: v.id("users"),
@@ -251,6 +260,8 @@ export const listDiscoverable = query({
       .filter((q) => q.neq(q.field("witness_discoverable"), false))
       .take(limit);
 
+    const missionCounts = await buildMissionCountMap(ctx);
+
     return await Promise.all(
       discoverable.filter((u) => u.isAdmin !== true).map(async (u) => {
         const profileUrl = u.profileImageId ? await ctx.storage.getUrl(u.profileImageId) : null;
@@ -262,7 +273,7 @@ export const listDiscoverable = query({
           city: u.city,
           bio: u.bio,
           streak_count: u.streak_count,
-          goals_completed: u.goals_completed,
+          goals_completed: missionCounts.get(u._id) ?? 0,
           integrityScore: u.integrityScore,
           is_discoverable: u.is_discoverable,
           tier: tierForIntegrity(u.integrityScore ?? 0),
@@ -305,6 +316,8 @@ export const listWitnessPool = query({
       .filter((u) => !!u.emailVerificationTime)
       .slice(0, limit);
 
+    const missionCounts = await buildMissionCountMap(ctx);
+
     return await Promise.all(
       visible.map(async (u) => {
         const profileUrl = u.profileImageId ? await ctx.storage.getUrl(u.profileImageId) : null;
@@ -316,7 +329,7 @@ export const listWitnessPool = query({
           city: u.city,
           bio: u.bio,
           streak_count: u.streak_count,
-          goals_completed: u.goals_completed,
+          goals_completed: missionCounts.get(u._id) ?? 0,
           integrityScore: u.integrityScore,
           is_discoverable: u.is_discoverable,
           tier: tierForIntegrity(u.integrityScore ?? 0),
@@ -349,9 +362,11 @@ export const getLeaderboard = query({
       return 1;
     };
 
+    const missionCounts = await buildMissionCountMap(ctx);
+
     const rankScore = (u: any) => {
       const tier = tierWeight(u.tier);
-      const missions = Number(u.goals_completed ?? 0);
+      const missions = Number(missionCounts.get(u._id) ?? 0);
       const streak = Number(u.streak_count ?? 0);
       const integrity = Number(u.integrityScore ?? 0);
       return tier * 100_000 + missions * 1_000 + streak * 100 + integrity * 10;
@@ -391,7 +406,7 @@ export const getLeaderboard = query({
           image: profileUrl ?? u.image,
           integrityScore: u.integrityScore,
           streak_count: u.streak_count,
-          goals_completed: u.goals_completed,
+          goals_completed: missionCounts.get(u._id) ?? 0,
           tier: tierForIntegrity(u.integrityScore ?? 0),
         };
       }),

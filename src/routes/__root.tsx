@@ -92,7 +92,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     ])
 
     if (!isAuthenticated) {
-      if (!allowUnauthed.has(pathname)) navigate({ to: '/login' })
+      const isPublicShare = pathname.startsWith('/share/')
+      if (!allowUnauthed.has(pathname) && !isPublicShare) navigate({ to: '/login' })
       return
     }
 

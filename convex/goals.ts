@@ -359,6 +359,49 @@ export const getInvitePreview = query({
   },
 });
 
+export const getPublicSharePreview = query({
+  args: { vaultId: v.id("vaults") },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    const vault = await ctx.db.get("vaults", args.vaultId);
+    if (!vault) return null;
+
+    const goal = await ctx.db
+      .query("goals")
+      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+      .first();
+    if (!goal) return null;
+
+    const owner = await ctx.db.get("users", vault.userId);
+    if (!owner || owner.isAdmin === true) return null;
+    const profileUrl = owner?.profileImageId ? await ctx.storage.getUrl(owner.profileImageId) : null;
+
+    return {
+      _id: vault._id,
+      status: vault.status,
+      amount: vault.amount,
+      painTier: vault.painTier,
+      duration_weeks: vault.duration_weeks,
+      goal: {
+        title: goal.title,
+        description: goal.description,
+        category: goal.category,
+        frequency_type: goal.frequency_type,
+        target_count: goal.target_count,
+      },
+      owner: owner
+        ? {
+            name: owner.name,
+            city: owner.city,
+            image: profileUrl ?? owner.image,
+            integrityScore: owner.integrityScore,
+            tier: owner.tier,
+          }
+        : null,
+    };
+  },
+});
+
 export const listDiscoverable = query({
     args: { limit: v.optional(v.number()) },
     returns: v.array(v.any()),

@@ -73,8 +73,8 @@ function VaultPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    setShareUrl(window.location.href);
-  }, []);
+    setShareUrl(`${window.location.origin}/share/${vaultId}`);
+  }, [vaultId]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
