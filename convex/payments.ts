@@ -168,9 +168,26 @@ export const verifyPayment = action({
     const user = await ctx.runQuery(api.users.current, {});
     if (!user || !user.emailVerificationTime) throw new Error("Email verification required.");
 
+    // #region debug-point verify-payment-start
+    await captureToSentry({
+      message: "verify-payment-start",
+      level: "info",
+      tags: { area: "payments", step: "verify-start" },
+      extra: { reference: args.reference, userId: String(user._id) },
+    });
+    // #endregion debug-point verify-payment-start
+
     try {
       assertPaystackConfig();
     } catch (e: any) {
+      // #region debug-point verify-payment-config-error
+      await captureToSentry({
+        message: "verify-payment-config-error",
+        level: "error",
+        tags: { area: "payments", step: "verify-config-error" },
+        extra: { reference: args.reference, error: String(e?.message ?? e) },
+      });
+      // #endregion debug-point verify-payment-config-error
       return { success: false, message: e?.message || "Payment backend misconfigured." };
     }
 
@@ -194,6 +211,21 @@ export const verifyPayment = action({
 
       const data = await response.json();
 
+      // #region debug-point verify-payment-paystack-response
+      await captureToSentry({
+        message: "verify-payment-paystack-response",
+        level: "info",
+        tags: { area: "payments", step: "verify-paystack-response" },
+        extra: {
+          reference: args.reference,
+          httpStatus: response.status,
+          paystackOk: data?.status,
+          paystackStatus: data?.data?.status,
+          domain: data?.data?.domain,
+        },
+      });
+      // #endregion debug-point verify-payment-paystack-response
+
       if (data.status && data.data.status === "success") {
         const expectedDomain = derivePaystackDomainFromSecret(PAYSTACK_SECRET!);
         const domain = data?.data?.domain as string | undefined;
@@ -211,6 +243,15 @@ export const verifyPayment = action({
           metadata: data.data,
         });
 
+        // #region debug-point verify-payment-reconcile-result
+        await captureToSentry({
+          message: "verify-payment-reconcile-result",
+          level: "info",
+          tags: { area: "payments", step: "verify-reconcile-result" },
+          extra: { reference: args.reference, result },
+        });
+        // #endregion debug-point verify-payment-reconcile-result
+
         if (result.status === "credited") return { success: true, message: "Payment verified." };
         if (result.status === "vault_funded") return { success: true, message: "Protocol funded and activated." };
         if (result.status === "already_credited") {
@@ -224,7 +265,14 @@ export const verifyPayment = action({
 
       return { success: false, message: data.message || "Payment verification failed." };
     } catch (error) {
-      console.error("Payment verification error:", error);
+      // #region debug-point verify-payment-catch
+      await captureToSentry({
+        message: "verify-payment-catch",
+        level: "error",
+        tags: { area: "payments", step: "verify-catch" },
+        extra: { reference: args.reference, error: String(error) },
+      });
+      // #endregion debug-point verify-payment-catch
       return { success: false, message: "Internal server error during verification." };
     }
   },
@@ -1315,6 +1363,22 @@ export const getDepositStatus = query({
 
     if (!deposit) return null;
     if (deposit.userId !== userId) return null;
+
+    // #region debug-point get-deposit-status
+    await captureToSentry({
+      message: "get-deposit-status",
+      level: "info",
+      tags: { area: "payments", step: "get-deposit-status" },
+      extra: {
+        reference: args.reference,
+        userId: String(userId),
+        status: deposit.status,
+        amount: deposit.amount,
+        kind: deposit.kind,
+        vaultId: deposit.vaultId ? String(deposit.vaultId) : null,
+      },
+    });
+    // #endregion debug-point get-deposit-status
 
     return {
       reference: deposit.reference,

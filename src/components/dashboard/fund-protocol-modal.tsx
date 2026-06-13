@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useAction, useMutation } from 'convex/react';
 import { usePaystackPayment } from 'react-paystack';
+import * as Sentry from '@sentry/react';
 import { api } from '../../../convex/_generated/api';
 import { useToast } from '~/components/toast';
 import { toUserMessage } from '~/lib/errors';
@@ -54,8 +55,30 @@ export default function FundProtocolModal({
   const onPaystackSuccess = async (reference: any) => {
     awaitingConfirmationRef.current = true;
     setLoading(true);
+    // #region debug-point paystack-success-callback
+    Sentry.captureMessage('paystack-success-callback', {
+      level: 'info',
+      tags: { area: 'payments', step: 'success-callback' },
+      extra: {
+        vaultId,
+        depositReference,
+        paystackReference: reference?.reference ?? null,
+      },
+    });
+    // #endregion debug-point paystack-success-callback
     try {
       const result = await verifyPayment({ reference: reference.reference });
+      // #region debug-point paystack-verify-result
+      Sentry.captureMessage('paystack-verify-result', {
+        level: 'info',
+        tags: { area: 'payments', step: 'verify-result' },
+        extra: {
+          vaultId,
+          paystackReference: reference?.reference ?? null,
+          result,
+        },
+      });
+      // #endregion debug-point paystack-verify-result
       if (result.success) {
         await queryClient.invalidateQueries({
           queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey,
@@ -72,13 +95,36 @@ export default function FundProtocolModal({
         toast.info('Awaiting confirmation...', { title: 'Processing' });
         setPollRef(reference.reference);
       }
-    } catch {
+    } catch (error) {
+      // #region debug-point paystack-verify-error
+      Sentry.captureMessage('paystack-verify-error', {
+        level: 'error',
+        tags: { area: 'payments', step: 'verify-error' },
+        extra: {
+          vaultId,
+          paystackReference: reference?.reference ?? null,
+          error: String(error),
+        },
+      });
+      // #endregion debug-point paystack-verify-error
       toast.info('Awaiting confirmation...', { title: 'Processing' });
       setPollRef(reference.reference);
     }
   };
 
   const onClosePaystack = () => {
+    // #region debug-point paystack-close-callback
+    Sentry.captureMessage('paystack-close-callback', {
+      level: 'info',
+      tags: { area: 'payments', step: 'close-callback' },
+      extra: {
+        vaultId,
+        depositReference,
+        pollRef,
+        awaitingConfirmation: awaitingConfirmationRef.current,
+      },
+    });
+    // #endregion debug-point paystack-close-callback
     setDepositReference(null);
     if (!awaitingConfirmationRef.current) {
       setLoading(false);
@@ -92,12 +138,37 @@ export default function FundProtocolModal({
       return;
     }
     setLoading(true);
+    // #region debug-point paystack-start-init
+    Sentry.captureMessage('paystack-start-init', {
+      level: 'info',
+      tags: { area: 'payments', step: 'start-init' },
+      extra: { vaultId, userId: user?._id ?? null, email: user?.email ?? null },
+    });
+    // #endregion debug-point paystack-start-init
     try {
       const res = await initializeVaultFunding({ vaultId: vaultId as any });
+      // #region debug-point paystack-init-result
+      Sentry.captureMessage('paystack-init-result', {
+        level: 'info',
+        tags: { area: 'payments', step: 'init-result' },
+        extra: {
+          vaultId,
+          reference: res.reference,
+          amountKobo: res.amountKobo,
+        },
+      });
+      // #endregion debug-point paystack-init-result
       setAmountKobo(res.amountKobo);
       setDepositReference(res.reference);
       setShouldOpenPaystack(true);
     } catch (err: any) {
+      // #region debug-point paystack-init-error
+      Sentry.captureMessage('paystack-init-error', {
+        level: 'error',
+        tags: { area: 'payments', step: 'init-error' },
+        extra: { vaultId, error: String(err) },
+      });
+      // #endregion debug-point paystack-init-error
       toast.error(toUserMessage(err, 'Failed to initialize protocol funding.'), { title: 'Funding Failed' });
       setLoading(false);
     }
@@ -119,6 +190,17 @@ export default function FundProtocolModal({
   useEffect(() => {
     if (!pollRef) return;
     if (!depositStatus) return;
+    // #region debug-point paystack-poll-status
+    Sentry.captureMessage('paystack-poll-status', {
+      level: 'info',
+      tags: { area: 'payments', step: 'poll-status' },
+      extra: {
+        vaultId,
+        pollRef,
+        depositStatus,
+      },
+    });
+    // #endregion debug-point paystack-poll-status
     if (depositStatus.status !== 'completed') return;
     (async () => {
       await queryClient.invalidateQueries({
