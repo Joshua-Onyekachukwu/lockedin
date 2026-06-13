@@ -13,6 +13,7 @@ import { useBodyScrollLock } from '~/lib/useBodyScrollLock';
 
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY;
 const EMPTY_ARGS: Record<string, never> = {};
+type FundingStage = 'idle' | 'initializing' | 'checkout' | 'verifying' | 'awaiting_confirmation';
 
 export default function FundProtocolModal({
   vaultId,
@@ -35,7 +36,11 @@ export default function FundProtocolModal({
   const [amountKobo, setAmountKobo] = useState<number>(0);
   const [shouldOpenPaystack, setShouldOpenPaystack] = useState(false);
   const [pollRef, setPollRef] = useState<string | null>(null);
+  const [stage, setStage] = useState<FundingStage>('idle');
+  const [statusMessage, setStatusMessage] = useState('Authorize the stake payment to activate this protocol.');
   const awaitingConfirmationRef = useRef(false);
+  const finalizingRef = useRef(false);
+  const retryingRef = useRef(false);
 
   const config = {
     reference: depositReference ?? '',
@@ -48,13 +53,36 @@ export default function FundProtocolModal({
 
   useEffect(() => {
     if (!shouldOpenPaystack || !depositReference) return;
+    setStage('checkout');
+    setStatusMessage('Waiting for Paystack authorization...');
     initializePayment({ onSuccess: onPaystackSuccess, onClose: onClosePaystack });
     setShouldOpenPaystack(false);
   }, [depositReference, initializePayment, shouldOpenPaystack]);
 
+  const completeFunding = async (message: string) => {
+    if (finalizingRef.current) return;
+    finalizingRef.current = true;
+    awaitingConfirmationRef.current = false;
+    setStatusMessage('Funding confirmed. Finalizing protocol activation...');
+    await queryClient.invalidateQueries({
+      queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey,
+    });
+    await queryClient.invalidateQueries({
+      queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey,
+    });
+    toast.success(message, { title: 'Protocol Activated' });
+    setLoading(false);
+    setPollRef(null);
+    setStage('idle');
+    onSuccess?.();
+    onClose();
+  };
+
   const onPaystackSuccess = async (reference: any) => {
     awaitingConfirmationRef.current = true;
     setLoading(true);
+    setStage('verifying');
+    setStatusMessage('Verifying payment with Paystack...');
     // #region debug-point paystack-success-callback
     Sentry.captureMessage('paystack-success-callback', {
       level: 'info',
@@ -80,18 +108,10 @@ export default function FundProtocolModal({
       });
       // #endregion debug-point paystack-verify-result
       if (result.success) {
-        await queryClient.invalidateQueries({
-          queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey,
-        });
-        await queryClient.invalidateQueries({
-          queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey,
-        });
-        toast.success(result.message, { title: 'Protocol Activated' });
-        awaitingConfirmationRef.current = false;
-        setLoading(false);
-        onSuccess?.();
-        onClose();
+        await completeFunding(result.message);
       } else {
+        setStage('awaiting_confirmation');
+        setStatusMessage('Payment received. Waiting for final confirmation...');
         toast.info('Awaiting confirmation...', { title: 'Processing' });
         setPollRef(reference.reference);
       }
@@ -107,6 +127,8 @@ export default function FundProtocolModal({
         },
       });
       // #endregion debug-point paystack-verify-error
+      setStage('awaiting_confirmation');
+      setStatusMessage('Payment received. Waiting for final confirmation...');
       toast.info('Awaiting confirmation...', { title: 'Processing' });
       setPollRef(reference.reference);
     }
@@ -129,6 +151,8 @@ export default function FundProtocolModal({
     if (!awaitingConfirmationRef.current) {
       setLoading(false);
       setPollRef(null);
+      setStage('idle');
+      setStatusMessage('Authorize the stake payment to activate this protocol.');
     }
   };
 
@@ -138,6 +162,8 @@ export default function FundProtocolModal({
       return;
     }
     setLoading(true);
+    setStage('initializing');
+    setStatusMessage('Preparing secure payment session...');
     // #region debug-point paystack-start-init
     Sentry.captureMessage('paystack-start-init', {
       level: 'info',
@@ -171,6 +197,8 @@ export default function FundProtocolModal({
       // #endregion debug-point paystack-init-error
       toast.error(toUserMessage(err, 'Failed to initialize protocol funding.'), { title: 'Funding Failed' });
       setLoading(false);
+      setStage('idle');
+      setStatusMessage('Authorize the stake payment to activate this protocol.');
     }
   };
 
@@ -203,20 +231,50 @@ export default function FundProtocolModal({
     // #endregion debug-point paystack-poll-status
     if (depositStatus.status !== 'completed') return;
     (async () => {
-      await queryClient.invalidateQueries({
-        queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey,
-      });
-      await queryClient.invalidateQueries({
-        queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey,
-      });
-      toast.success('Funding confirmed.', { title: 'Protocol Activated' });
-      awaitingConfirmationRef.current = false;
-      setLoading(false);
-      setPollRef(null);
-      onSuccess?.();
-      onClose();
+      await completeFunding('Funding confirmed.');
     })();
-  }, [depositStatus, onClose, pollRef, queryClient, toast]);
+  }, [depositStatus, pollRef, queryClient, toast]);
+
+  useEffect(() => {
+    if (!pollRef) return;
+    const interval = window.setInterval(async () => {
+      if (retryingRef.current || finalizingRef.current) return;
+      retryingRef.current = true;
+      try {
+        setStage('awaiting_confirmation');
+        setStatusMessage('Still confirming payment... this usually takes a few seconds.');
+        const result = await verifyPayment({ reference: pollRef });
+        if (result.success) {
+          await completeFunding(result.message);
+        }
+      } catch (error) {
+        // #region debug-point paystack-retry-error
+        Sentry.captureMessage('paystack-retry-error', {
+          level: 'error',
+          tags: { area: 'payments', step: 'retry-error' },
+          extra: { vaultId, pollRef, error: String(error) },
+        });
+        // #endregion debug-point paystack-retry-error
+      } finally {
+        retryingRef.current = false;
+      }
+    }, 4000);
+
+    return () => window.clearInterval(interval);
+  }, [pollRef, verifyPayment, vaultId]);
+
+  const progressPercent =
+    stage === 'initializing'
+      ? 18
+      : stage === 'checkout'
+        ? 42
+        : stage === 'verifying'
+          ? 72
+          : stage === 'awaiting_confirmation'
+            ? 88
+            : 0;
+  const showProgressPanel = loading || stage !== 'idle';
+  const disableClose = stage === 'verifying' || stage === 'awaiting_confirmation';
 
   return (
     <motion.div
@@ -241,20 +299,51 @@ export default function FundProtocolModal({
             <button
               type="button"
               onClick={onClose}
-              className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 text-white/20 hover:text-white transition-colors active:scale-90"
+              disabled={disableClose}
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 text-white/20 hover:text-white transition-colors active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <X size={20} />
             </button>
           </div>
 
           <p className="text-white/30 text-xs font-bold italic uppercase tracking-widest mb-10 leading-relaxed">
-            Authorize the stake payment to activate this protocol.
+            {statusMessage}
           </p>
 
           <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 flex items-center justify-between gap-6">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">Stake</p>
             <p className="text-xl font-black italic text-white">₦{(amountKobo / 100).toLocaleString()}</p>
           </div>
+
+          {showProgressPanel ? (
+            <div className="mt-8 rounded-[2rem] border border-blue-500/20 bg-blue-500/5 p-6">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin" />
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 italic">
+                    {stage === 'initializing'
+                      ? 'Preparing'
+                      : stage === 'checkout'
+                        ? 'Authorize Payment'
+                        : stage === 'verifying'
+                          ? 'Verifying'
+                          : 'Confirming'}
+                  </p>
+                  <p className="mt-2 text-xs text-white/55 italic leading-relaxed">
+                    {stage === 'awaiting_confirmation'
+                      ? 'We have your payment signal. Lockedin is waiting for final confirmation from the payment rail.'
+                      : statusMessage}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
 
           <button
             type="button"
