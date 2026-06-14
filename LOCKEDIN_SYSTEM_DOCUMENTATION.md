@@ -1,5 +1,8 @@
 # Lockedin System Documentation
 
+Important note:
+- Use `README.md`, `ENGINEERING_HANDOVER.md`, `CURRENT_DEVELOPMENT_STATUS.md`, and `DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md` as the primary handoff set. This document is a supporting system-behavior reference.
+
 ## 1) Product summary
 Lockedin is a commitment and accountability system where users stake principal against a goal (a “Vault/Protocol”) and submit periodic evidence logs. Witnesses (accountability partners) approve/reject logs. Penalties accrue over time based on missed requirements, and settle at the end of the vault.
 
@@ -53,7 +56,7 @@ Can:
 
 ### 4.1 Authentication + hard email verification gate
 Expected behavior:
-- Unverified users are redirected to `/verify-required` and blocked from dashboard/profile/community/leaderboard/wallet/admin.
+- Unverified users are redirected to `/verify-required` and blocked from dashboard, profile, community, leaderboard, and admin routes.
 - Verification email is delivered via Resend (Convex env-driven).
 - Admins can manually mark a user email verified via Admin tools for testing.
 
@@ -70,7 +73,8 @@ Current lifecycle (important):
 - It becomes **`status: "completed"`** only after witness approval rules finalize it.
 
 Log fields:
-- `proofImageId` and a derived `proofUrl` for display
+- `proofImageId` plus optional `proofImageIds` for multi-image evidence
+- derived `proofUrl` and `proofUrls` for display
 - `note` (optional)
 - `approvals[]` / `rejections[]` arrays (per-witness voting)
 - `confirmed_by`, `confirmed_at` once finalized
@@ -155,7 +159,7 @@ Admin includes:
 - **Maintenance**
   - Data repair tools (e.g., ending duplicate witness relationships)
 - **User Terminal**
-  - Search users and open a modal with details + Verification Controls
+  - Search users and open dedicated user-detail routes with verification controls
 
 ## 6) Tier system (Bronze / Silver / Gold)
 Tier is derived from `integrityScore`:
@@ -191,7 +195,7 @@ Given you are now using Paystack **TEST** keys:
    - `PAYSTACK_SECRET_KEY` = Paystack test secret key
    - Optional but recommended: `PAYSTACK_MODE=test` (and ensure pk/sk prefixes match)
 3. Paystack dashboard (TEST mode):
-   - Webhook URL = `https://ardent-dinosaur-415.convex.site/paystack-webhook`
+   - Webhook URL = `https://<active-deployment>.convex.site/paystack-webhook`
 4. Run a vault funding test:
    - create a vault (awaiting funding)
    - fund & activate

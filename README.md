@@ -1,68 +1,177 @@
-# 🔒 Lockedin: Behavioral Enforcement Protocol
+# Lockedin
 
-Lockedin is a behavioral commitment and accountability platform built to help users follow through on goals using clear rules, witness verification, and stake-based commitment (stake-per-vault).
+Lockedin is a behavioral commitment platform. Users create stake-backed protocols, fund them, submit execution evidence, and rely on witnesses plus admin safety controls to enforce accountability.
 
-## 🏗️ The Stack
-- **Frontend:** TanStack Start (React + Vite + File-based Routing)
-- **Backend:** [Convex](https://convex.dev) (Real-time DB, Server Functions, Crons)
-- **Styling:** Tailwind CSS v4 (Industrial Aesthetic)
-- **Auth:** Convex Auth (@convex-dev/auth)
-- **Payments:** Paystack (Vault Funding)
-- **KYC:** Mono (BVN Verification)
+This repository is the active application codebase. It uses TanStack Start on the frontend and Convex on the backend.
 
-## ⚖️ The Protocol Mechanics
+## What The Product Does
 
-### 1. The Pain Tiers (Forfeiture)
-When a citizen anchors a goal, they select their level of economic pain:
-- **Deterrence (2%):** Minor sting for habit formation.
-- **Enforcement (5%):** Serious skin in the game.
-- **Liquidation (10%):** High-stakes behavioral contract.
+Lockedin currently supports:
 
-### 2. Protocol Credits & Shields
-Success is rewarded with **Protocol Credits** (Non-monetary).
-- **Credits:** Earned via successful adherence logs.
-- **Shields:** Acquired in the Protocol Store using credits. A Shield protects your principal stake by "canceling" a breach log once.
+- Account creation and sign-in with Convex Auth
+- Email-verification gating before most app access
+- Goal/protocol creation with stake amount, duration, frequency, and pain tier
+- Vault funding through Paystack
+- Check-ins with note + multiple proof images
+- Witness assignment, witness approval/rejection, and witness reports
+- Penalty accrual tracking and protocol status management
+- Community discovery, witness pool, and Hall of Integrity/leaderboard
+- Admin tooling for user review, overrides, payment operations, and audits
+- Public share pages for protocols via `/share/$vaultId`
 
-### 3. Identity Anchoring
-Every user is anchored via **BVN Hash** to prevent sybil attacks and ensure behavioral accountability. Identity verification is required for capital extraction.
+## Current Product State
 
-## 🚀 Live Deployment Protocol
+The current codebase is operating in the stake-per-vault model:
 
-### 1. Convex Backend (Critical Auth Setup)
-Before users can sign up, you **MUST** generate a JWT key:
-1.  Run this command in your local terminal:
-    ```bash
-    npm run auth:generate-key
-    ```
-2.  Copy the entire output (including `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`).
-3.  Go to your **Convex Dashboard** > **Settings** > **Environment Variables**.
-4.  Add a new variable:
-    - **Name:** `JWT_PRIVATE_KEY`
-    - **Value:** (Paste the key you copied)
-5.  Also ensure these keys are present:
-    - `PAYSTACK_SECRET_KEY` (Test or Live)
-    - `PAYSTACK_MODE` (`test` or `live`, recommended)
-    - `AUTH_RESEND_KEY` (Optional: enables email verification emails)
-    - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`
+- There is no full wallet-first UX enabled in the active product flow
+- Users create a protocol first, then fund that protocol
+- Penalties accrue against a vault and settle through the platform rules
+- Credits and shields exist as internal product mechanics
 
-### 2. Frontend Hosting (Vercel)
-1.  Link your GitHub repository to Vercel.
-2.  Add `VITE_CONVEX_URL` to Vercel Environment Variables.
-3.  In Vercel Project Settings:
-    - **Framework Preset:** Select **TanStack Start**.
-    - **Build Command:** `npm run build`
-    - **Output Directory:** (Keep empty / Default).
-4.  If you get a 404, ensure the **Framework Preset** is correctly set to **TanStack Start**.
+Important product note:
 
-### 3. Domain & Paystack
-1.  Map your custom domain (e.g., lockedin.io) to your Vercel deployment.
-2.  Configure your **Paystack Webhook URL** in the Paystack Dashboard:
-    - `https://ardent-dinosaur-415.convex.site/paystack-webhook`
+- Wallet reintroduction has been discussed and approved for future work, but it is not the current production model in this codebase
 
-## 🛡️ Security Architecture
-- **Non-custodial posture (MVP):** stake-per-vault funding; no stored-value wallet in the product.
-- **Payment safety:** server enforces Paystack webhook verification and test/live mode consistency.
-- **Auditability:** manual admin overrides are reasoned and written to an audit log.
+## Tech Stack
 
----
-*Lockedin Operating Protocol v1.1 — Discipline is Non-Negotiable.*
+- Frontend: TanStack Start, TanStack Router, TanStack React Query, React 19, TypeScript
+- Backend: Convex queries, mutations, actions, HTTP endpoints, and crons
+- Styling: Tailwind CSS v4
+- Auth: `@convex-dev/auth`
+- Payments: Paystack
+- Identity/KYC: Mono
+- Monitoring: Sentry hooks exist but are only partially wired
+
+## Core Mechanics
+
+### Pain Tiers
+
+- `deterrence`: 2% penalty behavior
+- `enforcement`: 5% penalty behavior
+- `liquidation`: 10% penalty behavior
+
+### Protocol Lifecycle
+
+1. User creates a protocol
+2. System creates a `vaults` row in `awaiting_funding`
+3. System creates a linked `goals` row
+4. User funds the protocol through Paystack
+5. Vault becomes active
+6. User submits evidence logs
+7. Witnesses approve or reject logs with written reports
+8. Penalties accrue for missed requirements
+
+### Evidence Rules
+
+- Check-ins are created as pending
+- Witnesses can approve or reject
+- Rejections and approvals store a reason/report
+- Users can review witness reports inside the vault log detail view
+
+## Repository Map
+
+- `src/routes/`: application routes
+- `src/components/`: shared UI and dashboard modals
+- `src/lib/`: helpers and UI utilities
+- `convex/`: schema, backend functions, auth, payments, crons, and HTTP routes
+- `public/`: static assets
+- `scripts/`: small utility scripts like auth key generation
+
+## Important Route Areas
+
+- `/dashboard`: user protocols, funding, and witness workflows
+- `/vault/$id`: full protocol detail page
+- `/share/$vaultId`: public share preview page
+- `/community`: discovery and witness recruitment
+- `/leaderboard`: Hall of Integrity
+- `/admin`: admin command center
+- `/verify-required`: verification gate for signed-in but unverified users
+
+## Important Backend Modules
+
+- `convex/schema.ts`: authoritative data model
+- `convex/goals.ts`: protocol creation, logs, full context, public share preview
+- `convex/payments.ts`: Paystack initialize/verify/reconcile logic
+- `convex/partners.ts`: witness relationships
+- `convex/verifications.ts`: evidence approval/rejection
+- `convex/admin.ts`: admin queries, overrides, audits, payment tools
+- `convex/http.ts`: webhook and auth HTTP routes
+- `convex/penalties.ts`, `convex/rewards.ts`, `convex/vaultLifecycle.ts`, `convex/crons.ts`: automation and system lifecycle
+
+## Local Development
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create or update local env files so `CONVEX_DEPLOYMENT` and `VITE_CONVEX_URL` point to the same backend deployment.
+
+3. Start development:
+
+```bash
+npm run dev
+```
+
+4. Helpful commands:
+
+```bash
+npm run lint
+npm run build
+npm run auth:generate-key
+```
+
+## Environment Variables
+
+### Frontend / local / Vercel
+
+- `VITE_CONVEX_URL`
+- `VITE_CONVEX_SITE_URL`
+- `VITE_PAYSTACK_PUBLIC_KEY`
+- `VITE_SENTRY_DSN` (optional)
+- `VITE_SITE_URL` (optional)
+- `CONVEX_DEPLOYMENT` for local CLI targeting
+
+### Convex backend
+
+- `PAYSTACK_SECRET_KEY`
+- `PAYSTACK_MODE`
+- `PAYSTACK_PUBLIC_KEY` (optional guard/check)
+- `AUTH_GOOGLE_ID`
+- `AUTH_GOOGLE_SECRET`
+- `CONVEX_SITE_URL`
+- `JWT_PRIVATE_KEY`
+- `JWKS`
+- `ADMIN_EMAIL_ALLOWLIST`
+- `RESEND_API_KEY` or `AUTH_RESEND_KEY`
+- `AUTH_EMAIL_FROM` or `EMAIL_FROM`
+- `SITE_URL`
+- `MONO_SECRET_KEY`
+- `SENTRY_DSN` (optional)
+
+## Deployment Summary
+
+Do not deploy by memory. Always verify the active target deployment first.
+
+- Frontend must point to the same Convex backend that you deploy to
+- Paystack webhook must point to that same Convex `.site` URL
+- Google OAuth redirect URI must match the live frontend domain
+- After backend changes: deploy Convex
+- After frontend env changes: redeploy Vercel
+
+Use [DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md](file:///c:/Users/Semek/Webstrom/Lockedin/DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md) as the authoritative deployment guide.
+
+## Authoritative Docs
+
+Start with these documents:
+
+- [ENGINEERING_HANDOVER.md](file:///c:/Users/Semek/Webstrom/Lockedin/ENGINEERING_HANDOVER.md): system handoff for developers
+- [CURRENT_DEVELOPMENT_STATUS.md](file:///c:/Users/Semek/Webstrom/Lockedin/CURRENT_DEVELOPMENT_STATUS.md): what is done, in progress, and next
+- [DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md](file:///c:/Users/Semek/Webstrom/Lockedin/DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md): deployment, env, and migration process
+- [LOCKEDIN_SYSTEM_DOCUMENTATION.md](file:///c:/Users/Semek/Webstrom/Lockedin/LOCKEDIN_SYSTEM_DOCUMENTATION.md): system behavior and business logic detail
+- [SECURITY.md](file:///c:/Users/Semek/Webstrom/Lockedin/SECURITY.md): security rules and sensitive areas
+
+Important note:
+
+- Several older markdown files in the repo document earlier planning phases or prior product decisions. Treat the docs listed above as the current handoff set.
