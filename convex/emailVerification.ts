@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { action, internalMutation, internalQuery, query } from "./_generated/server";
 import { auth } from "./auth";
 import { internal } from "./_generated/api";
+import { captureToSentry } from "./sentry";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.AUTH_RESEND_KEY;
 const EMAIL_FROM = process.env.AUTH_EMAIL_FROM || process.env.EMAIL_FROM || "Lockedin <onboarding@resend.dev>";
@@ -189,7 +190,17 @@ export const requestEmailVerification = action({
       </div>
     `;
 
-    await sendEmail(user.email, subject, html);
+    try {
+      await sendEmail(user.email, subject, html);
+    } catch (error) {
+      await captureToSentry({
+        message: "request-email-verification-send-failed",
+        level: "error",
+        tags: { area: "auth", step: "request-email-verification" },
+        extra: { userId: String(userId), email: user.email, error: String(error) },
+      });
+      throw error;
+    }
 
     return { success: true, message: "Verification email sent." };
   },
@@ -215,9 +226,25 @@ export const confirmEmailVerification = action({
       tokenHash,
     });
 
-    if (!tokenRow) return { success: false, message: "Invalid or expired token." };
+    if (!tokenRow) {
+      await captureToSentry({
+        message: "confirm-email-verification-invalid-token",
+        level: "warning",
+        tags: { area: "auth", step: "confirm-email-verification" },
+        extra: { userId: String(userId) },
+      });
+      return { success: false, message: "Invalid or expired token." };
+    }
     if (tokenRow.usedAt) return { success: false, message: "Token already used." };
-    if (tokenRow.userId !== userId) return { success: false, message: "Token does not match your session." };
+    if (tokenRow.userId !== userId) {
+      await captureToSentry({
+        message: "confirm-email-verification-session-mismatch",
+        level: "warning",
+        tags: { area: "auth", step: "confirm-email-verification" },
+        extra: { userId: String(userId), tokenUserId: String(tokenRow.userId) },
+      });
+      return { success: false, message: "Token does not match your session." };
+    }
     if (tokenRow.expiresAt < Date.now()) return { success: false, message: "Token expired." };
 
     await ctx.runMutation(internal.emailVerification.markEmailVerified, {

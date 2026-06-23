@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 
 export const list = query({
@@ -36,7 +36,7 @@ export const markRead = mutation({
   },
 });
 
-export const create = mutation({
+export const create = internalMutation({
     args: {
         userId: v.id("users"),
         title: v.string(),
