@@ -534,6 +534,7 @@ export const listTransactionsPage = query({
         ),
         status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
         vaultId: v.optional(v.id("vaults")),
+        withdrawalId: v.optional(v.id("withdrawals")),
         description: v.optional(v.string()),
         metadata: v.optional(v.any()),
       }),
@@ -567,6 +568,7 @@ export const listTransactionsPage = query({
         type: t.type,
         status: t.status,
         vaultId: t.vaultId,
+        withdrawalId: t.withdrawalId,
         description: t.description,
         metadata: t.metadata,
       })),
@@ -595,6 +597,7 @@ export const getTransactionById = query({
         v.literal("wallet_withdrawal"),
       ),
       vaultId: v.optional(v.id("vaults")),
+      withdrawalId: v.optional(v.id("withdrawals")),
       status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
       description: v.optional(v.string()),
       metadata: v.optional(v.any()),
@@ -740,9 +743,8 @@ export const handlePaystackTransferSuccess = internalMutation({
 
     const tx = await ctx.db
       .query("transactions")
-      .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
-      .filter((q) => q.and(q.eq(q.field("amount"), -withdrawal.amount), q.eq(q.field("status"), "pending")))
-      .first();
+      .withIndex("by_withdrawal", (q) => q.eq("withdrawalId", withdrawal._id))
+      .unique();
 
     if (tx) {
       await ctx.db.patch("transactions", tx._id, { status: "completed" });
@@ -798,9 +800,8 @@ export const handlePaystackTransferFailed = internalMutation({
 
     const tx = await ctx.db
       .query("transactions")
-      .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
-      .filter((q) => q.and(q.eq(q.field("amount"), -withdrawal.amount), q.eq(q.field("status"), "pending")))
-      .first();
+      .withIndex("by_withdrawal", (q) => q.eq("withdrawalId", withdrawal._id))
+      .unique();
 
     if (tx) {
       await ctx.db.patch("transactions", tx._id, { status: "failed" });
@@ -1663,6 +1664,17 @@ export const getWithdrawalById = internalQuery({
     }
 });
 
+export const getWithdrawalTransactionById = internalQuery({
+  args: { withdrawalId: v.id("withdrawals") },
+  returns: v.any(),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("transactions")
+      .withIndex("by_withdrawal", (q) => q.eq("withdrawalId", args.withdrawalId))
+      .unique();
+  },
+});
+
 /**
  * PRODUCTION EXTRACTION PROTOCOL (Paystack Transfer)
  * This is an action because it communicates with the external Paystack API.
@@ -1772,6 +1784,69 @@ export const approveWithdrawal = action({
   },
 });
 
+export const rejectWithdrawal = mutation({
+  args: {
+    withdrawalId: v.id("withdrawals"),
+    reason: v.optional(v.string()),
+  },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const admin = await checkAdmin(ctx);
+    const withdrawal = await ctx.db.get("withdrawals", args.withdrawalId);
+    if (!withdrawal) {
+      return { success: false, message: "Withdrawal not found." };
+    }
+    if (withdrawal.status !== "pending") {
+      return { success: false, message: "Only pending withdrawals can be rejected." };
+    }
+
+    const user = await ctx.db.get("users", withdrawal.userId);
+    if (user) {
+      await ctx.db.patch("users", user._id, {
+        balance: (user.balance || 0) + withdrawal.amount,
+      });
+    }
+
+    await ctx.db.patch("withdrawals", args.withdrawalId, {
+      status: "rejected",
+      processed_at: Date.now(),
+      metadata: {
+        ...(withdrawal.metadata ?? {}),
+        rejectionReason: args.reason?.trim() || "Rejected by admin review.",
+      },
+    });
+
+    const tx = await ctx.db
+      .query("transactions")
+      .withIndex("by_withdrawal", (q) => q.eq("withdrawalId", args.withdrawalId))
+      .unique();
+    if (tx) {
+      await ctx.db.patch("transactions", tx._id, { status: "failed" });
+    }
+
+    await ctx.db.insert("notifications", {
+      userId: withdrawal.userId,
+      title: "Extraction Rejected",
+      message: `Your extraction request for ₦${(withdrawal.amount / 100).toLocaleString()} was rejected and the capital has been returned to your wallet.`,
+      type: "wallet_withdrawal",
+      read: false,
+    });
+
+    await ctx.db.insert("admin_audit", {
+      adminUserId: admin._id,
+      action: "reject_withdrawal",
+      message: `Withdrawal rejected. Amount: ₦${(withdrawal.amount / 100).toLocaleString()}.`,
+      targetType: "withdrawal",
+      targetId: args.withdrawalId,
+      metadata: {
+        reason: args.reason?.trim() || "Rejected by admin review.",
+      },
+    });
+
+    return { success: true, message: "Withdrawal rejected and escrow released." };
+  },
+});
+
 export const updateWithdrawalPaystackMeta = internalMutation({
   args: {
     withdrawalId: v.id("withdrawals"),
@@ -1840,9 +1915,8 @@ export const updateWithdrawalPaystackFailure = internalMutation({
 
     const tx = await ctx.db
       .query("transactions")
-      .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
-      .filter((q) => q.and(q.eq(q.field("amount"), -withdrawal.amount), q.eq(q.field("status"), "pending")))
-      .first();
+      .withIndex("by_withdrawal", (q) => q.eq("withdrawalId", withdrawal._id))
+      .unique();
 
     if (tx) {
       await ctx.db.patch("transactions", tx._id, { status: "failed" });
@@ -1879,9 +1953,8 @@ export const finalizeWithdrawal = internalMutation({
 
             const tx = await ctx.db
               .query("transactions")
-              .withIndex("by_user", (q) => q.eq("userId", withdrawal.userId))
-              .filter((q) => q.and(q.eq(q.field("amount"), -withdrawal.amount), q.eq(q.field("status"), "pending")))
-              .first();
+              .withIndex("by_withdrawal", (q) => q.eq("withdrawalId", withdrawal._id))
+              .unique();
             
             if (tx) {
                 await ctx.db.patch("transactions", tx._id, { status: "completed" });

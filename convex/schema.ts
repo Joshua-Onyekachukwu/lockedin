@@ -186,6 +186,7 @@ export default defineSchema({
       v.literal("wallet_withdrawal")
     ),
     vaultId: v.optional(v.id("vaults")),
+    withdrawalId: v.optional(v.id("withdrawals")),
     status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),
     description: v.optional(v.string()),
     metadata: v.optional(v.object({
@@ -196,7 +197,8 @@ export default defineSchema({
     })),
   }).index("by_user", ["userId"])
     .index("by_type", ["type"])
-    .index("by_type_and_status", ["type", "status"]),
+    .index("by_type_and_status", ["type", "status"])
+    .index("by_withdrawal", ["withdrawalId"]),
 
   system_stats: defineTable({
     total_revenue: v.number(), // Total fees collected (Kobo)

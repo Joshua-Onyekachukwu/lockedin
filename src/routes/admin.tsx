@@ -175,6 +175,7 @@ function AdminDashboard() {
   const sweep = useMutation(api.admin.triggerMidnightSweep);
   const distribute = useMutation(api.admin.triggerWeeklyDistribution);
   const approveWithdrawal = useAction(api.admin.approveWithdrawal);
+  const rejectWithdrawal = useMutation(api.admin.rejectWithdrawal);
   const enforceBreach = useMutation(api.admin.enforceProtocolBreach);
   const seedHistory = useAction((api as any).admin.seedDummyUserHistory);
   const populateExistingHistory = useAction((api as any).admin.populateExistingUserHistory);
@@ -604,6 +605,9 @@ function AdminDashboard() {
                                                     <td className="px-4 sm:px-10 py-4 sm:py-6">
                                                         <p className="font-bold italic text-white text-sm">{w.user?.name}</p>
                                                         <p className="text-[10px] text-white/20 uppercase font-black">{w.user?.email}</p>
+                                                        <p className="mt-2 text-[9px] text-white/30 uppercase font-black tracking-[0.22em] italic">
+                                                          {w.status}
+                                                        </p>
                                                     </td>
                                                     <td className="px-4 sm:px-10 py-4 sm:py-6 font-black italic text-blue-500 text-lg">₦{(w.amount/100).toLocaleString()}</td>
                                                     <td className="px-4 sm:px-10 py-4 sm:py-6">
@@ -611,26 +615,56 @@ function AdminDashboard() {
                                                         <p className="text-[10px] text-white/40 font-black tracking-widest mt-1">{w.bank_details?.account_number}</p>
                                                     </td>
                                                     <td className="px-4 sm:px-10 py-4 sm:py-6 text-right">
-                                                        <button 
-                                                            onClick={() => setConfirm({
-                                                              open: true,
-                                                              title: 'Process extraction transfer?',
-                                                              description: `This will initiate a Paystack transfer of ₦${(w.amount/100).toLocaleString()} to ${w.bank_details?.bank_name} (${w.bank_details?.account_number}).`,
-                                                              confirmLabel: 'Process Transfer',
-                                                              tone: 'primary',
-                                                              run: async () => {
-                                                                const res = await approveWithdrawal({ withdrawalId: w._id })
-                                                                if (res?.success) {
-                                                                  toast.success(res.message, { title: 'Transfer Initiated' })
-                                                                } else {
-                                                                  toast.error(res?.message || 'Transfer failed.', { title: 'Transfer Failed' })
-                                                                }
-                                                              }
-                                                            })}
-                                                            className="px-5 py-2 rounded-xl bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"
-                                                        >
-                                                            Process Transfer
-                                                        </button>
+                                                        <div className="flex items-center justify-end gap-2">
+                                                          {w.status === 'pending' ? (
+                                                            <>
+                                                              <button 
+                                                                  onClick={() => setConfirm({
+                                                                    open: true,
+                                                                    title: 'Reject extraction request?',
+                                                                    description: `This will reject the ₦${(w.amount/100).toLocaleString()} request and return the escrowed capital to ${w.user?.name}.`,
+                                                                    confirmLabel: 'Reject Request',
+                                                                    tone: 'danger',
+                                                                    run: async () => {
+                                                                      const res = await rejectWithdrawal({ withdrawalId: w._id })
+                                                                      if (res?.success) {
+                                                                        toast.success(res.message, { title: 'Withdrawal Rejected' })
+                                                                      } else {
+                                                                        toast.error(res?.message || 'Unable to reject withdrawal.', { title: 'Rejection Failed' })
+                                                                      }
+                                                                    }
+                                                                  })}
+                                                                  className="px-5 py-2 rounded-xl bg-white/5 border border-white/10 text-white font-black uppercase text-[10px] tracking-widest shadow-lg hover:bg-white/10 active:scale-95 transition-all"
+                                                              >
+                                                                  Reject
+                                                              </button>
+                                                              <button 
+                                                                  onClick={() => setConfirm({
+                                                                    open: true,
+                                                                    title: 'Process extraction transfer?',
+                                                                    description: `This will initiate a Paystack transfer of ₦${(w.amount/100).toLocaleString()} to ${w.bank_details?.bank_name} (${w.bank_details?.account_number}).`,
+                                                                    confirmLabel: 'Process Transfer',
+                                                                    tone: 'primary',
+                                                                    run: async () => {
+                                                                      const res = await approveWithdrawal({ withdrawalId: w._id })
+                                                                      if (res?.success) {
+                                                                        toast.success(res.message, { title: 'Transfer Initiated' })
+                                                                      } else {
+                                                                        toast.error(res?.message || 'Transfer failed.', { title: 'Transfer Failed' })
+                                                                      }
+                                                                    }
+                                                                  })}
+                                                                  className="px-5 py-2 rounded-xl bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"
+                                                              >
+                                                                  Process Transfer
+                                                              </button>
+                                                            </>
+                                                          ) : (
+                                                            <span className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-white/40 font-black uppercase text-[10px] tracking-widest italic">
+                                                              Awaiting Paystack
+                                                            </span>
+                                                          )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))

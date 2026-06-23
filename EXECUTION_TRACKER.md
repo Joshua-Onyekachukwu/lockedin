@@ -48,21 +48,24 @@ Notes:
 ## Phase C
 Status: In progress
 
-- [ ] Audit existing wallet backend and confirm what is truly functional
-- [ ] Correct wallet ledger semantics where current transaction typing is misleading
-- [ ] Improve wallet balance visibility for users
-- [ ] Expose recent wallet ledger activity to users
-- [ ] Expose withdrawal flow to users with clear status visibility
-- [ ] Review pending/admin withdrawal flow for correctness
-- [ ] Keep stake-per-vault as the active model; avoid accidental wallet-first rebuild
-- [ ] Validate with `npx tsc --noEmit`
-- [ ] Validate with `npx convex dev --once --env-file .env.local`
-- [ ] Validate with `npm run build`
+- [x] Audit existing wallet backend and confirm what is truly functional
+- [x] Correct wallet ledger semantics where current transaction typing is misleading
+- [x] Improve wallet balance visibility for users
+- [x] Expose recent wallet ledger activity to users
+- [x] Expose withdrawal flow to users with clear status visibility
+- [x] Review pending/admin withdrawal flow for correctness
+- [x] Keep stake-per-vault as the active model; avoid accidental wallet-first rebuild
+- [x] Validate with `npx tsc --noEmit`
+- [x] Validate with `npx convex dev --once --env-file .env.local`
+- [x] Validate with `npm run build`
 - [ ] Push branch, open PR, merge to `main`
 
 Notes:
 - Active product posture remains stake-per-vault, not wallet-first.
 - Wallet-related code is being treated as supporting infrastructure plus targeted UX improvements.
+- Wallet and withdrawal foundation already existed on `main`; this completion pass is focused on closing the remaining correctness gap instead of rebuilding the flow.
+- New correction in progress: withdrawal escrow transactions are now being linked directly to withdrawal records so completion/failure/rejection updates are deterministic.
+- Admin extraction queue is being upgraded to support explicit rejection before transfer so capital can be returned cleanly without forcing a Paystack attempt.
 
 ## Phase D
 Status: Pending
