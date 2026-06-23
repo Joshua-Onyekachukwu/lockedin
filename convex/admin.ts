@@ -87,6 +87,25 @@ async function checkAdmin(ctx: any) {
     return user;
 }
 
+
+const MISSION_VAULT_STATUSES = ["active", "completed", "failed"] as const;
+
+async function buildMissionCountMap(ctx: any, userIds: Array<Id<"users">>) {
+  const allowed = new Set(userIds);
+  const counts = new Map<Id<"users">, number>();
+  for (const status of MISSION_VAULT_STATUSES) {
+    const vaults = await ctx.db
+      .query("vaults")
+      .withIndex("by_status", (q: any) => q.eq("status", status))
+      .collect();
+    for (const vault of vaults) {
+      if (!allowed.has(vault.userId)) continue;
+      counts.set(vault.userId, (counts.get(vault.userId) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
 export const logAudit = internalMutation({
   args: {
     adminUserId: v.id("users"),
@@ -286,6 +305,7 @@ export const searchUsers = query({
           .withIndex("email", (qq) => qq.eq("email", q))
           .unique());
       if (!direct) return [];
+      const missionCounts = await buildMissionCountMap(ctx, [direct._id]);
       return [
         {
           _id: direct._id,
@@ -295,7 +315,7 @@ export const searchUsers = query({
           tier: direct.tier,
           integrityScore: direct.integrityScore,
           streak_count: direct.streak_count,
-          goals_completed: direct.goals_completed,
+          goals_completed: missionCounts.get(direct._id) ?? 0,
           balance: direct.balance,
           bvn_verified: direct.bvn_verified,
           is_discoverable: direct.is_discoverable,
@@ -306,14 +326,15 @@ export const searchUsers = query({
     }
 
     const users = await ctx.db.query("users").order("desc").take(2000);
-    return users
+    const filtered = users
       .filter((u) => {
         const name = (u.name || "").toLowerCase();
         const email = (u.email || "").toLowerCase();
         return name.includes(q) || email.includes(q);
       })
-      .slice(0, limit)
-      .map((u) => ({
+      .slice(0, limit);
+    const missionCounts = await buildMissionCountMap(ctx, filtered.map((u) => u._id));
+    return filtered.map((u) => ({
         _id: u._id,
         _creationTime: u._creationTime,
         name: u.name,
@@ -321,7 +342,7 @@ export const searchUsers = query({
         tier: u.tier,
         integrityScore: u.integrityScore,
         streak_count: u.streak_count,
-        goals_completed: u.goals_completed,
+        goals_completed: missionCounts.get(u._id) ?? 0,
         balance: u.balance,
         bvn_verified: u.bvn_verified,
         is_discoverable: u.is_discoverable,
@@ -361,6 +382,10 @@ export const listUsersPage = query({
       cursor: args.cursor ?? null,
       numItems: limit,
     });
+    const missionCounts = await buildMissionCountMap(
+      ctx,
+      result.page.map((u: any) => u._id),
+    );
     return {
       page: result.page.map((u: any) => ({
         _id: u._id,
@@ -370,7 +395,7 @@ export const listUsersPage = query({
         tier: u.tier,
         integrityScore: u.integrityScore,
         streak_count: u.streak_count,
-        goals_completed: u.goals_completed,
+        goals_completed: missionCounts.get(u._id) ?? 0,
         balance: u.balance,
         bvn_verified: u.bvn_verified,
         is_discoverable: u.is_discoverable,
@@ -438,6 +463,7 @@ export const getUserDetail = query({
       else if (v.status === "completed") vaultStats.completed += 1;
       else if (v.status === "failed") vaultStats.failed += 1;
     }
+    const missionCount = vaultStats.active + vaultStats.completed + vaultStats.failed;
 
     return {
       _id: user._id,
@@ -448,7 +474,7 @@ export const getUserDetail = query({
       tier: user.tier,
       integrityScore: user.integrityScore,
       streak_count: user.streak_count,
-      goals_completed: user.goals_completed,
+      goals_completed: missionCount,
       balance: user.balance,
       shields: user.shields,
       credits: user.credits,

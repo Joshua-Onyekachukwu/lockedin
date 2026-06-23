@@ -8,13 +8,35 @@ const tierForIntegrity = (score: number) => {
   return "bronze" as const;
 };
 
-const buildMissionCountMap = async (ctx: any) => {
-  const goals = await ctx.db.query("goals").collect();
+const MISSION_VAULT_STATUSES = ["active", "completed", "failed"] as const;
+
+const buildMissionCountMap = async (ctx: any, userIds?: Set<any>) => {
   const counts = new Map<any, number>();
-  for (const goal of goals) {
-    counts.set(goal.userId, (counts.get(goal.userId) ?? 0) + 1);
+  for (const status of MISSION_VAULT_STATUSES) {
+    const vaults = await ctx.db
+      .query("vaults")
+      .withIndex("by_status", (q: any) => q.eq("status", status))
+      .collect();
+    for (const vault of vaults) {
+      if (userIds && !userIds.has(vault.userId)) continue;
+      counts.set(vault.userId, (counts.get(vault.userId) ?? 0) + 1);
+    }
   }
   return counts;
+};
+
+const getMissionCountForUser = async (ctx: any, userId: any) => {
+  const vaults = await ctx.db
+    .query("vaults")
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
+    .collect();
+  let count = 0;
+  for (const vault of vaults) {
+    if (MISSION_VAULT_STATUSES.includes(vault.status as (typeof MISSION_VAULT_STATUSES)[number])) {
+      count += 1;
+    }
+  }
+  return count;
 };
 
 export const updateBvnStatus = internalMutation({
@@ -23,12 +45,14 @@ export const updateBvnStatus = internalMutation({
     name: v.optional(v.string()),
     bvn: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     await ctx.db.patch("users", args.userId, {
       bvn_verified: true,
       bvn_last4: args.bvn.slice(-4),
       ...(args.name ? { name: args.name } : {}),
     });
+    return null;
   },
 });
 
@@ -67,10 +91,12 @@ export const current = query({
     if (!user) return null;
 
     const profileUrl = user.profileImageId ? await ctx.storage.getUrl(user.profileImageId) : null;
+    const missionCount = await getMissionCountForUser(ctx, userId);
 
     return {
       ...user,
       image: profileUrl ?? user.image,
+      goals_completed: missionCount,
       tier: tierForIntegrity(user.integrityScore ?? 0),
     };
   },
@@ -260,10 +286,14 @@ export const listDiscoverable = query({
       .filter((q) => q.neq(q.field("witness_discoverable"), false))
       .take(limit);
 
-    const missionCounts = await buildMissionCountMap(ctx);
+    const visibleUsers = discoverable.filter((u) => u.isAdmin !== true);
+    const missionCounts = await buildMissionCountMap(
+      ctx,
+      new Set(visibleUsers.map((u) => u._id)),
+    );
 
     return await Promise.all(
-      discoverable.filter((u) => u.isAdmin !== true).map(async (u) => {
+      visibleUsers.map(async (u) => {
         const profileUrl = u.profileImageId ? await ctx.storage.getUrl(u.profileImageId) : null;
         return {
           _id: u._id,
@@ -316,7 +346,10 @@ export const listWitnessPool = query({
       .filter((u) => !!u.emailVerificationTime)
       .slice(0, limit);
 
-    const missionCounts = await buildMissionCountMap(ctx);
+    const missionCounts = await buildMissionCountMap(
+      ctx,
+      new Set(visible.map((u) => u._id)),
+    );
 
     return await Promise.all(
       visible.map(async (u) => {
@@ -362,8 +395,6 @@ export const getLeaderboard = query({
       return 1;
     };
 
-    const missionCounts = await buildMissionCountMap(ctx);
-
     const rankScore = (u: any) => {
       const tier = tierWeight(u.tier);
       const missions = Number(missionCounts.get(u._id) ?? 0);
@@ -378,6 +409,10 @@ export const getLeaderboard = query({
       .take(5000);
     
     const eligible = users.filter((u) => !!u.emailVerificationTime && u.isAdmin !== true);
+    const missionCounts = await buildMissionCountMap(
+      ctx,
+      new Set(eligible.map((u) => u._id)),
+    );
 
     const sorted = eligible
       .sort((a, b) => {
@@ -387,7 +422,7 @@ export const getLeaderboard = query({
         const integrityDiff = (b.integrityScore ?? 0) - (a.integrityScore ?? 0);
         if (integrityDiff !== 0) return integrityDiff;
 
-        const goalsDiff = (b.goals_completed ?? 0) - (a.goals_completed ?? 0);
+        const goalsDiff = (missionCounts.get(b._id) ?? 0) - (missionCounts.get(a._id) ?? 0);
         if (goalsDiff !== 0) return goalsDiff;
 
         const streakDiff = (b.streak_count ?? 0) - (a.streak_count ?? 0);

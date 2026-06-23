@@ -84,7 +84,6 @@ export const verifyLog = mutation({
                 tier: tierForIntegrity(nextIntegrity),
                 // Increment streak
                 streak_count: (owner.streak_count || 0) + 1,
-                goals_completed: (owner.goals_completed || 0) + 1,
             });
         }
         return null;

@@ -83,7 +83,7 @@ function CommunityPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [requestingTo, setRequestingTo] = useState<any>(null);
   const [minIntegrity, setMinIntegrity] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<'integrity' | 'missions' | 'streak'>('integrity');
+  const [sortBy, setSortBy] = useState<'integrity' | 'activated' | 'streak'>('integrity');
 
   const sendRequestDirect = useMutation(api.partners.request)
   const toast = useToast();
@@ -212,7 +212,7 @@ function CommunityPage() {
                             className="appearance-none bg-white/[0.02] border border-white/10 rounded-2xl pl-6 pr-14 py-4 text-[10px] font-black uppercase tracking-widest italic text-white/70 outline-none focus:border-blue-500"
                           >
                             <option className="bg-[#0a0f1a] text-white" value="integrity">Integrity</option>
-                            <option className="bg-[#0a0f1a] text-white" value="missions">Missions</option>
+                            <option className="bg-[#0a0f1a] text-white" value="activated">Activated</option>
                             <option className="bg-[#0a0f1a] text-white" value="streak">Streak</option>
                           </select>
                         </div>
@@ -231,7 +231,7 @@ function CommunityPage() {
                         })
                         .filter((u: any) => (minIntegrity ? (u.integrityScore || 0) >= minIntegrity : true))
                         .sort((a: any, b: any) => {
-                          if (sortBy === 'missions') return (b.goals_completed || 0) - (a.goals_completed || 0);
+                          if (sortBy === 'activated') return (b.goals_completed || 0) - (a.goals_completed || 0);
                           if (sortBy === 'streak') return (b.streak_count || 0) - (a.streak_count || 0);
                           return (b.integrityScore || 0) - (a.integrityScore || 0);
                         })
@@ -384,7 +384,7 @@ function WitnessCard({ user, onInvite }: { user: any, onInvite: () => void }) {
                         <p className="text-xl text-[#ff7a00]">{user.streak_count || 0}W</p>
                     </div>
                     <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 shadow-inner">
-                        <p className="text-[9px] text-white/20 uppercase tracking-widest mb-1">Missions</p>
+                        <p className="text-[9px] text-white/20 uppercase tracking-widest mb-1">Activated</p>
                         <p className="text-xl text-white">{user.goals_completed || 0}</p>
                     </div>
                 </div>

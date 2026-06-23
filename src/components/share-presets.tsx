@@ -13,13 +13,22 @@ export function SharePresets({ title, status, url }: SharePresetsProps) {
   const shareText = useMemo(() => {
     const cleanTitle = title?.trim() ? title.trim() : 'a new protocol';
     const s = String(status ?? '').toLowerCase();
-    if (s === 'completed') return `I completed "${cleanTitle}" on Lockedin. Discipline is now visible.`;
-    if (s === 'failed') return `I am rebuilding after "${cleanTitle}" on Lockedin. The protocol stays public.`;
-    if (s === 'awaiting_funding') return `I just initialized "${cleanTitle}" on Lockedin. Funding is the next move.`;
-    return `I am locked into "${cleanTitle}" on Lockedin. My protocol is live and my stake is public.`;
+    if (s === 'completed') {
+      return `I completed "${cleanTitle}" on Lockedin. The commitment held, and the proof is on record.`;
+    }
+    if (s === 'failed') {
+      return `I fell short on "${cleanTitle}" on Lockedin. The protocol stays visible, and the consequence stands.`;
+    }
+    if (s === 'awaiting_funding') {
+      return `I just created "${cleanTitle}" on Lockedin. Funding is next, and I am making the commitment public.`;
+    }
+    return `I just funded and activated "${cleanTitle}" on Lockedin. The commitment is live and the stake is public.`;
   }, [status, title]);
 
-  const shareMessage = useMemo(() => `${shareText}\n\nView the protocol: ${url}`.trim(), [shareText, url]);
+  const shareMessage = useMemo(
+    () => `${shareText}\n\nView the public protocol: ${url}`.trim(),
+    [shareText, url],
+  );
 
   const encodedText = useMemo(() => encodeURIComponent(shareMessage), [shareMessage]);
   const encodedUrl = useMemo(() => encodeURIComponent(url), [url]);
@@ -47,6 +56,9 @@ export function SharePresets({ title, status, url }: SharePresetsProps) {
   return (
     <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">Share Protocol</p>
+      <p className="text-[10px] text-blue-400/80 uppercase tracking-[0.2em] font-black italic mb-4">
+        Best used right after activation or a completed check-in.
+      </p>
       <p className="text-xs text-white/40 italic leading-relaxed font-medium whitespace-pre-line">{shareMessage}</p>
 
       <div className="mt-8 grid grid-cols-1 gap-3">

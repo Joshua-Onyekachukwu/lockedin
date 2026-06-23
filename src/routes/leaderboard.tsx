@@ -80,7 +80,7 @@ function LeaderboardPage() {
                 Hall of <span className="text-blue-500">Integrity.</span>
             </h1>
             <p className="text-white/30 mt-6 text-lg max-w-2xl mx-auto leading-relaxed text-center font-medium italic">
-                The top 50 high-performance individuals who have maintained absolute protocol adherence.
+                Ranked by integrity, streak, and the number of protocols successfully funded and activated.
             </p>
         </header>
 
@@ -151,7 +151,7 @@ function LeaderboardPage() {
                 </div>
 
                 <div className="mt-6 p-5 rounded-[2rem] bg-white/[0.02] border border-white/10 flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Missions</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Activated</p>
                   <p className="text-xl font-black text-white italic">{user.goals_completed}</p>
                 </div>
               </div>
