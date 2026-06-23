@@ -14,6 +14,8 @@ import { useBodyScrollLock } from '~/lib/useBodyScrollLock';
 const PAYSTACK_PUBLIC_KEY = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY;
 const EMPTY_ARGS: Record<string, never> = {};
 type FundingStage = 'idle' | 'initializing' | 'checkout' | 'verifying' | 'awaiting_confirmation';
+const VERIFY_RETRY_INTERVAL_MS = 15000;
+const MAX_CONFIRMATION_WAIT_MS = 90000;
 
 export default function FundProtocolModal({
   vaultId,
@@ -41,6 +43,7 @@ export default function FundProtocolModal({
   const awaitingConfirmationRef = useRef(false);
   const finalizingRef = useRef(false);
   const retryingRef = useRef(false);
+  const confirmationStartedAtRef = useRef<number | null>(null);
 
   const config = {
     reference: depositReference ?? '',
@@ -63,9 +66,13 @@ export default function FundProtocolModal({
     if (finalizingRef.current) return;
     finalizingRef.current = true;
     awaitingConfirmationRef.current = false;
+    confirmationStartedAtRef.current = null;
     setStatusMessage('Funding confirmed. Finalizing protocol activation...');
     await queryClient.invalidateQueries({
       queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey,
+    });
+    await queryClient.invalidateQueries({
+      queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey,
     });
     await queryClient.invalidateQueries({
       queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey,
@@ -76,6 +83,44 @@ export default function FundProtocolModal({
     setStage('idle');
     onSuccess?.();
     onClose();
+  };
+
+  const resetFundingState = () => {
+    awaitingConfirmationRef.current = false;
+    finalizingRef.current = false;
+    retryingRef.current = false;
+    confirmationStartedAtRef.current = null;
+    setLoading(false);
+    setDepositReference(null);
+    setShouldOpenPaystack(false);
+    setPollRef(null);
+    setStage('idle');
+    setStatusMessage('Authorize the stake payment to activate this protocol.');
+  };
+
+  const enterAwaitingConfirmation = (reference: string, message?: string) => {
+    awaitingConfirmationRef.current = true;
+    if (!confirmationStartedAtRef.current) {
+      confirmationStartedAtRef.current = Date.now();
+    }
+    setLoading(true);
+    setStage('awaiting_confirmation');
+    setStatusMessage(message ?? 'Payment received. Waiting for final confirmation...');
+    toast.info('Awaiting confirmation...', { title: 'Processing' });
+    setPollRef(reference);
+  };
+
+  const failFunding = async (message: string, reference?: string | null) => {
+    Sentry.captureMessage('paystack-terminal-failure', {
+      level: 'error',
+      tags: { area: 'payments', step: 'terminal-failure' },
+      extra: { vaultId, reference: reference ?? depositReference },
+    });
+    await queryClient.invalidateQueries({
+      queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey,
+    });
+    resetFundingState();
+    toast.error(message, { title: 'Funding Failed' });
   };
 
   const onPaystackSuccess = async (reference: any) => {
@@ -107,13 +152,12 @@ export default function FundProtocolModal({
         },
       });
       // #endregion debug-point paystack-verify-result
-      if (result.success) {
+      if (result.success || result.status === 'completed') {
         await completeFunding(result.message);
+      } else if (result.status === 'pending' && result.retryable) {
+        enterAwaitingConfirmation(reference.reference, result.message);
       } else {
-        setStage('awaiting_confirmation');
-        setStatusMessage('Payment received. Waiting for final confirmation...');
-        toast.info('Awaiting confirmation...', { title: 'Processing' });
-        setPollRef(reference.reference);
+        await failFunding(result.message, reference.reference);
       }
     } catch (error) {
       // #region debug-point paystack-verify-error
@@ -127,10 +171,10 @@ export default function FundProtocolModal({
         },
       });
       // #endregion debug-point paystack-verify-error
-      setStage('awaiting_confirmation');
-      setStatusMessage('Payment received. Waiting for final confirmation...');
-      toast.info('Awaiting confirmation...', { title: 'Processing' });
-      setPollRef(reference.reference);
+      enterAwaitingConfirmation(
+        reference.reference,
+        'Payment received. Waiting for final confirmation from Lockedin...',
+      );
     }
   };
 
@@ -149,10 +193,7 @@ export default function FundProtocolModal({
     // #endregion debug-point paystack-close-callback
     setDepositReference(null);
     if (!awaitingConfirmationRef.current) {
-      setLoading(false);
-      setPollRef(null);
-      setStage('idle');
-      setStatusMessage('Authorize the stake payment to activate this protocol.');
+      resetFundingState();
     }
   };
 
@@ -196,9 +237,7 @@ export default function FundProtocolModal({
       });
       // #endregion debug-point paystack-init-error
       toast.error(toUserMessage(err, 'Failed to initialize protocol funding.'), { title: 'Funding Failed' });
-      setLoading(false);
-      setStage('idle');
-      setStatusMessage('Authorize the stake payment to activate this protocol.');
+      resetFundingState();
     }
   };
 
@@ -229,6 +268,10 @@ export default function FundProtocolModal({
       },
     });
     // #endregion debug-point paystack-poll-status
+    if (depositStatus.status === 'failed') {
+      void failFunding('Payment confirmation failed. Please try again or contact support.', pollRef);
+      return;
+    }
     if (depositStatus.status !== 'completed') return;
     (async () => {
       await completeFunding('Funding confirmed.');
@@ -239,13 +282,37 @@ export default function FundProtocolModal({
     if (!pollRef) return;
     const interval = window.setInterval(async () => {
       if (retryingRef.current || finalizingRef.current) return;
+      const elapsedMs = confirmationStartedAtRef.current
+        ? Date.now() - confirmationStartedAtRef.current
+        : 0;
+      if (elapsedMs >= MAX_CONFIRMATION_WAIT_MS) {
+        window.clearInterval(interval);
+        void (async () => {
+          Sentry.captureMessage('paystack-confirmation-timeout', {
+            level: 'error',
+            tags: { area: 'payments', step: 'confirmation-timeout' },
+            extra: { vaultId, pollRef, elapsedMs },
+          });
+          await queryClient.invalidateQueries({
+            queryKey: (convexQuery(api.goals.listByUser, EMPTY_ARGS as any) as any).queryKey,
+          });
+          resetFundingState();
+          toast.warning(
+            'Payment is still processing. Check your dashboard in a moment. If it does not complete, contact support with your payment reference.',
+            { title: 'Confirmation Delayed', durationMs: 8000 },
+          );
+        })();
+        return;
+      }
       retryingRef.current = true;
       try {
         setStage('awaiting_confirmation');
         setStatusMessage('Still confirming payment... this usually takes a few seconds.');
         const result = await verifyPayment({ reference: pollRef });
-        if (result.success) {
+        if (result.success || result.status === 'completed') {
           await completeFunding(result.message);
+        } else if (result.status === 'failed' && !result.retryable) {
+          await failFunding(result.message, pollRef);
         }
       } catch (error) {
         // #region debug-point paystack-retry-error
@@ -258,10 +325,10 @@ export default function FundProtocolModal({
       } finally {
         retryingRef.current = false;
       }
-    }, 4000);
+    }, VERIFY_RETRY_INTERVAL_MS);
 
     return () => window.clearInterval(interval);
-  }, [pollRef, verifyPayment, vaultId]);
+  }, [pollRef, queryClient, toast, verifyPayment, vaultId]);
 
   const progressPercent =
     stage === 'initializing'

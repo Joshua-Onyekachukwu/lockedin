@@ -45,6 +45,12 @@ const PaystackSource = v.union(
   v.literal("cron"),
 );
 
+const VerifyPaymentStatus = v.union(
+  v.literal("completed"),
+  v.literal("pending"),
+  v.literal("failed"),
+);
+
 /**
  * Initialize a deposit session
  */
@@ -163,6 +169,8 @@ export const verifyPayment = action({
   returns: v.object({
     success: v.boolean(),
     message: v.string(),
+    status: VerifyPaymentStatus,
+    retryable: v.boolean(),
   }),
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(api.users.current, {});
@@ -188,16 +196,26 @@ export const verifyPayment = action({
         extra: { reference: args.reference, error: String(e?.message ?? e) },
       });
       // #endregion debug-point verify-payment-config-error
-      return { success: false, message: e?.message || "Payment backend misconfigured." };
+      return {
+        success: false,
+        message: e?.message || "Payment backend misconfigured.",
+        status: "failed" as const,
+        retryable: false,
+      };
     }
 
     const rate = await ctx.runMutation((internal as any).rateLimit.consume, {
       key: `user:${user._id}:verify_payment`,
-      limit: 10,
+      limit: 20,
       windowMs: 60_000,
     });
     if (!rate.allowed) {
-      return { success: false, message: "Too many verification attempts. Please wait and try again." };
+      return {
+        success: false,
+        message: "Verification is taking longer than expected. Please wait a few seconds and try again.",
+        status: "pending" as const,
+        retryable: true,
+      };
     }
 
     try {
@@ -230,7 +248,12 @@ export const verifyPayment = action({
         const expectedDomain = derivePaystackDomainFromSecret(PAYSTACK_SECRET!);
         const domain = data?.data?.domain as string | undefined;
         if (expectedDomain && domain && domain !== expectedDomain) {
-          return { success: false, message: "Payment backend mode mismatch. Contact support." };
+          return {
+            success: false,
+            message: "Payment backend mode mismatch. Contact support.",
+            status: "failed" as const,
+            retryable: false,
+          };
         }
         // Amount check (Paystack returns amount in Kobo)
         const amountKobo = data.data.amount;
@@ -252,18 +275,67 @@ export const verifyPayment = action({
         });
         // #endregion debug-point verify-payment-reconcile-result
 
-        if (result.status === "credited") return { success: true, message: "Payment verified." };
-        if (result.status === "vault_funded") return { success: true, message: "Protocol funded and activated." };
+        if (result.status === "credited") {
+          return {
+            success: true,
+            message: "Payment verified.",
+            status: "completed" as const,
+            retryable: false,
+          };
+        }
+        if (result.status === "vault_funded") {
+          return {
+            success: true,
+            message: "Protocol funded and activated.",
+            status: "completed" as const,
+            retryable: false,
+          };
+        }
         if (result.status === "already_credited") {
-          return { success: true, message: "Payment already credited." };
+          return {
+            success: true,
+            message: "Payment already credited.",
+            status: "completed" as const,
+            retryable: false,
+          };
         }
         if (result.status === "unmatched") {
-          return { success: false, message: "Payment received but could not be matched to a protocol yet." };
+          return {
+            success: false,
+            message: "Payment was received but could not be matched to this protocol. Contact support with the payment reference.",
+            status: "failed" as const,
+            retryable: false,
+          };
         }
-        return { success: false, message: "Payment could not be credited. Please contact support." };
+        return {
+          success: false,
+          message: "Payment could not be credited because the confirmed amount did not match the expected stake.",
+          status: "failed" as const,
+          retryable: false,
+        };
       }
 
-      return { success: false, message: data.message || "Payment verification failed." };
+      const paystackStatus = String(data?.data?.status ?? "").toLowerCase();
+      if (
+        paystackStatus === "pending" ||
+        paystackStatus === "processing" ||
+        paystackStatus === "queued" ||
+        paystackStatus === "ongoing"
+      ) {
+        return {
+          success: false,
+          message: "Payment authorization succeeded. Waiting for Paystack to finish confirmation.",
+          status: "pending" as const,
+          retryable: true,
+        };
+      }
+
+      return {
+        success: false,
+        message: data.message || "Payment verification failed.",
+        status: "failed" as const,
+        retryable: false,
+      };
     } catch (error) {
       // #region debug-point verify-payment-catch
       await captureToSentry({
@@ -273,7 +345,12 @@ export const verifyPayment = action({
         extra: { reference: args.reference, error: String(error) },
       });
       // #endregion debug-point verify-payment-catch
-      return { success: false, message: "Internal server error during verification." };
+      return {
+        success: false,
+        message: "We could not confirm the payment immediately. Lockedin will keep checking for final confirmation.",
+        status: "pending" as const,
+        retryable: true,
+      };
     }
   },
 });
