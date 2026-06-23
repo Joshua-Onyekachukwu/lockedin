@@ -163,15 +163,10 @@ export const verifyBvn = mutation({
       throw new Error("Invalid BVN format. Must be 11 digits.");
     }
 
-    // INTEGRATION INFRASTRUCTURE: MONO / DOJAH / SMILE ID
-    
-    await ctx.db.patch("users", userId, {
-      bvn_verified: true,
-      bvn_last4: args.bvn.slice(-4),
-      ...(args.firstName && args.lastName ? { name: `${args.firstName} ${args.lastName}` } : {}),
-    });
-
-    return { success: true, message: "Identity anchored to protocol successfully." };
+    return {
+      success: false,
+      message: "BVN verification must be completed via the Mono identity flow.",
+    };
   },
 });
 

@@ -209,7 +209,7 @@ export default function FundProtocolModal({
     Sentry.captureMessage('paystack-start-init', {
       level: 'info',
       tags: { area: 'payments', step: 'start-init' },
-      extra: { vaultId, userId: user?._id ?? null, email: user?.email ?? null },
+      extra: { vaultId, userId: user?._id ?? null },
     });
     // #endregion debug-point paystack-start-init
     try {
