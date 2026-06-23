@@ -11,8 +11,8 @@ Last updated: 2026-06-23
 - [x] Phase A: Payment system fixes, payment/auth observability, and high-risk security fixes in those paths
 - [x] Phase B: Goal sharing improvements and Hall of Integrity mission-count correction
 - [x] Phase C: Wallet system audit and targeted improvements
-- [ ] Phase E: Goal management controls and wallet top-nav access
-- [ ] Phase D: Documentation updates, security sweep, and production-readiness/release sweep
+- [x] Phase E: Goal management controls and wallet top-nav access
+- [x] Phase D: Documentation updates, security sweep, and production-readiness/release sweep
 - [ ] UX Audit: Admin page, auth flow, and core page redesign recommendations
 
 ## Phase A
@@ -90,17 +90,24 @@ Notes:
 - PR merged: `#8`
 
 ## Phase D
-Status: Pending
+Status: Completed
 
-- [ ] Update authoritative documentation after implementation stabilizes
-- [ ] Reconcile documentation drift in security and deployment docs
-- [ ] Run broader security sweep across auth, payments, admin, notifications, and webhooks
-- [ ] Add or refine production runbooks and handover materials
-- [ ] Perform release-readiness checklist
-- [ ] Validate with `npx tsc --noEmit`
-- [ ] Validate with `npx convex dev --once --env-file .env.local`
-- [ ] Validate with `npm run build`
-- [ ] Push branch, open PR, merge to `main`
+- [x] Update authoritative documentation after implementation stabilizes
+- [x] Reconcile documentation drift in security and deployment docs
+- [x] Run broader security sweep across auth, payments, admin, notifications, and webhooks
+- [x] Add or refine production runbooks and handover materials
+- [x] Perform release-readiness checklist
+- [x] Validate with `npx tsc --noEmit`
+- [x] Validate with `npx convex dev --once --env-file .env.local`
+- [x] Validate with `npm run build`
+- [x] Push branch, open PR, merge to `main`
+
+Notes:
+- Admin authorization now fails closed and requires verified email, `user.isAdmin === true`, and allowlist membership.
+- Direct public Mono BVN lookup has been internalized; the supported user-facing path remains `mono.verifyIdentity`.
+- Email verification now requires an explicit valid `SITE_URL` instead of silently falling back to an assumed production domain.
+- Withdrawal requests are rate-limited and show masked destination account numbers on admin/user read surfaces.
+- Phase D added operator documentation in `ADMIN_PAYMENTS_RUNBOOK.md`, `ADMIN_SETTINGS_RUNBOOK.md`, and `RESPONSIVE_QA_CHECKLIST.md`.
 
 ## UX Audit
 Status: Pending approval before implementation

@@ -17,6 +17,7 @@ Lockedin currently supports:
 - Penalty accrual tracking and protocol status management
 - Community discovery, witness pool, and Hall of Integrity/leaderboard
 - Admin tooling for user review, overrides, payment operations, and audits
+- Goal-owner controls to edit an unfunded stake amount or delete only unfunded/completed protocols
 - Public share pages for protocols via `/share/$vaultId`
 
 ## Current Product State
@@ -40,7 +41,7 @@ Important product note:
 - Auth: `@convex-dev/auth`
 - Payments: Paystack
 - Identity/KYC: Mono
-- Monitoring: Sentry hooks exist but are only partially wired
+- Monitoring: frontend Sentry bootstrap plus backend event capture/scrubbing are in place; the broader incident-center rollout is still deferred
 
 ## Core Mechanics
 
@@ -149,10 +150,10 @@ npm run auth:generate-key
 - `CONVEX_SITE_URL`
 - `JWT_PRIVATE_KEY`
 - `JWKS`
-- `ADMIN_EMAIL_ALLOWLIST`
+- `ADMIN_EMAIL_ALLOWLIST` required for admin access and must be paired with `user.isAdmin === true`
 - `RESEND_API_KEY` or `AUTH_RESEND_KEY`
 - `AUTH_EMAIL_FROM` or `EMAIL_FROM`
-- `SITE_URL`
+- `SITE_URL` required for email verification links
 - `MONO_SECRET_KEY`
 - `SENTRY_DSN` (optional)
 
@@ -166,6 +167,13 @@ Do not deploy by memory. Always verify the active target deployment first.
 - After backend changes: deploy Convex
 - After frontend env changes: redeploy Vercel
 
+## Security-Critical Runtime Rules
+
+- Admin access requires all three conditions: authenticated user, verified email, and both `user.isAdmin === true` plus membership in `ADMIN_EMAIL_ALLOWLIST`
+- Email verification links fail closed if `SITE_URL` is missing or invalid
+- Direct public BVN lookup is disabled; the supported path is `mono.verifyIdentity`
+- Withdrawal requests are rate-limited and only expose masked destination account numbers in user/admin read surfaces
+
 Use [DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md](file:///c:/Users/Semek/Webstrom/Lockedin/DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md) as the authoritative deployment guide.
 
 ## Authoritative Docs
@@ -177,6 +185,9 @@ Start with these documents:
 - [DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md](file:///c:/Users/Semek/Webstrom/Lockedin/DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md): deployment, env, and migration process
 - [LOCKEDIN_SYSTEM_DOCUMENTATION.md](file:///c:/Users/Semek/Webstrom/Lockedin/LOCKEDIN_SYSTEM_DOCUMENTATION.md): system behavior and business logic detail
 - [SECURITY.md](file:///c:/Users/Semek/Webstrom/Lockedin/SECURITY.md): security rules and sensitive areas
+- [ADMIN_PAYMENTS_RUNBOOK.md](file:///c:/Users/Semek/Webstrom/Lockedin/ADMIN_PAYMENTS_RUNBOOK.md): payment and withdrawal operator guide
+- [ADMIN_SETTINGS_RUNBOOK.md](file:///c:/Users/Semek/Webstrom/Lockedin/ADMIN_SETTINGS_RUNBOOK.md): admin settings operations guide
+- [RESPONSIVE_QA_CHECKLIST.md](file:///c:/Users/Semek/Webstrom/Lockedin/RESPONSIVE_QA_CHECKLIST.md): standard responsive verification checklist
 
 Important note:
 

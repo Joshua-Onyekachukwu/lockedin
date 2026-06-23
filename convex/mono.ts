@@ -1,7 +1,7 @@
 "use node";
 
 import { v } from "convex/values";
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { auth } from "./auth";
 
@@ -58,7 +58,7 @@ export const verifyIdentity = action({
   },
 });
 
-export const lookupBVN = action({
+export const lookupBVN = internalAction({
   args: {
     bvn: v.string(),
   },

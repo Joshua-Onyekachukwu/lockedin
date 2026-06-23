@@ -38,6 +38,7 @@ Any new developer should treat wallet return as a future workstream, not an alre
 - email verification gate
 - Google auth support through env-based configuration
 - admin gating and admin-only route protection
+- fail-closed admin authorization requiring verified email, `user.isAdmin === true`, and `ADMIN_EMAIL_ALLOWLIST` membership
 
 ### Protocol Creation and Management
 
@@ -53,6 +54,7 @@ Any new developer should treat wallet return as a future workstream, not an alre
 - backend verification and reconciliation
 - webhook handling
 - payment instrumentation and debugging hooks
+- withdrawal request rate limiting and masked destination display on read surfaces
 
 ### Execution Evidence
 
@@ -77,7 +79,7 @@ Any new developer should treat wallet return as a future workstream, not an alre
 - witness pool
 - public share links using `/share/$vaultId`
 - richer share message copy
-- Hall of Integrity mission counts based on actual goal counts
+- Hall of Integrity mission counts based on funded/activated protocols
 
 ### Admin
 
@@ -87,6 +89,7 @@ Any new developer should treat wallet return as a future workstream, not an alre
 - audit logging
 - payment support tooling
 - withdrawal/admin operation surfaces
+- admin settings route for accounting recompute and seed-data purge controls
 
 ## 4. Recently Completed Work
 
@@ -103,8 +106,9 @@ Recently completed:
 
 Recently completed:
 
-- mission counts were changed to use actual goals instead of stale derived values
+- mission counts were changed to use funded/activated protocol participation instead of stale derived values
 - public ranking surfaces now better reflect real user activity
+- mission counts now reflect funded/activated protocol participation rather than raw goal creation
 
 ### Vault UX and Evidence Handling
 
@@ -117,13 +121,13 @@ Recently completed:
 
 ## 5. Active Risks and Known Follow-Up Areas
 
-### Payment Flow
+### Release Hardening
 
-Still needs continued hardening:
+Still needs continued validation:
 
-- smooth completion feedback after Paystack success
-- full runtime validation that every success path updates UI correctly
+- final branch validation for Phase D (`tsc`, Convex check, production build)
 - continued monitoring of webhook and verify reconciliation behavior
+- completion of the approved monitoring roadmap once Sentry setup is fully available
 
 ### Deployment Alignment
 
@@ -131,6 +135,7 @@ High-risk area:
 
 - frontend and backend deployment mismatch has caused breakages before
 - Paystack and OAuth alignment must be checked during every environment move
+- `SITE_URL` must point to the active frontend domain before email verification is considered operational
 
 ### Documentation Drift
 
@@ -143,6 +148,10 @@ Use these as the active handoff set:
 - `CURRENT_DEVELOPMENT_STATUS.md`
 - `DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md`
 - `LOCKEDIN_SYSTEM_DOCUMENTATION.md`
+- `SECURITY.md`
+- `ADMIN_PAYMENTS_RUNBOOK.md`
+- `ADMIN_SETTINGS_RUNBOOK.md`
+- `RESPONSIVE_QA_CHECKLIST.md`
 
 ## 6. Current Open Product Decisions
 
@@ -154,10 +163,10 @@ These are not fully resolved in the active build:
 
 ## 7. Recommended Next Engineering Priorities
 
-1. finish payment hardening and confirm end-to-end post-payment UX
+1. finish Phase D validation, release checks, and branch shipping flow
 2. decide whether wallet-first is truly returning as the primary funding model
-3. complete final system sweep across frontend, backend, and deployment flows
-4. improve observability and release confidence
+3. continue the approved monitoring roadmap once Sentry setup is ready
+4. improve runtime release confidence around payments and admin operations
 5. continue retention and engagement feature planning
 
 ## 8. Guidance For New Developers

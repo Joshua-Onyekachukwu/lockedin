@@ -79,9 +79,12 @@ When running scans, prioritize fixes based on:
 ### Known Security Considerations
 
 1. **Paystack Webhook**: HMAC SHA-512 verification is implemented in `convex/http.ts`. Ensure the webhook secret is set correctly in each environment.
-2. **Environment Variables**: Ensure `PAYSTACK_SECRET_KEY` and `MONO_SECRET_KEY` are never committed.
-3. **Rate Limiting**: Waitlist endpoint has rate limiting. Extend rate limiting to other sensitive endpoints (payments, withdrawals, admin tooling).
-4. **BVN Verification**: BVN verification must be performed through `convex/mono.ts` (`mono.verifyIdentity`). Avoid any “self-attestation” paths.
+2. **Environment Variables**: Ensure `PAYSTACK_SECRET_KEY`, `MONO_SECRET_KEY`, and `SITE_URL` are never committed and are configured per environment.
+3. **Rate Limiting**: Waitlist, Paystack initialize/verify, email verification, and withdrawal request paths are rate-limited. Treat any new finance/admin mutation as rate-limit review required.
+4. **BVN Verification**: BVN verification must be performed through `convex/mono.ts` (`mono.verifyIdentity`). Direct public BVN lookup should remain disabled.
+5. **Admin Access**: Admin authorization is fail-closed and requires all of: authenticated user, verified email, `user.isAdmin === true`, and membership in `ADMIN_EMAIL_ALLOWLIST`.
+6. **Withdrawal PII**: Store only what operations need, mask account numbers in user/admin read surfaces, and avoid putting full destination account numbers into transaction descriptions or bug-report payloads.
+7. **Email Verification Links**: Email verification should fail closed if `SITE_URL` is missing or invalid; never fall back silently to an assumed production URL.
 
 ### Secret Detection Patterns
 
