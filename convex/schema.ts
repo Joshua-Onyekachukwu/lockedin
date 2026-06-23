@@ -182,7 +182,8 @@ export default defineSchema({
       v.literal("penalty"), 
       v.literal("refund"), 
       v.literal("dividend"), 
-      v.literal("platform_fee")
+      v.literal("platform_fee"),
+      v.literal("wallet_withdrawal")
     ),
     vaultId: v.optional(v.id("vaults")),
     status: v.union(v.literal("pending"), v.literal("completed"), v.literal("failed")),

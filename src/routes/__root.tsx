@@ -71,43 +71,67 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     refetchOnMount: 'always',
   })
 
+  const allowUnauthed = React.useMemo(
+    () =>
+      new Set([
+        '/',
+        '/login',
+        '/signup',
+        '/verify-email',
+        '/auth/callback',
+      ]),
+    [],
+  )
+
+  const allowUnverified = React.useMemo(
+    () =>
+      new Set([
+        '/',
+        '/verify-required',
+        '/verify-email',
+        '/auth/callback',
+        '/login',
+        '/signup',
+      ]),
+    [],
+  )
+
+  const isPublicShare = pathname.startsWith('/share/')
+  const requiresAuth = !allowUnauthed.has(pathname) && !isPublicShare
+  const requiresVerifiedUser = !allowUnverified.has(pathname) && !isPublicShare
+
   React.useEffect(() => {
     if (authLoading) return
 
-    const allowUnauthed = new Set([
-      '/',
-      '/login',
-      '/signup',
-      '/verify-email',
-      '/auth/callback',
-    ])
-
-    const allowUnverified = new Set([
-      '/',
-      '/verify-required',
-      '/verify-email',
-      '/auth/callback',
-      '/login',
-      '/signup',
-    ])
-
     if (!isAuthenticated) {
-      const isPublicShare = pathname.startsWith('/share/')
-      if (!allowUnauthed.has(pathname) && !isPublicShare) navigate({ to: '/login' })
+      if (requiresAuth) navigate({ to: '/login' })
       return
     }
 
     if (userLoading) return
     if (!user) {
-      if (!allowUnauthed.has(pathname)) navigate({ to: '/login' })
+      if (requiresAuth) navigate({ to: '/login' })
       return
     }
 
     const isVerified = !!user?.emailVerificationTime
     if (!isVerified) {
-      if (!allowUnverified.has(pathname)) navigate({ to: '/verify-required' })
+      if (requiresVerifiedUser) navigate({ to: '/verify-required' })
     }
-  }, [authLoading, isAuthenticated, navigate, pathname, user, userLoading])
+  }, [authLoading, isAuthenticated, navigate, pathname, requiresAuth, requiresVerifiedUser, user, userLoading])
+
+  if (requiresAuth && (authLoading || (isAuthenticated && userLoading))) {
+    return (
+      <div className="min-h-screen bg-[#050810] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-5 text-center">
+          <div className="h-12 w-12 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">
+            Restoring secure session...
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return <>{children}</>
 }
