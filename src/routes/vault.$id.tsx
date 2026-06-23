@@ -7,7 +7,9 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock, 
+  PencilLine,
   ShieldCheck,
+  Trash2,
   Users,
   X
 } from 'lucide-react';
@@ -16,6 +18,7 @@ import { api } from '../../convex/_generated/api';
 import { ConfirmModal } from '~/components/confirm-modal';
 import { SharePromptModal } from '~/components/share-prompt-modal';
 import { useToast } from '~/components/toast';
+import { toUserMessage } from '~/lib/errors';
 import { useBodyScrollLock } from '~/lib/useBodyScrollLock';
 
 const EMPTY_ARGS: Record<string, never> = {};
@@ -31,6 +34,8 @@ function VaultPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const updatePendingStakeAmount = useMutation(api.goals.updatePendingStakeAmount);
+  const deleteOwnedVault = useMutation(api.goals.deleteOwnedVault);
 
   const { data: user }: { data: any } = useSuspenseQuery({
     ...(convexQuery(api.users.current, EMPTY_ARGS as any) as any),
@@ -60,6 +65,9 @@ function VaultPage() {
   const [shareUrl, setShareUrl] = useState<string>('');
   const [sharePromptOpen, setSharePromptOpen] = useState(false);
   const [witnessEditOpen, setWitnessEditOpen] = useState(false);
+  const [stakeAmountInput, setStakeAmountInput] = useState('');
+  const [stakeEditorOpen, setStakeEditorOpen] = useState(false);
+  const [stakeSaving, setStakeSaving] = useState(false);
   const [confirm, setConfirm] = useState<{
     open: boolean;
     title: string;
@@ -171,6 +179,73 @@ function VaultPage() {
   const penaltyAccruedKoboRaw = Number(vault?.penaltyAccrued ?? 0)
   const penaltyAccruedKobo = Number.isFinite(penaltyAccruedKoboRaw) ? penaltyAccruedKoboRaw : 0
   const principalRemainingKobo = Math.max(0, principalKobo - penaltyAccruedKobo)
+
+  useEffect(() => {
+    setStakeAmountInput(principalKobo > 0 ? String(principalKobo / 100) : '')
+  }, [principalKobo])
+
+  const handleStakeUpdate = async () => {
+    const amountNgn = Number(stakeAmountInput.replace(/,/g, '').trim())
+    if (!Number.isFinite(amountNgn) || amountNgn <= 0) {
+      toast.error('Enter a valid amount before saving.', { title: 'Invalid Stake Amount' })
+      return
+    }
+
+    setStakeSaving(true)
+    try {
+      const result = await updatePendingStakeAmount({
+        vaultId,
+        amount: Math.round(amountNgn * 100),
+      } as any)
+      if (!result?.success) {
+        toast.error(result?.message || 'Unable to update protocol amount.', {
+          title: 'Stake Update Blocked',
+        })
+        return
+      }
+      toast.success(result.message, { title: 'Stake Updated' })
+      setStakeEditorOpen(false)
+      await queryClient.invalidateQueries({ queryKey: vaultQuery.queryKey })
+      await queryClient.invalidateQueries()
+    } catch (err: any) {
+      toast.error(toUserMessage(err, 'Unable to update protocol amount.'), {
+        title: 'Stake Update Failed',
+      })
+    } finally {
+      setStakeSaving(false)
+    }
+  }
+
+  const confirmDeleteVault = () => {
+    setConfirm({
+      open: true,
+      title: status === 'completed' ? 'Delete completed protocol?' : 'Delete unfunded protocol?',
+      description:
+        status === 'completed'
+          ? 'This removes the completed protocol from your dashboard and clears its attached witness and evidence records.'
+          : 'This will permanently remove the unfunded protocol before activation.',
+      tone: 'danger',
+      confirmLabel: 'Delete Protocol',
+      run: async () => {
+        try {
+          const result = await deleteOwnedVault({ vaultId } as any)
+          if (!result?.success) {
+            toast.error(result?.message || 'Unable to delete protocol.', {
+              title: 'Delete Blocked',
+            })
+            return
+          }
+          toast.success(result.message, { title: 'Protocol Deleted' })
+          await queryClient.invalidateQueries()
+          navigate({ to: '/dashboard' })
+        } catch (err: any) {
+          toast.error(toUserMessage(err, 'Unable to delete protocol.'), {
+            title: 'Delete Failed',
+          })
+        }
+      },
+    })
+  }
 
   if (access !== 'full') {
     return (
@@ -376,6 +451,94 @@ function VaultPage() {
                           </div>
                         )}
                     </div>
+
+                    {isOwner && (isAwaitingFunding || status === 'completed') ? (
+                      <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
+                          Protocol Controls
+                        </p>
+
+                        {isAwaitingFunding ? (
+                          <div className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-6">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-white/35 italic">
+                                  Funding Target
+                                </p>
+                                <p className="mt-3 text-xs text-white/40 leading-relaxed italic">
+                                  Adjust the stake before activation. Once funding starts, the amount locks.
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setStakeEditorOpen((open) => !open)
+                                  setStakeAmountInput(String(principalKobo / 100))
+                                }}
+                                className="h-11 w-11 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white flex items-center justify-center transition-all active:scale-95 shrink-0"
+                              >
+                                <PencilLine size={16} />
+                              </button>
+                            </div>
+
+                            {stakeEditorOpen ? (
+                              <div className="mt-6 space-y-4">
+                                <div>
+                                  <label className="text-[10px] font-black uppercase tracking-[0.22em] text-white/25 italic">
+                                    Stake Amount In Naira
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    value={stakeAmountInput}
+                                    onChange={(e) => setStakeAmountInput(e.target.value)}
+                                    className="mt-3 w-full rounded-2xl border border-white/10 bg-[#050810] px-5 py-4 text-white font-black italic outline-none focus:border-blue-500/40"
+                                    placeholder="15000"
+                                  />
+                                </div>
+                                <div className="flex gap-3">
+                                  <button
+                                    type="button"
+                                    disabled={stakeSaving}
+                                    onClick={() => void handleStakeUpdate()}
+                                    className={`flex-1 rounded-2xl bg-white px-6 py-4 text-[10px] font-black uppercase tracking-[0.28em] text-black italic transition-all hover:scale-[1.02] active:scale-95 ${
+                                      stakeSaving ? 'opacity-60 pointer-events-none' : ''
+                                    }`}
+                                  >
+                                    {stakeSaving ? 'Saving...' : 'Save Amount'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={stakeSaving}
+                                    onClick={() => {
+                                      setStakeEditorOpen(false)
+                                      setStakeAmountInput(String(principalKobo / 100))
+                                    }}
+                                    className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-[10px] font-black uppercase tracking-[0.28em] text-white italic transition-all hover:bg-white/10 active:scale-95"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-white/40 leading-relaxed italic">
+                            Completed protocols can be removed from the dashboard when you no longer need them in your active history.
+                          </p>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={confirmDeleteVault}
+                          className="mt-6 w-full rounded-2xl border border-red-500/20 bg-red-500/10 px-8 py-4 text-[10px] font-black uppercase tracking-[0.28em] text-red-300 italic transition-all hover:bg-red-500/15 active:scale-95 flex items-center justify-center gap-3"
+                        >
+                          <Trash2 size={16} />
+                          {status === 'completed' ? 'Delete Completed Protocol' : 'Delete Unfunded Protocol'}
+                        </button>
+                      </div>
+                    ) : null}
 
                     {!isAwaitingFunding ? (
                       <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">

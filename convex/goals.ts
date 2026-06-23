@@ -6,6 +6,26 @@ import { auth } from "./auth";
  * PROTOCOL EXECUTION ENGINE
  */
 
+const goalCategoryValidator = v.union(
+  v.literal("fitness"),
+  v.literal("learning"),
+  v.literal("financial"),
+  v.literal("habit"),
+  v.literal("professional"),
+);
+
+const frequencyTypeValidator = v.union(
+  v.literal("daily"),
+  v.literal("weekly"),
+  v.literal("monthly"),
+);
+
+const painTierValidator = v.union(
+  v.literal("deterrence"),
+  v.literal("enforcement"),
+  v.literal("liquidation"),
+);
+
 export const calculateIntegrityScore = query({
   args: { userId: v.id("users") },
   returns: v.number(),
@@ -26,22 +46,12 @@ export const create = mutation({
   args: {
     title: v.string(),
     description: v.string(),
-    category: v.union(
-      v.literal("fitness"),
-      v.literal("learning"),
-      v.literal("financial"),
-      v.literal("habit"),
-      v.literal("professional")
-    ),
-    frequency_type: v.union(v.literal("daily"), v.literal("weekly"), v.literal("monthly")),
+    category: goalCategoryValidator,
+    frequency_type: frequencyTypeValidator,
     target_count: v.number(),
     duration_weeks: v.number(), 
     stakedAmount: v.number(),
-    painTier: v.union(
-      v.literal("deterrence"),
-      v.literal("enforcement"),
-      v.literal("liquidation")
-    ),
+    painTier: painTierValidator,
   },
   returns: v.id("vaults"),
   handler: async (ctx, args) => {
@@ -85,6 +95,174 @@ export const create = mutation({
     });
 
     return vaultId;
+  },
+});
+
+export const updatePendingStakeAmount = mutation({
+  args: {
+    vaultId: v.id("vaults"),
+    amount: v.number(),
+  },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
+    const user = await ctx.db.get("users", userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
+
+    const vault = await ctx.db.get("vaults", args.vaultId);
+    if (!vault || vault.userId !== userId) {
+      throw new Error("Protocol not found");
+    }
+
+    if (vault.status !== "awaiting_funding") {
+      return {
+        success: false,
+        message: "Only protocols awaiting funding can have their stake adjusted.",
+      };
+    }
+
+    const normalizedAmount = Math.round(args.amount);
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount < 100) {
+      return {
+        success: false,
+        message: "Enter a valid stake amount before saving.",
+      };
+    }
+
+    const deposits = await ctx.db
+      .query("deposits")
+      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+      .collect();
+
+    if (deposits.some((deposit) => deposit.status === "pending" || deposit.status === "completed")) {
+      return {
+        success: false,
+        message: "This protocol already has a funding attempt attached. Create a new protocol if you need a different amount.",
+      };
+    }
+
+    await ctx.db.patch("vaults", args.vaultId, {
+      amount: normalizedAmount,
+      paystack_reference: undefined,
+    });
+
+    return {
+      success: true,
+      message: "Stake amount updated.",
+    };
+  },
+});
+
+export const deleteOwnedVault = mutation({
+  args: {
+    vaultId: v.id("vaults"),
+  },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (userId === null) throw new Error("Unauthenticated");
+
+    const user = await ctx.db.get("users", userId);
+    if (!user) throw new Error("Identity verification failed");
+    if (!user.emailVerificationTime) throw new Error("Email verification required.");
+
+    const vault = await ctx.db.get("vaults", args.vaultId);
+    if (!vault || vault.userId !== userId) {
+      throw new Error("Protocol not found");
+    }
+
+    if (vault.status === "active") {
+      return {
+        success: false,
+        message: "Active protocols cannot be deleted.",
+      };
+    }
+
+    if (vault.status !== "awaiting_funding" && vault.status !== "completed") {
+      return {
+        success: false,
+        message: "Only awaiting-funding or completed protocols can be deleted.",
+      };
+    }
+
+    const goal = await ctx.db
+      .query("goals")
+      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+      .unique();
+    if (!goal) {
+      return {
+        success: false,
+        message: "Protocol goal record not found.",
+      };
+    }
+
+    const deposits = await ctx.db
+      .query("deposits")
+      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+      .collect();
+
+    if (
+      vault.status === "awaiting_funding" &&
+      deposits.some((deposit) => deposit.status === "pending" || deposit.status === "completed")
+    ) {
+      return {
+        success: false,
+        message: "This protocol already has a payment attempt attached and cannot be deleted safely.",
+      };
+    }
+
+    const logs = await ctx.db
+      .query("goal_logs")
+      .withIndex("by_goal", (q) => q.eq("goalId", goal._id))
+      .collect();
+    const partners = await ctx.db
+      .query("accountability_partners")
+      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+      .collect();
+    const penaltyEvents = await ctx.db
+      .query("penalty_events")
+      .withIndex("by_vault", (q) => q.eq("vaultId", args.vaultId))
+      .collect();
+
+    for (const log of logs) {
+      const proofIds = Array.isArray(log.proofImageIds)
+        ? log.proofImageIds
+        : log.proofImageId
+          ? [log.proofImageId]
+          : [];
+      for (const proofId of proofIds) {
+        await ctx.storage.delete(proofId);
+      }
+      await ctx.db.delete("goal_logs", log._id);
+    }
+
+    for (const partner of partners) {
+      await ctx.db.delete("accountability_partners", partner._id);
+    }
+
+    for (const penaltyEvent of penaltyEvents) {
+      await ctx.db.delete("penalty_events", penaltyEvent._id);
+    }
+
+    for (const deposit of deposits) {
+      if (deposit.status === "failed") {
+        await ctx.db.delete("deposits", deposit._id);
+      }
+    }
+
+    await ctx.db.delete("goals", goal._id);
+    await ctx.db.delete("vaults", args.vaultId);
+
+    return {
+      success: true,
+      message:
+        vault.status === "completed"
+          ? "Completed protocol removed from your dashboard."
+          : "Unfunded protocol deleted.",
+    };
   },
 });
 

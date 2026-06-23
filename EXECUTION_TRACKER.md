@@ -10,7 +10,8 @@ Last updated: 2026-06-23
 ## Phase Status
 - [x] Phase A: Payment system fixes, payment/auth observability, and high-risk security fixes in those paths
 - [x] Phase B: Goal sharing improvements and Hall of Integrity mission-count correction
-- [ ] Phase C: Wallet system audit and targeted improvements
+- [x] Phase C: Wallet system audit and targeted improvements
+- [ ] Phase E: Goal management controls and wallet top-nav access
 - [ ] Phase D: Documentation updates, security sweep, and production-readiness/release sweep
 - [ ] UX Audit: Admin page, auth flow, and core page redesign recommendations
 
@@ -46,7 +47,7 @@ Notes:
 - PR merged: `#4`
 
 ## Phase C
-Status: In progress
+Status: Completed
 
 - [x] Audit existing wallet backend and confirm what is truly functional
 - [x] Correct wallet ledger semantics where current transaction typing is misleading
@@ -58,14 +59,34 @@ Status: In progress
 - [x] Validate with `npx tsc --noEmit`
 - [x] Validate with `npx convex dev --once --env-file .env.local`
 - [x] Validate with `npm run build`
-- [ ] Push branch, open PR, merge to `main`
+- [x] Push branch, open PR, merge to `main`
 
 Notes:
 - Active product posture remains stake-per-vault, not wallet-first.
 - Wallet-related code is being treated as supporting infrastructure plus targeted UX improvements.
 - Wallet and withdrawal foundation already existed on `main`; this completion pass is focused on closing the remaining correctness gap instead of rebuilding the flow.
-- New correction in progress: withdrawal escrow transactions are now being linked directly to withdrawal records so completion/failure/rejection updates are deterministic.
-- Admin extraction queue is being upgraded to support explicit rejection before transfer so capital can be returned cleanly without forcing a Paystack attempt.
+- PR merged: `#7`
+- Withdrawal escrow transactions are now linked directly to withdrawal records so completion/failure/rejection updates are deterministic.
+- Admin extraction queue now supports explicit rejection before transfer so capital can be returned cleanly without forcing a Paystack attempt.
+
+## Phase E
+Status: In progress
+
+- [x] Add owner controls to edit the stake amount before funding starts
+- [x] Block amount edits once a funding attempt is attached to the vault
+- [x] Add safe owner delete for awaiting-funding protocols
+- [x] Add safe owner delete for completed protocols
+- [x] Block delete for active protocols
+- [x] Add the missing wallet entry to the top navigation
+- [x] Validate with `npx tsc --noEmit`
+- [x] Validate with `npx convex dev --once --env-file .env.local`
+- [x] Validate with `npm run build`
+- [ ] Push branch, open PR, merge to `main`
+
+Notes:
+- Goal-management controls are being added on the vault detail page so users can manage a protocol from the screen they already use.
+- Delete is being implemented with backend state checks plus cleanup of linked evidence/witness records rather than a loose frontend-only action.
+- The wallet flow still lives in the profile surface; this phase adds the missing dashboard top-nav entry so users can reach it from the primary product shell.
 
 ## Phase D
 Status: Pending
