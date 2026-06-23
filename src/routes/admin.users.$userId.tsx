@@ -174,7 +174,7 @@ function AdminUserDetailPage() {
                 {[
                   { k: 'Tier', v: userDetail.tier },
                   { k: 'Streak', v: `${userDetail.streak_count}W` },
-                  { k: 'Missions', v: userDetail.goals_completed },
+                  { k: 'Activated', v: userDetail.goals_completed },
                   { k: 'Shields', v: userDetail.shields },
                   { k: 'Credits', v: userDetail.credits },
                   { k: 'Joined', v: new Date(userDetail._creationTime).toLocaleDateString() },

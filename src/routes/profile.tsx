@@ -253,7 +253,7 @@ function ProfileSettings() {
                 ₦{((user?.balance ?? 0) / 100).toLocaleString()}
               </p>
               <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                Streak: {user?.streak_count ?? 0}W • Missions: {user?.goals_completed ?? 0}
+                Streak: {user?.streak_count ?? 0}W • Activated: {user?.goals_completed ?? 0}
               </p>
             </div>
           </div>
