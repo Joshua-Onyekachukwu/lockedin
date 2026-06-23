@@ -53,6 +53,7 @@ function RootComponent() {
 function AuthGate({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth()
+  const redirectTimeoutRef = React.useRef<number | null>(null)
 
   const pathname = useRouterState({
     select: (s) => s.location.pathname,
@@ -104,13 +105,25 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (authLoading) return
 
     if (!isAuthenticated) {
-      if (requiresAuth) navigate({ to: '/login' })
+      if (requiresAuth) {
+        if (redirectTimeoutRef.current) window.clearTimeout(redirectTimeoutRef.current)
+        redirectTimeoutRef.current = window.setTimeout(() => {
+          redirectTimeoutRef.current = null
+          if (!isAuthenticated) navigate({ to: '/login' })
+        }, 800)
+      }
       return
     }
 
     if (userLoading) return
     if (!user) {
-      if (requiresAuth) navigate({ to: '/login' })
+      if (requiresAuth) {
+        if (redirectTimeoutRef.current) window.clearTimeout(redirectTimeoutRef.current)
+        redirectTimeoutRef.current = window.setTimeout(() => {
+          redirectTimeoutRef.current = null
+          if (!user) navigate({ to: '/login' })
+        }, 800)
+      }
       return
     }
 
@@ -119,6 +132,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       if (requiresVerifiedUser) navigate({ to: '/verify-required' })
     }
   }, [authLoading, isAuthenticated, navigate, pathname, requiresAuth, requiresVerifiedUser, user, userLoading])
+
+  React.useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) {
+        window.clearTimeout(redirectTimeoutRef.current)
+        redirectTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   if (requiresAuth && (authLoading || (isAuthenticated && userLoading))) {
     return (

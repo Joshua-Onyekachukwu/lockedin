@@ -11,6 +11,18 @@ if (sentryDsn) {
     dsn: sentryDsn,
     environment: import.meta.env.MODE,
     tracesSampleRate: 0.05,
+    beforeSend(event) {
+      const req: any = (event as any).request
+      if (req?.headers) {
+        const headers = { ...(req.headers as any) }
+        if (headers.Authorization) headers.Authorization = '[redacted]'
+        if (headers.authorization) headers.authorization = '[redacted]'
+        if (headers.Cookie) headers.Cookie = '[redacted]'
+        if (headers.cookie) headers.cookie = '[redacted]'
+        ;(event as any).request = { ...req, headers }
+      }
+      return event
+    },
   })
 }
 

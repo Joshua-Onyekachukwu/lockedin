@@ -78,15 +78,15 @@ When running scans, prioritize fixes based on:
 
 ### Known Security Considerations
 
-1. **Paystack Webhook**: Currently validates signature presence. Production should add HMAC verification.
+1. **Paystack Webhook**: HMAC SHA-512 verification is implemented in `convex/http.ts`. Ensure the webhook secret is set correctly in each environment.
 2. **Environment Variables**: Ensure `PAYSTACK_SECRET_KEY` and `MONO_SECRET_KEY` are never committed.
-3. **Rate Limiting**: Waitlist endpoint has rate limiting. Consider extending to other mutation endpoints.
+3. **Rate Limiting**: Waitlist endpoint has rate limiting. Extend rate limiting to other sensitive endpoints (payments, withdrawals, admin tooling).
+4. **BVN Verification**: BVN verification must be performed through `convex/mono.ts` (`mono.verifyIdentity`). Avoid any “self-attestation” paths.
 
 ### Secret Detection Patterns
 
 This project should never contain:
 - Paystack Secret Key
-- Convex Deployment URL (production)
 - Mono API Secret
 - Any private keys or tokens
 
