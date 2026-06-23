@@ -43,6 +43,7 @@ Lockedin is a non-custodial behavior enforcement app. Users create a protocol (g
 - Payment safety checks are enforced (server-side):
   - Rate limits on repeated initialization/verification attempts
   - Test/live mismatch protection (prevents verifying on a different Paystack domain mode)
+  - Overage tolerance when Paystack processor fees make the charged amount higher than the expected stake
 
 ### 5) Protocol Details + Full Specification
 
@@ -82,7 +83,23 @@ Lockedin is a non-custodial behavior enforcement app. Users create a protocol (g
 - Admin route provides operational tooling:
   - Stats, waitlist, transactions
   - User management and user details via a dedicated route: `/admin/users/$userId`
-- Admin status is checked server-side via allowlist + DB role flags.
+  - Payment explorer, unmatched-payment review, and withdrawal operations
+  - Accounting recompute and seed-data purge tools via `/admin/settings`
+- Admin status is checked server-side with verified email + allowlist + DB role flags.
+
+### 10) Goal Owner Safety Controls
+
+- Owners can edit a protocol stake amount only while the protocol is still `awaiting_funding` and no payment attempt is attached.
+- Owners can delete only:
+  - unfunded protocols
+  - completed protocols
+- Active protocols cannot be deleted.
+
+### 11) Wallet Visibility + Withdrawals
+
+- The profile route shows wallet balance, recent transaction history, and withdrawal queue status.
+- Withdrawal destination account numbers are masked on read surfaces.
+- A user can only have one in-flight withdrawal at a time, and withdrawal requests are rate-limited.
 
 ## Step-by-Step Tester Flow
 
@@ -161,6 +178,7 @@ Expected:
 Expected:
 - Verified admin can consistently access admin tools.
 - Non-admin accounts see “Admin Access Blocked” with a reason.
+- Accounts missing either the DB admin flag or allowlist membership stay blocked.
 
 ## Admin Email Access Bug — What Was Wrong and What Was Fixed
 
@@ -201,9 +219,14 @@ How to verify the fix:
   - Protocol created as awaiting_funding
   - Funding activates protocol
   - Paystack verify succeeds and does not double-charge on refresh
+  - Paystack overage does not break successful funding credit
 - **Execute Log**
   - Can submit note + 1–3 images
   - Scroll works inside modal and log detail viewer
+- **Goal owner controls**
+  - Can edit stake before funding starts
+  - Cannot edit after a payment attempt exists
+  - Can delete unfunded/completed protocols, not active ones
 - **Witness flow**
   - Requests/applications appear correctly
   - Accepting enables witness review
@@ -211,15 +234,18 @@ How to verify the fix:
 - **Admin stability**
   - Verified admin consistently accesses `/admin`
   - Non-admin consistently blocked with clear reason
+- **Withdrawals**
+  - User sees masked destination in profile queue
+  - Admin sees masked destination in the pending queue before transfer approval
 
 ## Known Limitations / Expected Rough Edges
 
 - If the email backend is offline, verification can be manual (admin-assisted) and the UI indicates this.
-- Some admin operational tooling may be visible but not fully polished (work in progress on unmatched-payment tooling).
+- Email verification email sending also requires a valid `SITE_URL` backend configuration.
+- Admin payment tooling exists, but operators should follow the payment/settings runbooks before using destructive controls.
 
 ## What’s Planned Next (Near-Term Roadmap)
 
-- Finish admin tooling for handling **unmatched Paystack payments** (resolve with reason + retry actions).
 - Mobile responsiveness pass (systematic audit + UI fixes).
 - Further performance improvements (smaller client chunks, faster route transitions).
 - Expanded growth/activation UX (cleaner checklist UI + better progression feedback).
@@ -231,4 +257,3 @@ When reporting an issue, include:
 - What you expected vs what happened
 - Screenshot/screen recording
 - If payment-related: Paystack reference + timestamp (no bank account details)
-

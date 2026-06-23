@@ -32,6 +32,18 @@ function getAdminEmailAllowlist() {
     .filter(Boolean);
 }
 
+function isAllowlistedAdminEmail(allowlist: Array<string>, email?: string | null) {
+  if (!email) return false;
+  return allowlist.some((entry) => entry.toLowerCase() === email.toLowerCase());
+}
+
+function maskAccountNumber(accountNumber?: string | null) {
+  const digits = String(accountNumber ?? "").replace(/\D/g, "");
+  if (!digits) return "—";
+  if (digits.length <= 4) return digits;
+  return `${"*".repeat(Math.max(0, digits.length - 4))}${digits.slice(-4)}`;
+}
+
 async function verifyPaystackTransaction(reference: string) {
   if (!PAYSTACK_SECRET) {
     return { ok: false, message: "Payment backend not configured." };
@@ -78,11 +90,18 @@ async function checkAdmin(ctx: any) {
     }
     
     const allowlist = getAdminEmailAllowlist();
-    const isEmailAdmin = user.email && allowlist.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
+    if (allowlist.length === 0) {
+        throw new Error("SECURITY ALERT: ADMIN_EMAIL_ALLOWLIST is not configured.");
+    }
+
+    const isEmailAdmin = isAllowlistedAdminEmail(allowlist, user.email);
     const isDbAdmin = user.isAdmin === true;
     
-    if (!isDbAdmin && !isEmailAdmin) {
-        throw new Error("SECURITY ALERT: Administrative privileges required.");
+    if (!isDbAdmin) {
+        throw new Error("SECURITY ALERT: Database admin role required.");
+    }
+    if (!isEmailAdmin) {
+        throw new Error("SECURITY ALERT: Email is not on the admin allowlist.");
     }
     return user;
 }
@@ -685,8 +704,7 @@ export const checkAdminStatus = query({
             const user = userId ? await ctx.db.get("users", userId) : null;
             const allowlist = getAdminEmailAllowlist();
             const email = (user?.email) ?? undefined;
-            const isAllowlistAdmin =
-              !!email && allowlist.map((x) => x.toLowerCase()).includes(email.toLowerCase());
+            const isAllowlistAdmin = isAllowlistedAdminEmail(allowlist, email);
             const isDbAdmin = user?.isAdmin === true;
             const isVerified = !!user?.emailVerificationTime;
             const reason = e instanceof Error ? e.message : String(e);
@@ -1650,7 +1668,16 @@ export const getPendingWithdrawals = query({
     const results = [];
     for (const w of withdrawals) {
       const user = await ctx.db.get("users", w.userId);
-      results.push({ ...w, user });
+      results.push({
+        ...w,
+        bank_details: w.bank_details
+          ? {
+              ...w.bank_details,
+              account_number: maskAccountNumber(w.bank_details.account_number),
+            }
+          : w.bank_details,
+        user,
+      });
     }
     return results;
   },

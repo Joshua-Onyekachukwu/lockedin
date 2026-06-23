@@ -8,6 +8,18 @@ const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_MODE = process.env.PAYSTACK_MODE;
 const PAYSTACK_PUBLIC = process.env.PAYSTACK_PUBLIC_KEY;
 
+function maskAccountNumber(accountNumber: string) {
+  const digits = accountNumber.replace(/\D/g, "");
+  if (!digits) return "****";
+  if (digits.length <= 4) return digits;
+  return `${"*".repeat(Math.max(0, digits.length - 4))}${digits.slice(-4)}`;
+}
+
+function formatMaskedWithdrawalDestination(bankName: string, accountNumber: string) {
+  const masked = maskAccountNumber(accountNumber);
+  return bankName ? `${bankName} (${masked})` : masked;
+}
+
 function derivePaystackDomainFromSecret(secret: string) {
   if (secret.startsWith("sk_test_")) return "test" as const;
   if (secret.startsWith("sk_live_")) return "live" as const;
@@ -1516,6 +1528,18 @@ export const requestWithdrawal = mutation({
       return { success: false, message: "Resolve your bank account details before requesting a withdrawal." };
     }
 
+    const rate = await ctx.runMutation((internal as any).rateLimit.consume, {
+      key: `user:${userId}:request_withdrawal`,
+      limit: 3,
+      windowMs: 6 * 60 * 60_000,
+    });
+    if (!rate.allowed) {
+      return {
+        success: false,
+        message: "Too many withdrawal requests were submitted recently. Please wait before trying again.",
+      };
+    }
+
     const existingWithdrawal = await ctx.db
       .query("withdrawals")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -1553,7 +1577,7 @@ export const requestWithdrawal = mutation({
       type: "wallet_withdrawal",
       withdrawalId,
       status: "pending",
-      description: `Withdrawal request to ${bankName} (${accountNumber})`,
+      description: `Withdrawal request to ${formatMaskedWithdrawalDestination(bankName, accountNumber)}`,
     });
 
     await ctx.db.insert("notifications", {
@@ -1603,11 +1627,20 @@ export const getWithdrawalRequests = query({
     const userId = await auth.getUserId(ctx);
     if (!userId) return [];
     const limit = Math.max(1, Math.min(args.limit ?? 10, 20));
-    return await ctx.db
+    const rows = await ctx.db
       .query("withdrawals")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .order("desc")
       .take(limit);
+    return rows.map((row) => ({
+      ...row,
+      bank_details: row.bank_details
+        ? {
+            ...row.bank_details,
+            account_number: maskAccountNumber(row.bank_details.account_number),
+          }
+        : row.bank_details,
+    }));
   },
 });
 

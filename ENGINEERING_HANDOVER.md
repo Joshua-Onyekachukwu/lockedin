@@ -35,7 +35,7 @@ Do not assume wallet funding is the current live flow just because wallet-relate
 - Auth: `@convex-dev/auth`
 - Payments: Paystack
 - KYC/Identity: Mono
-- Monitoring: Sentry hooks exist, but observability is not fully finished
+- Monitoring: frontend Sentry bootstrap and backend capture/scrubbing are live; the fuller incident-center rollout is still deferred
 
 ## 4. Core Business Objects
 
@@ -225,10 +225,10 @@ These tables support payment accounting and older wallet-related mechanics. They
 - `CONVEX_SITE_URL`
 - `JWT_PRIVATE_KEY`
 - `JWKS`
-- `ADMIN_EMAIL_ALLOWLIST`
+- `ADMIN_EMAIL_ALLOWLIST` required for admin access and evaluated alongside `user.isAdmin`
 - `RESEND_API_KEY` or `AUTH_RESEND_KEY`
 - `AUTH_EMAIL_FROM` or `EMAIL_FROM`
-- `SITE_URL`
+- `SITE_URL` required for email verification links
 - `MONO_SECRET_KEY`
 - `SENTRY_DSN` optional
 
@@ -283,18 +283,22 @@ See [DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md](file:///c:/Users/Semek/Webstrom/Locke
 - Witness removal and witness verification reports
 - Multi-image check-ins
 - Funding progress UX improvements
+- Goal-owner controls for pre-funding amount edits and safe unfunded/completed deletion
+- Wallet visibility improvements plus deterministic withdrawal linkage/rejection handling
+- Phase D hardening: fail-closed email verification URL handling, internal-only direct Mono lookup, stricter admin gating, and masked withdrawal account displays
 
 ### Active Concerns
 
-- Payment flow needs continued runtime verification and UX hardening
+- Payment flow still needs continued runtime verification and future production monitoring
 - Wallet-first reintroduction is not yet implemented
 - Docs outside the current handoff set may reflect earlier decisions
+- Admin access will fail closed if `ADMIN_EMAIL_ALLOWLIST` is missing or `SITE_URL` is not configured correctly
 
 ### Recommended Next Work
 
-- Finish payment hardening and deployment verification
+- Finish Phase D validation, release checks, and operator-runbook review
 - Decide whether wallet-first returns as a true product direction
-- Improve observability
+- Continue the approved monitoring roadmap once Sentry access/setup is ready
 - Continue final system sweep and retention feature planning
 
 ## 12. Authoritative Handoff Set
@@ -307,3 +311,6 @@ Treat these as the current source of truth:
 - `DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md`
 - `LOCKEDIN_SYSTEM_DOCUMENTATION.md`
 - `SECURITY.md`
+- `ADMIN_PAYMENTS_RUNBOOK.md`
+- `ADMIN_SETTINGS_RUNBOOK.md`
+- `RESPONSIVE_QA_CHECKLIST.md`

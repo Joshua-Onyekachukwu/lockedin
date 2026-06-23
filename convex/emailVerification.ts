@@ -6,13 +6,41 @@ import { captureToSentry } from "./sentry";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.AUTH_RESEND_KEY;
 const EMAIL_FROM = process.env.AUTH_EMAIL_FROM || process.env.EMAIL_FROM || "Lockedin <onboarding@resend.dev>";
-const SITE_URL = process.env.SITE_URL || process.env.VITE_SITE_URL || "https://lock3din.vercel.app";
+
+function getConfiguredSiteUrl() {
+  const raw = (process.env.SITE_URL || process.env.VITE_SITE_URL || "").trim();
+  if (!raw) {
+    throw new Error("SITE_URL must be configured for email verification.");
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error("SITE_URL must be a valid absolute URL.");
+  }
+
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    throw new Error("SITE_URL must use http or https.");
+  }
+
+  return parsed.origin;
+}
+
+function hasConfiguredSiteUrl() {
+  try {
+    void getConfiguredSiteUrl();
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export const isEmailBackendConfigured = query({
   args: {},
   returns: v.boolean(),
   handler: () => {
-    return !!RESEND_API_KEY;
+    return !!RESEND_API_KEY && hasConfiguredSiteUrl();
   },
 });
 
@@ -179,7 +207,20 @@ export const requestEmailVerification = action({
       expiresAt,
     });
 
-    const url = `${SITE_URL.replace(/\/$/, "")}/verify-email?token=${encodeURIComponent(token)}`;
+    let url: string;
+    try {
+      const siteUrl = getConfiguredSiteUrl();
+      url = `${siteUrl}/verify-email?token=${encodeURIComponent(token)}`;
+    } catch (error) {
+      await captureToSentry({
+        message: "request-email-verification-site-url-invalid",
+        level: "error",
+        tags: { area: "auth", step: "request-email-verification" },
+        extra: { userId: String(userId), error: String(error) },
+      });
+      throw error;
+    }
+
     const subject = "Verify your email for Lockedin";
     const html = `
       <div style="font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;">

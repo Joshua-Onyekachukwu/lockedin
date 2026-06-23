@@ -1,4 +1,4 @@
-# Mobile Responsiveness Audit & Plan (Lockedin)
+# Mobile Responsiveness Audit & Status (Lockedin)
 
 Date: 2026-06-06
 
@@ -49,41 +49,32 @@ This audit is a code-level and interaction-level review:
 2. **Minor horizontal overflow risk**
    - Some sections use large absolute-positioned glow elements; likely ok, but needs confirm across breakpoints.
 
-## 4) Proposed Implementation Plan (No Code Changes Yet)
+## 4) Current Status And Remaining Work
 
-### Phase A — Build a repeatable mobile QA workflow
-1. Add a “Responsive QA checklist” and verify the app at widths:
+### Completed Since Audit
+1. Modal interaction hardening landed for the highest-risk overlays:
+   - body scroll lock for key modal flows
+   - internal scroll containers for constrained evidence/modal content
+2. Heavy dashboard modal content has been code-split to reduce mobile initial-load pressure.
+3. Wallet/admin follow-up work now needs to be verified against the same responsive checklist rather than treated as a separate ad hoc pass.
+
+### Repeatable QA Workflow
+1. Use [RESPONSIVE_QA_CHECKLIST.md](file:///c:/Users/Semek/Webstrom/Lockedin/RESPONSIVE_QA_CHECKLIST.md) for every responsive pass.
+2. Verify widths:
    - 320px, 360px, 375px, 390px, 414px, 430px
-   - 768px (tablet portrait), 820px (tablet), 1024px
-2. Define “no horizontal scroll” rule:
-   - allowed only inside explicit scroll containers (tables, code blocks)
+   - 768px, 820px, 1024px
+3. Treat horizontal scrolling as acceptable only inside explicit overflow containers such as tables.
 
-### Phase B — Mobile-first layout adjustments (core user flows)
-Targets:
+### Next UI Targets
 - `/login`, `/verify-required`, `/dashboard`, `/vault/$id`, `/community`
+- `/admin`, `/admin/settings`, `/profile`
 
-Typical fixes:
-- Convert multi-column grids to 1-column at `sm` and restore at `md/lg`
-- Replace “big desktop cards” with compact mobile cards
-- Add `text-balance` and `leading-tight` to prevent heading overflow
-- Ensure all primary CTAs are full-width on mobile
-
-### Phase C — Admin mobile experience strategy
-Two options (choose one):
-1. Keep tables, but improve discoverability:
-   - “Swipe to scroll” affordance + sticky action column where possible
-2. Add a mobile “card view” for tables:
-   - show key fields + expandable details + actions as a bottom row
-
-### Phase D — Interaction polish
-- Standardize modal patterns:
-  - body scroll lock
-  - internal scroll container (max height)
-  - safe close targets (44px+)
-- Make all touch targets consistently >= 44px in both dashboard + admin.
+### Remaining UX Focus
+- Improve discoverability for table overflow on admin/dashboard data surfaces
+- Standardize 44px+ touch targets across admin action controls
+- Reduce oversized type/spacing pressure on the smallest widths without breaking the product aesthetic
 
 ## 5) Acceptance Criteria (Mobile)
 - A user can: login → verify → create protocol → fund protocol → submit check-in → view vault → share link on a phone with no clipped UI or broken interaction.
 - No unintended horizontal scrolling across the app.
 - All table overflows are intentional and discoverable.
-

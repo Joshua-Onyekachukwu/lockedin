@@ -187,7 +187,7 @@ function AdminSettings() {
             Admin Access
           </p>
           <p className="mt-4 text-sm text-white/60 font-bold italic leading-relaxed uppercase tracking-tight">
-            Admin access is enforced on the backend via ADMIN_EMAIL_ALLOWLIST (Convex env) or user.isAdmin.
+            Admin access is enforced on the backend with a verified email, a true user.isAdmin flag, and an ADMIN_EMAIL_ALLOWLIST match.
           </p>
           <p className="mt-4 text-[10px] text-white/30 font-black uppercase tracking-[0.28em] italic leading-relaxed">
             Example allowlist format:
@@ -227,7 +227,7 @@ function AdminSettings() {
               Do not store secrets in repo files. Configure secrets in Convex and client keys in Vercel/local env.
             </p>
             <div className="mt-6 space-y-2 text-[10px] text-white/30 font-black uppercase tracking-[0.28em] italic leading-relaxed">
-              <p>Convex: PAYSTACK_SECRET_KEY, ADMIN_EMAIL_ALLOWLIST</p>
+              <p>Convex: PAYSTACK_SECRET_KEY, ADMIN_EMAIL_ALLOWLIST, SITE_URL</p>
               <p>Client: VITE_PAYSTACK_PUBLIC_KEY, VITE_CONVEX_URL</p>
             </div>
           </div>
