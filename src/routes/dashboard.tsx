@@ -13,6 +13,7 @@ import {
   Target,
   Trophy,
   Users,
+  Wallet,
   X
 } from 'lucide-react';
 
@@ -215,6 +216,7 @@ function DashboardContent({ user }: { user: any }) {
         contextLinks={[
           { to: '/leaderboard', label: 'Leaderboard', icon: <Trophy size={14} className="text-yellow-500" /> },
           { to: '/community', label: 'Community' },
+          { to: '/profile', label: 'Wallet', icon: <Wallet size={14} className="text-[#ff7a00]" /> },
         ]}
         user={user}
       />

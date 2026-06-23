@@ -222,7 +222,8 @@ export default defineSchema({
     kind: v.optional(v.union(v.literal("wallet_topup"), v.literal("vault_funding"))),
     metadata: v.optional(v.any()),
   }).index("by_reference", ["reference"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_vault", ["vaultId"]),
 
   paystack_reconciliations: defineTable({
     reference: v.string(),
