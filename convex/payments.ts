@@ -309,7 +309,7 @@ export const verifyPayment = action({
         }
         return {
           success: false,
-          message: "Payment could not be credited because the confirmed amount did not match the expected stake.",
+          message: "Payment could not be credited because the confirmed amount was below the expected stake.",
           status: "failed" as const,
           retryable: false,
         };
@@ -453,24 +453,32 @@ export const fulfillDeposit = internalMutation({
       throw new Error("Deposit reference not found.");
     }
     if (deposit.status === "completed") return null;
-    if (deposit.amount !== args.amountKobo) {
-      throw new Error("Deposit amount mismatch.");
+    if (args.amountKobo < deposit.amount) {
+      throw new Error("Deposit amount is below the expected amount.");
     }
 
+    const expectedAmountKobo = deposit.amount;
+    const reconciliationMetadata = {
+      ...(args.metadata ?? {}),
+      expectedAmountKobo,
+      chargedAmountKobo: args.amountKobo,
+      processorSurchargeKobo: Math.max(0, args.amountKobo - expectedAmountKobo),
+    };
+
     // Update deposit status
-    await ctx.db.patch("deposits", deposit._id, { status: "completed", metadata: args.metadata });
+    await ctx.db.patch("deposits", deposit._id, { status: "completed", metadata: reconciliationMetadata });
 
     // Update user balance
     const user = await ctx.db.get("users", deposit.userId);
     if (user) {
       await ctx.db.patch("users", user._id, {
-        balance: (user.balance || 0) + args.amountKobo,
+        balance: (user.balance || 0) + expectedAmountKobo,
       });
 
       // Log transaction
       await ctx.db.insert("transactions", {
         userId: user._id,
-        amount: args.amountKobo,
+        amount: expectedAmountKobo,
         type: "deposit",
         status: "completed",
         description: `Paystack deposit: ${args.reference}`,
@@ -479,7 +487,7 @@ export const fulfillDeposit = internalMutation({
       await ctx.db.insert("notifications", {
         userId: user._id,
         title: "Wallet Funded",
-        message: `Deposit confirmed. ₦${(args.amountKobo / 100).toLocaleString()} added to wallet.`,
+        message: `Deposit confirmed. ₦${(expectedAmountKobo / 100).toLocaleString()} added to wallet.`,
         type: "wallet_funded",
         link: "/dashboard",
         read: false,
@@ -550,14 +558,23 @@ export const reconcilePaystackPayment = internalMutation({
     }
 
     if (deposit) {
-      if (deposit.amount !== args.amountKobo) {
+      const expectedAmountKobo = deposit.amount;
+      const chargedAmountKobo = args.amountKobo;
+      const reconciliationMetadata = {
+        ...(args.metadata ?? {}),
+        expectedAmountKobo,
+        chargedAmountKobo,
+        processorSurchargeKobo: Math.max(0, chargedAmountKobo - expectedAmountKobo),
+      };
+
+      if (chargedAmountKobo < expectedAmountKobo) {
         await ctx.db.insert("paystack_unmatched", {
           reference: args.reference,
-          amount: args.amountKobo,
+          amount: chargedAmountKobo,
           customerEmail: args.customerEmail,
           source: args.source,
-          reason: "amount_mismatch",
-          metadata: args.metadata,
+          reason: "amount_underpaid",
+          metadata: reconciliationMetadata,
           resolved: false,
           createdAt: now,
         });
@@ -627,7 +644,7 @@ export const reconcilePaystackPayment = internalMutation({
         if (deposit.status !== "completed") {
           await ctx.db.patch("deposits", deposit._id, {
             status: "completed",
-            metadata: args.metadata,
+            metadata: reconciliationMetadata,
             kind: "vault_funding",
             vaultId,
           });
@@ -664,12 +681,12 @@ export const reconcilePaystackPayment = internalMutation({
 
         await ctx.db.insert("paystack_reconciliations", {
           reference: args.reference,
-          amount: args.amountKobo,
+          amount: chargedAmountKobo,
           customerEmail: args.customerEmail,
           creditedUserId: user._id,
           depositId: deposit._id,
           source: args.source,
-          metadata: args.metadata,
+          metadata: reconciliationMetadata,
           createdAt: now,
         });
 
@@ -677,14 +694,14 @@ export const reconcilePaystackPayment = internalMutation({
       }
 
       if (deposit.status !== "completed") {
-        await ctx.db.patch("deposits", deposit._id, { status: "completed", metadata: args.metadata });
+        await ctx.db.patch("deposits", deposit._id, { status: "completed", metadata: reconciliationMetadata });
         await ctx.db.patch("users", user._id, {
-          balance: (user.balance || 0) + args.amountKobo,
+          balance: (user.balance || 0) + expectedAmountKobo,
         });
 
         await ctx.db.insert("transactions", {
           userId: user._id,
-          amount: args.amountKobo,
+          amount: expectedAmountKobo,
           type: "deposit",
           status: "completed",
           description: `Paystack deposit: ${args.reference}`,
@@ -693,7 +710,7 @@ export const reconcilePaystackPayment = internalMutation({
         await ctx.db.insert("notifications", {
           userId: user._id,
           title: "Wallet Funded",
-          message: `Deposit confirmed. ₦${(args.amountKobo / 100).toLocaleString()} added to wallet.`,
+          message: `Deposit confirmed. ₦${(expectedAmountKobo / 100).toLocaleString()} added to wallet.`,
           type: "wallet_funded",
           link: "/dashboard",
           read: false,
@@ -702,12 +719,12 @@ export const reconcilePaystackPayment = internalMutation({
 
       const reconciliationId = await ctx.db.insert("paystack_reconciliations", {
         reference: args.reference,
-        amount: args.amountKobo,
+        amount: chargedAmountKobo,
         customerEmail: args.customerEmail,
         creditedUserId: user._id,
         depositId: deposit._id,
         source: args.source,
-        metadata: args.metadata,
+        metadata: reconciliationMetadata,
         createdAt: now,
       });
       void reconciliationId;
@@ -1483,38 +1500,65 @@ export const requestWithdrawal = mutation({
     if (!user) throw new Error("User not found");
     if (!user.emailVerificationTime) throw new Error("Email verification required.");
 
-    if (user.balance < args.amount) {
+    const amount = Math.floor(args.amount);
+    const accountNumber = args.accountNumber.trim();
+    const bankCode = args.bankCode.trim();
+    const bankName = args.bankName.trim();
+    const accountName = args.accountName.trim();
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { success: false, message: "Enter a valid withdrawal amount." };
+    }
+    if (!/^\d{10}$/.test(accountNumber)) {
+      return { success: false, message: "Enter a valid 10-digit account number." };
+    }
+    if (!bankCode || !bankName || !accountName) {
+      return { success: false, message: "Resolve your bank account details before requesting a withdrawal." };
+    }
+
+    const existingWithdrawal = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    if (existingWithdrawal.some((row) => row.status === "pending" || row.status === "processing" || row.status === "approved")) {
+      return {
+        success: false,
+        message: "You already have a withdrawal in progress. Wait for it to complete before requesting another one.",
+      };
+    }
+
+    if (user.balance < amount) {
       return { success: false, message: "Insufficient capital for withdrawal." };
     }
 
     // Deduct balance immediately (Escrow)
-    await ctx.db.patch("users", userId, { balance: user.balance - args.amount });
+    await ctx.db.patch("users", userId, { balance: user.balance - amount });
 
     await ctx.db.insert("withdrawals", {
       userId,
-      amount: args.amount,
+      amount,
       status: "pending",
       requested_at: Date.now(),
       bank_details: {
-        account_number: args.accountNumber,
-        bank_code: args.bankCode,
-        bank_name: args.bankName,
-        account_name: args.accountName,
+        account_number: accountNumber,
+        bank_code: bankCode,
+        bank_name: bankName,
+        account_name: accountName,
       },
     });
 
     await ctx.db.insert("transactions", {
       userId,
-      amount: -args.amount,
-      type: "platform_fee", // Using platform_fee for deduction log
+      amount: -amount,
+      type: "wallet_withdrawal",
       status: "pending",
-      description: `Withdrawal request to ${args.bankName} (${args.accountNumber})`,
+      description: `Withdrawal request to ${bankName} (${accountNumber})`,
     });
 
     await ctx.db.insert("notifications", {
       userId,
       title: "Withdrawal Requested",
-      message: `Extraction queued. ₦${(args.amount / 100).toLocaleString()} moved to escrow.`,
+      message: `Extraction queued. ₦${(amount / 100).toLocaleString()} moved to escrow.`,
       type: "wallet_withdrawal",
       link: "/dashboard",
       read: false,
@@ -1524,6 +1568,45 @@ export const requestWithdrawal = mutation({
         success: true, 
         message: "Request logged. Capital held in escrow. Disbursement expected in 24-48 hours." 
     };
+  },
+});
+
+export const getWithdrawalRequests = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      _id: v.id("withdrawals"),
+      _creationTime: v.number(),
+      amount: v.number(),
+      status: v.union(
+        v.literal("pending"),
+        v.literal("processing"),
+        v.literal("approved"),
+        v.literal("rejected"),
+        v.literal("completed"),
+        v.literal("failed"),
+      ),
+      requested_at: v.number(),
+      processed_at: v.optional(v.number()),
+      bank_details: v.optional(
+        v.object({
+          account_number: v.string(),
+          bank_code: v.string(),
+          bank_name: v.string(),
+          account_name: v.string(),
+        }),
+      ),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return [];
+    const limit = Math.max(1, Math.min(args.limit ?? 10, 20));
+    return await ctx.db
+      .query("withdrawals")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(limit);
   },
 });
 

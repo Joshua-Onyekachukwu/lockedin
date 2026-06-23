@@ -381,6 +381,9 @@ export default function FundProtocolModal({
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">Stake</p>
             <p className="text-xl font-black italic text-white">₦{(amountKobo / 100).toLocaleString()}</p>
           </div>
+          <p className="mt-4 text-[10px] text-white/20 uppercase tracking-widest italic font-black leading-relaxed">
+            If Paystack shows a processor fee before authorization, only the stake amount above is locked into this protocol.
+          </p>
 
           {showProgressPanel ? (
             <div className="mt-8 rounded-[2rem] border border-blue-500/20 bg-blue-500/5 p-6">
