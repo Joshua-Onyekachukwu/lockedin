@@ -1534,7 +1534,7 @@ export const requestWithdrawal = mutation({
     // Deduct balance immediately (Escrow)
     await ctx.db.patch("users", userId, { balance: user.balance - amount });
 
-    await ctx.db.insert("withdrawals", {
+    const withdrawalId = await ctx.db.insert("withdrawals", {
       userId,
       amount,
       status: "pending",
@@ -1551,6 +1551,7 @@ export const requestWithdrawal = mutation({
       userId,
       amount: -amount,
       type: "wallet_withdrawal",
+      withdrawalId,
       status: "pending",
       description: `Withdrawal request to ${bankName} (${accountNumber})`,
     });
