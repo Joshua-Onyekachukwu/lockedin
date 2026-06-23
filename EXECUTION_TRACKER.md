@@ -62,15 +62,15 @@ Status: Completed
 - [x] Push branch, open PR, merge to `main`
 
 Notes:
-- Active product posture remains stake-per-vault, not wallet-first.
-- Wallet-related code is being treated as supporting infrastructure plus targeted UX improvements.
-- Wallet and withdrawal foundation already existed on `main`; this completion pass is focused on closing the remaining correctness gap instead of rebuilding the flow.
+- Phase C was completed as a targeted wallet-supporting improvement pass, not a wallet-first product rebuild.
+- Product posture remains stake-per-vault, with wallet capabilities supporting funding, visibility, and withdrawals.
+- The wallet and withdrawal foundation already existed on `main`; this phase closed the remaining correctness gap instead of rebuilding the stack.
 - PR merged: `#7`
 - Withdrawal escrow transactions are now linked directly to withdrawal records so completion/failure/rejection updates are deterministic.
 - Admin extraction queue now supports explicit rejection before transfer so capital can be returned cleanly without forcing a Paystack attempt.
 
 ## Phase E
-Status: In progress
+Status: Completed
 
 - [x] Add owner controls to edit the stake amount before funding starts
 - [x] Block amount edits once a funding attempt is attached to the vault
@@ -81,12 +81,13 @@ Status: In progress
 - [x] Validate with `npx tsc --noEmit`
 - [x] Validate with `npx convex dev --once --env-file .env.local`
 - [x] Validate with `npm run build`
-- [ ] Push branch, open PR, merge to `main`
+- [x] Push branch, open PR, merge to `main`
 
 Notes:
-- Goal-management controls are being added on the vault detail page so users can manage a protocol from the screen they already use.
-- Delete is being implemented with backend state checks plus cleanup of linked evidence/witness records rather than a loose frontend-only action.
-- The wallet flow still lives in the profile surface; this phase adds the missing dashboard top-nav entry so users can reach it from the primary product shell.
+- Goal-management controls now live on the vault detail page so users can manage a protocol from the screen they already use.
+- Delete now uses backend state checks plus cleanup of linked evidence and witness records rather than a loose frontend-only action.
+- The wallet flow still lives in the profile surface, and this phase added the missing dashboard top-nav entry to reach it from the primary product shell.
+- PR merged: `#8`
 
 ## Phase D
 Status: Pending
