@@ -106,15 +106,21 @@ Important product note:
 npm install
 ```
 
-2. Create or update local env files so `CONVEX_DEPLOYMENT` and `VITE_CONVEX_URL` point to the same backend deployment.
+2. Create your local env file:
 
-3. Start development:
+```bash
+cp .env.example .env.local
+```
+
+3. Ensure `CONVEX_DEPLOYMENT` and `VITE_CONVEX_URL` point to the same backend deployment (current target: `quick-starfish-723`).
+
+4. Start development:
 
 ```bash
 npm run dev
 ```
 
-4. Helpful commands:
+5. Helpful commands:
 
 ```bash
 npm run lint
