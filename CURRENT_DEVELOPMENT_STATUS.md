@@ -25,11 +25,11 @@ There are now two truths that matter:
 - `main` remains protocol-first, not wallet-first
 - an approved new workstream is in progress to make wallet a first-class product surface again
 
-Active branch work:
+Latest merged wallet work:
 
-- branch: `phase-wallet-v1-foundation`
+- branch used: `phase-wallet-v1-foundation`
 - goal: introduce a dedicated wallet page, wallet summary, normalized ledger/activity view, funding flow, withdrawal flow, and admin-visible finance alignment
-- status: in progress, not merged at the time of this update, with wallet-funded protocol activation and wallet UI cleanup now added to the same phase
+- status: latest wallet/runtime/admin parity slice is now merged to `main` and deployed to Convex, with follow-up QA and mobile/security work still open
 
 Important clarification:
 
