@@ -578,16 +578,16 @@ function AdminDashboard() {
                                   {overview?.pendingWithdrawals ?? 0}
                                 </p>
                                 <p className="mt-2 text-[10px] text-[#ff7a00] font-black uppercase tracking-widest italic">
-                                  ₦{((overview?.pendingWithdrawalAmount ?? 0) / 100).toLocaleString()} Pending
+                                  ₦{((overview?.pendingWithdrawalAmount ?? 0) / 100).toLocaleString()} Open Queue
                                 </p>
                               </div>
                               <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/10 shadow-inner text-left">
-                                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic">Admin Signals</p>
-                                <p className="mt-4 text-[10px] text-white/40 font-black uppercase tracking-widest italic leading-relaxed">
-                                  {overview?.pendingWithdrawals ? 'Withdrawal queue pending. Review before EOD.' : 'No withdrawal queue backlog.'}
+                                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic">Pending Deposits</p>
+                                <p className="mt-4 text-3xl font-black italic uppercase tracking-tight text-white">
+                                  {overview?.pendingDeposits ?? 0}
                                 </p>
-                                <p className="mt-3 text-[10px] text-white/20 font-black uppercase tracking-widest italic leading-relaxed">
-                                  {breachCandidates?.length ? 'Active breach candidates require enforcement review.' : 'No breach enforcement flagged.'}
+                                <p className="mt-2 text-[10px] text-green-500 font-black uppercase tracking-widest italic">
+                                  ₦{((overview?.pendingDepositAmount ?? 0) / 100).toLocaleString()} Awaiting Settlement
                                 </p>
                               </div>
                             </div>
@@ -601,7 +601,7 @@ function AdminDashboard() {
                             <div className="px-4 sm:px-10 py-6 sm:py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
                                 <div className="text-left font-black italic uppercase">
                                     <h3 className="text-lg text-white">Withdrawal Queue</h3>
-                                    <p className="text-[10px] text-white/20 tracking-widest mt-1">Pending Capital Transfers</p>
+                                    <p className="text-[10px] text-white/20 tracking-widest mt-1">Pending, Processing, And Approved Transfers</p>
                                 </div>
                             </div>
                             <div className="overflow-x-auto text-left">
@@ -616,7 +616,7 @@ function AdminDashboard() {
                                     </thead>
                                     <tbody>
                                         {!pendingWithdrawals || pendingWithdrawals.length === 0 ? (
-                                            <tr><td colSpan={4} className="px-4 sm:px-10 py-16 sm:py-20 text-center text-white/20 font-black italic uppercase tracking-widest">No pending withdrawals</td></tr>
+                                            <tr><td colSpan={4} className="px-4 sm:px-10 py-16 sm:py-20 text-center text-white/20 font-black italic uppercase tracking-widest">No open withdrawals</td></tr>
                                         ) : (
                                             pendingWithdrawals.map((w: any) => (
                                                 <tr key={w._id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">

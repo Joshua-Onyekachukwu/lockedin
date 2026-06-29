@@ -545,13 +545,21 @@ export const endAllForVault = internalMutation({
   args: { vaultId: v.id("vaults") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const rows = await ctx.db
+    const activeRows = await ctx.db
       .query("accountability_partners")
-      .withIndex("by_vault", (q: any) => q.eq("vaultId", args.vaultId))
+      .withIndex("by_vault_and_status", (q: any) =>
+        q.eq("vaultId", args.vaultId).eq("status", "active"),
+      )
       .collect();
+    const pendingRows = await ctx.db
+      .query("accountability_partners")
+      .withIndex("by_vault_and_status", (q: any) =>
+        q.eq("vaultId", args.vaultId).eq("status", "pending"),
+      )
+      .collect();
+    const rows = [...activeRows, ...pendingRows];
 
     for (const row of rows) {
-      if (row.status === "ended") continue;
       await ctx.db.patch("accountability_partners", row._id, { status: "ended" });
     }
     return null;

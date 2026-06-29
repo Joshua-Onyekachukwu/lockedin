@@ -14,9 +14,11 @@ const EMPTY_ARGS: Record<string, never> = {};
 export default function CreateVaultModal({
   onClose,
   onCreated,
+  user,
 }: {
   onClose: () => void;
-  onCreated: (created: { vaultId: string; title: string }) => void;
+  onCreated: (created: { vaultId: string; title: string; status: 'active' | 'awaiting_funding' }) => void;
+  user: any;
 }) {
   const createVault = useMutation(api.goals.create);
   const queryClient = useQueryClient();
@@ -31,6 +33,13 @@ export default function CreateVaultModal({
   const [durationWeeks, setDurationWeeks] = useState('4');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'template' | 'custom'>('template');
+  const stakeAmountNaira = Number(amount) || 0;
+  const stakeAmountKobo = Math.round(stakeAmountNaira * 100);
+  const walletBalanceKobo = Number(user?.balance ?? 0);
+  const walletBalanceNaira = walletBalanceKobo / 100;
+  const walletCanActivateImmediately =
+    stakeAmountKobo > 0 && walletBalanceKobo >= stakeAmountKobo;
+  const walletShortfallNaira = Math.max(0, stakeAmountNaira - walletBalanceNaira);
 
   const selectTemplate = (t: any) => {
     setTitle(t.title);
@@ -46,7 +55,7 @@ export default function CreateVaultModal({
     e.preventDefault();
     setLoading(true);
     try {
-      const vaultId = await createVault({
+      const created = await createVault({
         title,
         description: description || `Automatic protocol for ${title}. Adherence is strictly monitored.`,
         stakedAmount: parseInt(amount) * 100,
@@ -62,8 +71,18 @@ export default function CreateVaultModal({
       await queryClient.invalidateQueries({
         queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey,
       });
-      toast.success('Protocol created. Funding required to activate.', { title: 'Awaiting Funding' });
-      onCreated({ vaultId, title });
+      await queryClient.invalidateQueries({
+        queryKey: (convexQuery((api as any).growth.getActivationStatus, EMPTY_ARGS as any) as any).queryKey,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: (convexQuery(api.payments.getWalletOverview, EMPTY_ARGS as any) as any).queryKey,
+      });
+      if (created.status === 'active') {
+        toast.success('Protocol created and activated from wallet balance.', { title: 'Protocol Active' });
+      } else {
+        toast.success('Protocol created. Funding required to activate.', { title: 'Awaiting Funding' });
+      }
+      onCreated({ vaultId: created.vaultId, title, status: created.status });
     } catch (err: any) {
       toast.error(toUserMessage(err, 'Failed to create protocol.'), { title: 'Creation Failed' });
     } finally {
@@ -218,8 +237,21 @@ export default function CreateVaultModal({
                   />
                 </div>
                 <p className="mt-3 text-[9px] text-white/20 uppercase tracking-widest italic font-black">
-                  Funding happens after creation (per-vault).
+                  If your wallet already covers this stake, activation happens immediately after creation.
                 </p>
+                <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-5 py-4">
+                  <p className="text-[9px] font-black uppercase tracking-[0.24em] text-white/30 italic">
+                    Funding Preview
+                  </p>
+                  <p className="mt-3 text-sm font-bold italic text-white">
+                    Wallet balance: ₦{walletBalanceNaira.toLocaleString()}
+                  </p>
+                  <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-white/30 font-black italic leading-relaxed">
+                    {walletCanActivateImmediately
+                      ? 'This protocol can activate instantly from your wallet after creation.'
+                      : `Add ₦${walletShortfallNaira.toLocaleString()} more to activate it immediately.`}
+                  </p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

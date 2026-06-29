@@ -1,6 +1,6 @@
 # Lockedin Execution Tracker
 
-Last updated: 2026-06-27
+Last updated: 2026-06-29
 
 ## How To Use
 - This file is the running execution source of truth for implementation work.
@@ -122,10 +122,17 @@ Status: In progress on branch `phase-wallet-v1-foundation`
 - [x] Add normalized wallet ledger/activity feed for deposits, withdrawals, stake activity, refunds, and rewards
 - [x] Add wallet page funding flow
 - [x] Add wallet page withdrawal request flow
-- [ ] Review and align admin finance surfaces with wallet-facing activity/state
+- [x] Allow wallet balance to activate protocols without forcing a new Paystack payment
+- [x] Auto-activate new protocols when wallet balance already covers the stake
+- [x] Remove duplicated wallet detail surface from the profile page
+- [x] Replace the old duplicate/misleading wallet affordance with a wallet balance pill in the top bar
+- [x] Start wallet UI polish pass with calmer typography, color hierarchy, and reduced dashboard noise
+- [x] Reduce the `vaultLifecycle:completeMaturedVaults` timeout risk with indexed maturity lookup and batched completion
+- [x] Improve admin finance parity for open withdrawals, pending deposits, and wallet balance visibility
 - [x] Validate with `npm run lint`
 - [x] Validate with `npx convex dev --once --env-file .env.local`
 - [x] Validate with `npm run build`
+- [x] Validate with `npx tsc --noEmit`
 - [x] Perform smoke checks on the wallet and finance surfaces
 - [ ] Push branch, open PR, and merge to `main`
 
@@ -137,11 +144,13 @@ Notes:
 - Current validation status:
   - `npm run lint` passes
   - `npm run build` passes
+  - `npx tsc --noEmit` passes
   - `npx convex dev --once --env-file .env.local` passes
   - local runtime smoke check confirms `/`, `/wallet`, and `/dashboard` load/redirect correctly for an unauthenticated user
+  - browser pass confirms the old `completeMaturedVaults` timeout is no longer appearing after the fix window
 - Current follow-up items discovered during smoke testing:
   - React hydration mismatch warning in dev
-  - aborted script requests during dev navigation, including one reference to `react-paystack.js`
+  - authenticated end-to-end wallet/admin QA is still partially blocked by the current email verification sender restriction in local/dev
 
 ## UX Audit
 Status: Pending approval before implementation

@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useConvexAuth, useMutation } from 'convex/react';
 import { 
@@ -8,13 +8,11 @@ import {
   Eye, 
   EyeOff, 
   Globe, 
-  Landmark,
   Loader2,
   Lock,
   MapPin,
   ShieldCheck,
-  User,
-  Wallet
+  User
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../convex/_generated/api';
@@ -35,12 +33,6 @@ function ProfileSettings() {
     ...userQuery,
     enabled: isAuthenticated,
   });
-  const walletOverviewQuery = convexQuery(api.payments.getWalletOverview, {} as any) as any;
-  const { data: walletOverview } = useQuery({
-    ...walletOverviewQuery,
-    enabled: isAuthenticated,
-    placeholderData: null,
-  }) as any;
   const updateProfile = useMutation(api.users.updateProfile);
   const generateUploadUrl = useMutation(api.users.generateProfileImageUploadUrl as any);
   const setProfileImage = useMutation(api.users.setProfileImage as any);
@@ -88,8 +80,6 @@ function ProfileSettings() {
       </div>
     );
   }
-
-  const formatMoney = (amountKobo: number) => `₦${(amountKobo / 100).toLocaleString()}`;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,90 +246,7 @@ function ProfileSettings() {
                 Shields: {user?.shields ?? 0} • Credits: {user?.credits ?? 0}
               </p>
             </div>
-            <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Wallet</p>
-              <p className="mt-4 text-sm text-white font-black italic uppercase tracking-tight">
-                {formatMoney(user?.balance ?? 0)}
-              </p>
-              <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                Streak: {user?.streak_count ?? 0}W • Activated: {user?.goals_completed ?? 0}
-              </p>
-            </div>
           </div>
-
-          <section className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Wallet Access</p>
-                <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                  Your financial dashboard now lives on the dedicated wallet route.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate({ to: '/wallet' })}
-                className="px-5 py-3 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest italic hover:scale-[1.02] active:scale-95 transition-all"
-              >
-                Open Wallet
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
-                <div className="flex items-center gap-3 text-white/30">
-                  <Wallet size={18} />
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] italic">Available Balance</p>
-                </div>
-                <p className="mt-4 text-2xl text-white font-black italic tracking-tight">
-                  {formatMoney(user?.balance ?? 0)}
-                </p>
-              </div>
-              <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
-                <div className="flex items-center gap-3 text-white/30">
-                  <Landmark size={18} />
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] italic">Pending Movement</p>
-                </div>
-                <p className="mt-4 text-2xl text-white font-black italic tracking-tight">
-                  {formatMoney(walletOverview?.pendingMovementTotal ?? 0)}
-                </p>
-                <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                  Wallet shows withdrawals, deposits, and pending settlement state.
-                </p>
-              </div>
-              <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/30">Locked Stake</p>
-                <p className="mt-4 text-2xl text-white font-black italic tracking-tight">
-                  {formatMoney(walletOverview?.lockedFunds ?? 0)}
-                </p>
-                <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                  Review funding receipts, withdrawals, refunds, and ledger history in Wallet.
-                </p>
-              </div>
-            </div>
-            <div className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-8 shadow-2xl">
-              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/20 italic">Wallet Dashboard</p>
-              <p className="mt-4 text-sm text-white/60 italic leading-relaxed">
-                Use the dedicated wallet page for funding, withdrawal requests, receipts, stake history,
-                refund visibility, reward distributions, and the full financial ledger.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => navigate({ to: '/wallet' })}
-                  className="rounded-2xl bg-white px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] italic text-black transition-all hover:scale-[1.02] active:scale-95"
-                >
-                  Open Wallet Command
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate({ to: '/dashboard' })}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] italic text-white/60 transition-all hover:bg-white/10 hover:text-white"
-                >
-                  Return To Dashboard
-                </button>
-              </div>
-            </div>
-          </section>
 
           {/* Form Fields */}
           <div className="space-y-10">

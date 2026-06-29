@@ -1,6 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 @layer utilities {
+  .font-editorial {
+    font-family: 'Fraunces', Georgia, serif;
+  }
+
+  .font-ui {
+    font-family: 'Manrope', Arial, sans-serif;
+  }
+
+  .font-data {
+    font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  }
+
   @keyframes marquee {
     0% { transform: translateX(0); }
     100% { transform: translateX(-50%); }

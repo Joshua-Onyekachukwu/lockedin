@@ -175,6 +175,7 @@ function AdminUserDetailPage() {
                   { k: 'Tier', v: userDetail.tier },
                   { k: 'Streak', v: `${userDetail.streak_count}W` },
                   { k: 'Activated', v: userDetail.goals_completed },
+                  { k: 'Wallet', v: `₦${((userDetail.balance ?? 0) / 100).toLocaleString()}` },
                   { k: 'Shields', v: userDetail.shields },
                   { k: 'Credits', v: userDetail.credits },
                   { k: 'Joined', v: new Date(userDetail._creationTime).toLocaleDateString() },

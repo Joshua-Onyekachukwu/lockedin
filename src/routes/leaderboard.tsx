@@ -66,7 +66,6 @@ function LeaderboardPage() {
         subtitle="Integrity Board"
         backTo="/dashboard"
         contextLinks={[
-          { to: '/wallet', label: 'Wallet' },
           { to: '/community', label: 'Community' },
         ]}
         user={user}

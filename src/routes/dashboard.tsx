@@ -13,7 +13,6 @@ import {
   Target,
   Trophy,
   Users,
-  Wallet,
   X
 } from 'lucide-react';
 
@@ -214,10 +213,8 @@ function DashboardContent({ user }: { user: any }) {
         title="Lockedin"
         subtitle="Operational Protocol"
         contextLinks={[
-          { to: '/wallet', label: 'Wallet' },
           { to: '/leaderboard', label: 'Leaderboard', icon: <Trophy size={14} className="text-yellow-500" /> },
           { to: '/community', label: 'Community' },
-          { to: '/profile', label: 'Wallet', icon: <Wallet size={14} className="text-[#ff7a00]" /> },
         ]}
         user={user}
       />
@@ -736,10 +733,15 @@ function DashboardContent({ user }: { user: any }) {
           <Suspense fallback={null}>
             <CreateVaultModal
               onClose={() => setIsCreating(false)}
-              onCreated={({ vaultId, title }) => {
+              user={user}
+              onCreated={({ vaultId, title, status }) => {
                 setIsCreating(false)
                 const origin = typeof window !== 'undefined' ? window.location.origin : ''
                 const url = `${origin}/share/${vaultId}`
+                if (status === 'active') {
+                  setSharePrompt({ open: true, title, status: 'active', url })
+                  return
+                }
                 setFundPrompt({ open: true, vaultId, url, title })
               }}
             />
@@ -749,6 +751,9 @@ function DashboardContent({ user }: { user: any }) {
           <Suspense fallback={null}>
             <FundProtocolModal
               vaultId={fundingVaultId}
+              stakeAmountKobo={
+                ((vaults as Array<any>).find((vault: any) => vault._id === fundingVaultId)?.amount as number) ?? 0
+              }
               user={user}
               onClose={() => setFundingVaultId(null)}
               onSuccess={() => {

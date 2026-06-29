@@ -29,7 +29,7 @@ Active branch work:
 
 - branch: `phase-wallet-v1-foundation`
 - goal: introduce a dedicated wallet page, wallet summary, normalized ledger/activity view, funding flow, withdrawal flow, and admin-visible finance alignment
-- status: in progress, not merged at the time of this update
+- status: in progress, not merged at the time of this update, with wallet-funded protocol activation and wallet UI cleanup now added to the same phase
 
 Important clarification:
 
@@ -123,7 +123,13 @@ Important clarification:
 - normalized wallet ledger/activity feed
 - wallet funding flow from the wallet page
 - withdrawal request flow from the wallet page
+- wallet-balance protocol activation so funded wallet balance can activate goals without a new Paystack payment
+- create-flow status awareness so a newly created protocol does not still prompt for funding after wallet activation
+- top-bar wallet balance pill and wallet/profile surface cleanup
+- profile simplification so wallet details no longer live inside the profile page
+- calmer wallet typography and color-system polish to replace the noisier earlier design pass
 - finance/admin alignment so user-visible wallet activity matches operator-facing finance tools
+- batched vault completion logic so matured protocol completion does not keep timing out as active vault count grows
 - documentation refresh so active docs reflect the current wallet phase and operating model
 
 ## 5. Active Risks And Follow-Up Areas
@@ -136,6 +142,8 @@ Still needs disciplined delivery:
 - finance semantics must stay aligned between user wallet views and admin tooling
 - privacy-safe masking must be preserved on user-facing read surfaces
 - the wallet return should not regress the existing protocol-first flow
+- authenticated QA still needs to confirm the wallet-funded create flow end to end after the latest UI/behavior pass
+- local verification email restrictions currently block full browser QA on newly created test accounts
 
 ### Release Hardening
 
@@ -184,9 +192,9 @@ These are not fully resolved in the active build:
 ## 7. Recommended Next Engineering Priorities
 
 1. finish `Phase F` wallet foundation and merge it safely
-2. validate the admin/payment surfaces against the new wallet ledger expectations
-3. continue the approved monitoring roadmap once Sentry setup is ready
-4. improve runtime release confidence around payments, withdrawals, and admin operations
+2. validate the wallet-funded activation path and admin/payment surfaces against the new wallet ledger expectations
+3. resolve the remaining runtime hardening items around hydration and any residual payment/auth verification blockers
+4. continue the approved monitoring roadmap once Sentry setup is ready
 5. run the pending UX audit after wallet foundation is stable
 
 ## 8. Guidance For New Developers

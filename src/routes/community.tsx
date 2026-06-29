@@ -105,7 +105,6 @@ function CommunityPage() {
         subtitle="Network Protocol"
         backTo="/dashboard"
         contextLinks={[
-          { to: '/wallet', label: 'Wallet' },
           { to: '/leaderboard', label: 'Leaderboard' },
         ]}
         user={user}

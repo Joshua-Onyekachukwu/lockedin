@@ -637,6 +637,8 @@ export const getOverview = query({
   returns: v.object({
     pendingWithdrawals: v.number(),
     pendingWithdrawalAmount: v.number(),
+    pendingDeposits: v.number(),
+    pendingDepositAmount: v.number(),
     deposits24h: v.number(),
     depositVolume24h: v.number(),
     protocols24h: v.number(),
@@ -650,6 +652,23 @@ export const getOverview = query({
 
     const pendingWithdrawals = await ctx.db
       .query("withdrawals")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .take(1000);
+    const processingWithdrawals = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_status", (q) => q.eq("status", "processing"))
+      .take(1000);
+    const approvedWithdrawals = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_status", (q) => q.eq("status", "approved"))
+      .take(1000);
+    const openWithdrawals = [
+      ...pendingWithdrawals,
+      ...processingWithdrawals,
+      ...approvedWithdrawals,
+    ];
+    const pendingDeposits = await ctx.db
+      .query("deposits")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .take(1000);
 
@@ -667,8 +686,10 @@ export const getOverview = query({
       .take(5000);
 
     return {
-      pendingWithdrawals: pendingWithdrawals.length,
-      pendingWithdrawalAmount: pendingWithdrawals.reduce((s, w) => s + w.amount, 0),
+      pendingWithdrawals: openWithdrawals.length,
+      pendingWithdrawalAmount: openWithdrawals.reduce((s, w) => s + w.amount, 0),
+      pendingDeposits: pendingDeposits.length,
+      pendingDepositAmount: pendingDeposits.reduce((s, d) => s + d.amount, 0),
       deposits24h: deposits24h.length,
       depositVolume24h: deposits24h.reduce((s, t) => s + t.amount, 0),
       protocols24h,
@@ -1663,7 +1684,11 @@ export const getPendingWithdrawals = query({
       .query("withdrawals")
       .withIndex("by_status", (q) => q.eq("status", "processing"))
       .take(1000);
-    const withdrawals = [...pending, ...processing];
+    const approved = await ctx.db
+      .query("withdrawals")
+      .withIndex("by_status", (q) => q.eq("status", "approved"))
+      .take(1000);
+    const withdrawals = [...pending, ...processing, ...approved];
 
     const results = [];
     for (const w of withdrawals) {

@@ -19,23 +19,26 @@ const MAX_CONFIRMATION_WAIT_MS = 90000;
 
 export default function FundProtocolModal({
   vaultId,
+  stakeAmountKobo,
   user,
   onClose,
   onSuccess,
 }: {
   vaultId: string;
+  stakeAmountKobo: number;
   user: any;
   onClose: () => void;
   onSuccess?: () => void;
 }) {
   const initializeVaultFunding = useMutation(api.payments.initializeVaultFunding);
+  const activateVaultFromWallet = useMutation(api.payments.activateVaultFromWallet);
   const verifyPayment = useAction(api.payments.verifyPayment);
   const queryClient = useQueryClient();
   const toast = useToast();
   useBodyScrollLock(true);
   const [loading, setLoading] = useState(false);
   const [depositReference, setDepositReference] = useState<string | null>(null);
-  const [amountKobo, setAmountKobo] = useState<number>(0);
+  const [amountKobo, setAmountKobo] = useState<number>(stakeAmountKobo);
   const [shouldOpenPaystack, setShouldOpenPaystack] = useState(false);
   const [pollRef, setPollRef] = useState<string | null>(null);
   const [stage, setStage] = useState<FundingStage>('idle');
@@ -73,6 +76,15 @@ export default function FundProtocolModal({
     });
     await queryClient.invalidateQueries({
       queryKey: (convexQuery(api.users.current, EMPTY_ARGS as any) as any).queryKey,
+    });
+    await queryClient.invalidateQueries({
+      queryKey: (convexQuery((api as any).growth.getActivationStatus, EMPTY_ARGS as any) as any).queryKey,
+    });
+    await queryClient.invalidateQueries({
+      queryKey: (convexQuery(api.payments.getWalletOverview, EMPTY_ARGS as any) as any).queryKey,
+    });
+    await queryClient.invalidateQueries({
+      queryKey: (convexQuery(api.payments.getWalletActivity, { limit: 40 } as any) as any).queryKey,
     });
     await queryClient.invalidateQueries({
       queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey,
@@ -241,6 +253,26 @@ export default function FundProtocolModal({
     }
   };
 
+  const handleWalletActivation = async () => {
+    setLoading(true);
+    setStage('verifying');
+    setStatusMessage('Moving funds from your wallet into this protocol...');
+    try {
+      const result = await activateVaultFromWallet({ vaultId: vaultId as any });
+      if (!result.success && result.status !== 'already_active') {
+        toast.error(result.message, { title: 'Wallet Activation Blocked' });
+        resetFundingState();
+        return;
+      }
+      await completeFunding(result.message);
+    } catch (err: any) {
+      toast.error(toUserMessage(err, 'Failed to activate this protocol from wallet balance.'), {
+        title: 'Wallet Activation Failed',
+      });
+      resetFundingState();
+    }
+  };
+
   const depositStatusQuery = convexQuery(
     api.payments.getDepositStatus,
     {
@@ -342,6 +374,9 @@ export default function FundProtocolModal({
             : 0;
   const showProgressPanel = loading || stage !== 'idle';
   const disableClose = stage === 'verifying' || stage === 'awaiting_confirmation';
+  const walletBalance = Number(user?.balance ?? 0);
+  const walletShortfall = Math.max(0, amountKobo - walletBalance);
+  const canFundFromWallet = walletBalance >= amountKobo && amountKobo > 0;
 
   return (
     <motion.div
@@ -353,15 +388,18 @@ export default function FundProtocolModal({
       <motion.div
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        className="w-full max-w-md bg-[#0a0f1a] border border-white/10 rounded-[2.5rem] sm:rounded-[3.5rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]"
+        className="w-full max-w-lg bg-[#11161d] border border-white/10 rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden shadow-[0_0_90px_rgba(0,0,0,0.7)]"
       >
-        <div className="p-6 sm:p-12 text-left">
-          <div className="flex items-center justify-between mb-12">
+        <div className="p-6 sm:p-10 text-left">
+          <div className="flex items-center justify-between mb-10">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-blue-600/10 text-blue-500 flex items-center justify-center italic font-black border border-blue-500/20 shadow-xl">
+              <div className="h-12 w-12 rounded-2xl bg-[#c28b48]/12 text-[#d7aa72] flex items-center justify-center border border-[#c28b48]/25">
                 <CreditCard size={20} />
               </div>
-              <h2 className="text-2xl font-black tracking-tight uppercase italic text-white leading-none">Fund Protocol</h2>
+              <div>
+                <h2 className="text-2xl font-semibold tracking-tight text-white leading-none">Activate protocol</h2>
+                <p className="mt-1 text-sm text-white/45">Use your wallet balance first, or pay with Paystack.</p>
+              </div>
             </div>
             <button
               type="button"
@@ -373,24 +411,36 @@ export default function FundProtocolModal({
             </button>
           </div>
 
-          <p className="text-white/30 text-xs font-bold italic uppercase tracking-widest mb-10 leading-relaxed">
+          <p className="text-white/45 text-sm leading-relaxed mb-8">
             {statusMessage}
           </p>
 
-          <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10 flex items-center justify-between gap-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">Stake</p>
-            <p className="text-xl font-black italic text-white">₦{(amountKobo / 100).toLocaleString()}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-5 py-5">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/35">Stake required</p>
+              <p className="mt-3 text-2xl font-semibold tracking-tight text-white">₦{(amountKobo / 100).toLocaleString()}</p>
+            </div>
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-5 py-5">
+              <p className="text-xs font-medium uppercase tracking-[0.18em] text-white/35">Wallet balance</p>
+              <p className="mt-3 text-2xl font-semibold tracking-tight text-white">₦{(walletBalance / 100).toLocaleString()}</p>
+              <p className="mt-2 text-xs text-white/45">
+                {canFundFromWallet
+                  ? 'This protocol can activate directly from your wallet.'
+                  : `Short by ₦${(walletShortfall / 100).toLocaleString()}.`}
+              </p>
+            </div>
           </div>
-          <p className="mt-4 text-[10px] text-white/20 uppercase tracking-widest italic font-black leading-relaxed">
+
+          <p className="mt-4 text-xs text-white/35 leading-relaxed">
             If Paystack shows a processor fee before authorization, only the stake amount above is locked into this protocol.
           </p>
 
           {showProgressPanel ? (
-            <div className="mt-8 rounded-[2rem] border border-blue-500/20 bg-blue-500/5 p-6">
+            <div className="mt-8 rounded-[1.5rem] border border-[#c28b48]/20 bg-[#c28b48]/8 p-5">
               <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-full border-2 border-blue-500/30 border-t-blue-500 animate-spin" />
+                <div className="h-12 w-12 rounded-full border-2 border-[#c28b48]/30 border-t-[#d7aa72] animate-spin" />
                 <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 italic">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#d7aa72]">
                     {stage === 'initializing'
                       ? 'Preparing'
                       : stage === 'checkout'
@@ -399,7 +449,7 @@ export default function FundProtocolModal({
                           ? 'Verifying'
                           : 'Confirming'}
                   </p>
-                  <p className="mt-2 text-xs text-white/55 italic leading-relaxed">
+                  <p className="mt-2 text-sm text-white/62 leading-relaxed">
                     {stage === 'awaiting_confirmation'
                       ? 'We have your payment signal. Lockedin is waiting for final confirmation from the payment rail.'
                       : statusMessage}
@@ -408,21 +458,31 @@ export default function FundProtocolModal({
               </div>
               <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
                 <div
-                  className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                  className="h-full rounded-full bg-[#d7aa72] transition-all duration-500"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
             </div>
           ) : null}
 
-          <button
-            type="button"
-            onClick={handleStartPayment}
-            disabled={loading}
-            className="w-full mt-12 py-6 rounded-2xl bg-white text-black font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all shadow-white/5 disabled:opacity-50 italic"
-          >
-            {loading ? 'Processing...' : 'Authorize Stake'}
-          </button>
+          <div className="mt-10 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={handleWalletActivation}
+              disabled={loading || !canFundFromWallet}
+              className="rounded-2xl bg-[#d7aa72] px-5 py-4 text-sm font-semibold tracking-tight text-[#171310] transition-all hover:brightness-105 active:scale-[0.98] disabled:opacity-45"
+            >
+              {loading && stage === 'verifying' ? 'Activating...' : 'Use wallet balance'}
+            </button>
+            <button
+              type="button"
+              onClick={handleStartPayment}
+              disabled={loading}
+              className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-semibold tracking-tight text-white transition-all hover:bg-white/10 active:scale-[0.98] disabled:opacity-45"
+            >
+              {loading && stage !== 'verifying' ? 'Preparing...' : 'Pay with Paystack'}
+            </button>
+          </div>
         </div>
       </motion.div>
     </motion.div>

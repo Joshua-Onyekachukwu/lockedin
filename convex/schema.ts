@@ -53,7 +53,8 @@ export default defineSchema({
     paystack_reference: v.optional(v.string()),
     interest_earned: v.number(),
   }).index("by_user", ["userId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_status_and_endDate", ["status", "endDate"]),
 
   goals: defineTable({
     vaultId: v.id("vaults"),
@@ -224,7 +225,8 @@ export default defineSchema({
     metadata: v.optional(v.any()),
   }).index("by_reference", ["reference"])
     .index("by_user", ["userId"])
-    .index("by_vault", ["vaultId"]),
+    .index("by_vault", ["vaultId"])
+    .index("by_status", ["status"]),
 
   paystack_reconciliations: defineTable({
     reference: v.string(),

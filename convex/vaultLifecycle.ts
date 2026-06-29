@@ -4,20 +4,24 @@ import { internal } from "./_generated/api";
 import { captureToSentry } from "./sentry";
 
 export const completeMaturedVaults = internalMutation({
-  args: {},
+  args: {
+    limit: v.optional(v.number()),
+    cutoffTs: v.optional(v.number()),
+  },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     try {
-      const now = Date.now();
-      const active = await ctx.db
+      const batchLimit = Math.max(1, Math.min(args.limit ?? 50, 200));
+      const cutoffTs = args.cutoffTs ?? Date.now();
+      const maturedVaults = await ctx.db
         .query("vaults")
-        .withIndex("by_status", (q) => q.eq("status", "active"))
-        .collect();
+        .withIndex("by_status_and_endDate", (q) =>
+          q.eq("status", "active").lte("endDate", cutoffTs),
+        )
+        .take(batchLimit);
 
-      for (const vault of active) {
-        const endDate = vault.endDate;
-        if (typeof endDate !== "number") continue;
-        if (endDate > now) continue;
+      for (const vault of maturedVaults) {
+        if (vault.status !== "active") continue;
 
         await ctx.db.patch("vaults", vault._id, { status: "completed" });
         await ctx.runMutation(internal.partners.endAllForVault, { vaultId: vault._id });
@@ -29,6 +33,13 @@ export const completeMaturedVaults = internalMutation({
           type: "protocol_created",
           link: "/dashboard",
           read: false,
+        });
+      }
+
+      if (maturedVaults.length === batchLimit) {
+        await ctx.scheduler.runAfter(0, internal.vaultLifecycle.completeMaturedVaults, {
+          limit: batchLimit,
+          cutoffTs,
         });
       }
 

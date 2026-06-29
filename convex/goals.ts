@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { auth } from "./auth";
+import { internal } from "./_generated/api";
 
 /**
  * PROTOCOL EXECUTION ENGINE
@@ -53,7 +54,10 @@ export const create = mutation({
     stakedAmount: v.number(),
     painTier: painTierValidator,
   },
-  returns: v.id("vaults"),
+  returns: v.object({
+    vaultId: v.id("vaults"),
+    status: v.union(v.literal("active"), v.literal("awaiting_funding")),
+  }),
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
     if (userId === null) throw new Error("Unauthenticated");
@@ -85,16 +89,29 @@ export const create = mutation({
       target_count: args.target_count,
     });
 
-    await ctx.db.insert("notifications", {
-      userId,
-      title: "Protocol Created",
-      message: `${args.title} created. Complete funding to activate the protocol.`,
-      type: "protocol_created",
-      link: "/dashboard",
-      read: false,
-    });
-
-    return vaultId;
+    if ((user.balance || 0) >= args.stakedAmount) {
+      await ctx.runMutation(internal.payments.fundVaultFromWalletBalance, {
+        userId,
+        vaultId,
+      });
+      return {
+        vaultId,
+        status: "active" as const,
+      };
+    } else {
+      await ctx.db.insert("notifications", {
+        userId,
+        title: "Protocol Created",
+        message: `${args.title} created. Complete funding to activate the protocol.`,
+        type: "protocol_created",
+        link: "/dashboard",
+        read: false,
+      });
+      return {
+        vaultId,
+        status: "awaiting_funding" as const,
+      };
+    }
   },
 });
 

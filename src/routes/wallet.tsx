@@ -6,13 +6,11 @@ import { motion } from 'framer-motion'
 import {
   ArrowDownCircle,
   ArrowUpCircle,
-  CreditCard,
   History,
   Landmark,
   Receipt,
   Shield,
   Target,
-  Wallet,
 } from 'lucide-react'
 import { usePaystackPayment } from 'react-paystack'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -25,6 +23,7 @@ import { toUserMessage } from '~/lib/errors'
 const EMPTY_ARGS: Record<string, never> = {}
 const PAYSTACK_PUBLIC_KEY =
   import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY
+const LEDGER_PAGE_SIZE = 12
 
 type LedgerFilter = 'all' | 'money' | 'stake' | 'refund' | 'reward'
 
@@ -88,7 +87,8 @@ function WalletPage() {
     [],
   )
 
-  const [activityLimit, setActivityLimit] = useState(40)
+  const [activityLimit] = useState(100)
+  const [ledgerPage, setLedgerPage] = useState(1)
   const walletActivityQuery = useMemo(
     () => convexQuery(api.payments.getWalletActivity, { limit: activityLimit } as any) as any,
     [activityLimit],
@@ -397,14 +397,24 @@ function WalletPage() {
     }
     return true
   })
+  const totalLedgerPages = Math.max(1, Math.ceil(filteredActivity.length / LEDGER_PAGE_SIZE))
+  const currentLedgerPage = Math.min(ledgerPage, totalLedgerPages)
+  const pagedActivity = filteredActivity.slice(
+    (currentLedgerPage - 1) * LEDGER_PAGE_SIZE,
+    currentLedgerPage * LEDGER_PAGE_SIZE,
+  )
 
   const pendingActivity = activity.filter((entry) =>
     entry.status === 'pending' || entry.status === 'processing' || entry.status === 'approved',
   )
   const stakeHistory = activity.filter((entry) => entry.category === 'stake').slice(0, 6)
 
+  useEffect(() => {
+    setLedgerPage(1)
+  }, [ledgerFilter])
+
   return (
-    <div className="min-h-screen bg-[#050810] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden pb-20">
+    <div className="min-h-screen overflow-x-hidden bg-[#0a0d10] pb-20 font-ui text-[#f1e8d7]">
       <WalletTopupController
         config={depositConfig}
         shouldOpen={shouldOpenPaystack}
@@ -414,13 +424,13 @@ function WalletPage() {
         onClose={onTopupClose}
       />
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#ff7a00]/5 blur-[120px] rounded-full" />
+        <div className="absolute inset-x-0 top-0 h-64 bg-[linear-gradient(180deg,rgba(199,156,92,0.08),rgba(10,13,16,0))]" />
+        <div className="absolute inset-x-0 top-24 h-px bg-white/6" />
       </div>
 
       <AppTopNav
-        title="Wallet Command"
-        subtitle="Financial Ledger"
+        title="Wallet"
+        subtitle="Balance, payouts and ledger"
         backTo="/dashboard"
         contextLinks={[
           { to: '/dashboard', label: 'Dashboard' },
@@ -430,48 +440,72 @@ function WalletPage() {
         user={user}
       />
 
-      <main className="max-w-7xl mx-auto p-6 lg:p-12 text-left relative z-10 space-y-10">
-        <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/30 italic">
-              First-Class Wallet
+      <main className="relative z-10 mx-auto max-w-5xl space-y-6 p-6 lg:p-10">
+        <header className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+          <section className="rounded-[1.75rem] border border-[#2b3139] bg-[#12161b] p-7 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
+            <p className="font-data text-[11px] uppercase tracking-[0.24em] text-[#c79c5c]">
+              Wallet ledger
             </p>
-            <h1 className="mt-4 text-4xl font-black tracking-tight md:text-5xl lg:text-6xl uppercase italic leading-tight">
-              Capital <span className="text-blue-500">Control.</span>
+            <h1 className="mt-4 max-w-2xl font-editorial text-3xl leading-tight text-[#f4ecdf] md:text-[3.2rem]">
+              Your money, clearly accounted for.
             </h1>
-            <p className="mt-5 max-w-3xl text-white/30 text-lg leading-relaxed italic">
-              Track available balance, locked stake, pending movement, receipts, refunds, rewards,
-              and the full financial ledger for your Lockedin account.
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#f1e8d7]/62">
+              Use this page to top up your balance, request withdrawals, and review every
+              deposit, stake, refund, and payout without digging through profile settings.
             </p>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <MetricCard icon={<Wallet size={18} />} label="Available" value={formatMoney(overview.availableBalance)} />
-            <MetricCard icon={<Shield size={18} />} label="Locked" value={formatMoney(overview.lockedFunds)} />
-            <MetricCard icon={<History size={18} />} label="Pending" value={formatMoney(overview.pendingMovementTotal)} />
-            <MetricCard icon={<CreditCard size={18} />} label="Credits" value={overview.creditsBalance.toLocaleString()} />
-          </div>
+            <div className="mt-8 rounded-[1.5rem] border border-[#3a3123] bg-[#17130f] px-6 py-6">
+              <p className="font-data text-[11px] uppercase tracking-[0.22em] text-[#c79c5c]/82">
+                Available to spend
+              </p>
+              <p className="mt-3 font-editorial text-4xl leading-none text-[#f8f0e2] md:text-5xl">
+                {formatMoney(overview.availableBalance)}
+              </p>
+              <p className="mt-3 text-sm leading-6 text-[#f1e8d7]/56">
+                This is the balance you can move into a new protocol or withdraw to your bank.
+              </p>
+            </div>
+          </section>
+
+          <section className="rounded-[1.75rem] border border-[#2b3139] bg-[#12161b] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
+            <p className="font-data text-[11px] uppercase tracking-[0.24em] text-[#8fa1b4]">
+              At a glance
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <MetricCard icon={<Shield size={17} />} label="Locked in active protocols" value={formatMoney(overview.lockedFunds)} />
+              <MetricCard icon={<History size={17} />} label="Still settling" value={formatMoney(overview.pendingMovementTotal)} />
+              <StatPanel label="Awaiting funding" value={formatMoney(overview.awaitingFunding)} helper="Created but not yet activated" />
+              <StatPanel label="Active protocols" value={String(overview.activeProtocols)} helper="Currently locking capital" />
+            </div>
+          </section>
         </header>
 
-        <section className="grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-6">
-          <div className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-8 shadow-2xl">
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <StatPanel label="Deposited" value={formatMoney(overview.totalDeposited)} helper="Completed wallet topups" />
+          <StatPanel label="Withdrawn" value={formatMoney(overview.totalWithdrawn)} helper="Completed payouts" />
+          <StatPanel label="Pending deposits" value={String(overview.pendingDepositCount)} helper="Payments awaiting settlement" />
+          <StatPanel label="Pending withdrawals" value={String(overview.pendingWithdrawalCount)} helper="Requests still in queue" />
+        </section>
+
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1fr]">
+          <div className="rounded-[1.75rem] border border-[#2b3139] bg-[#12161b] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.16)]">
             <div className="flex items-center gap-3">
-              <span className="h-12 w-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+              <span className="flex h-11 w-11 items-center justify-center rounded-[1rem] border border-[#c79c5c]/20 bg-[#c79c5c]/10 text-[#c79c5c]">
                 <ArrowDownCircle size={20} />
               </span>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">
+                <p className="font-data text-[11px] uppercase tracking-[0.22em] text-[#f1e8d7]/38">
                   Fund Wallet
                 </p>
-                <p className="mt-2 text-white font-black uppercase italic tracking-tight text-xl">
-                  Add available balance
+                <p className="mt-2 font-editorial text-[1.7rem] leading-tight text-[#f4ecdf]">
+                  Add money to your available balance
                 </p>
               </div>
             </div>
 
-            <div className="mt-8 grid gap-4 md:grid-cols-[1fr_auto]">
+            <div className="mt-7 grid gap-4 md:grid-cols-[1fr_auto]">
               <label className="block">
-                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/20 italic">
+                <span className="font-data text-[11px] uppercase tracking-[0.2em] text-[#f1e8d7]/40">
                   Amount (NGN)
                 </span>
                 <input
@@ -479,7 +513,7 @@ function WalletPage() {
                   onChange={(e) => setFundAmount(e.target.value)}
                   placeholder="5000"
                   inputMode="decimal"
-                  className="mt-3 w-full rounded-[1.75rem] border border-white/10 bg-[#0a0f1a] px-5 py-4 text-lg font-black italic tracking-tight text-white placeholder:text-white/10"
+                  className="mt-3 w-full rounded-[1rem] border border-[#313844] bg-[#0d1116] px-4 py-4 text-lg font-medium tracking-tight text-[#f4ecdf] placeholder:text-[#f4ecdf]/18"
                 />
               </label>
 
@@ -487,43 +521,43 @@ function WalletPage() {
                 type="button"
                 onClick={handleStartTopup}
                 disabled={isFunding}
-                className="self-end rounded-[1.75rem] bg-blue-600 px-6 py-4 text-[10px] font-black uppercase tracking-[0.25em] text-white transition-all disabled:opacity-50"
+                className="self-end rounded-[1rem] bg-[#c79c5c] px-6 py-4 text-sm font-semibold tracking-tight text-[#17130d] transition-all hover:brightness-105 disabled:opacity-50"
               >
-                {isFunding ? 'Processing' : 'Fund Wallet'}
+                {isFunding ? 'Processing' : 'Fund wallet'}
               </button>
             </div>
 
-            <div className="mt-5 rounded-[1.75rem] border border-white/10 bg-[#0a0f1a] px-5 py-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/20 italic">
+            <div className="mt-5 rounded-[1rem] border border-[#313844] bg-[#0d1116] px-4 py-4">
+              <p className="font-data text-[11px] uppercase tracking-[0.2em] text-[#f1e8d7]/40">
                 Funding status
               </p>
-              <p className="mt-2 text-sm text-white/60 italic">{fundingStatus}</p>
+              <p className="mt-2 text-sm leading-relaxed text-[#f1e8d7]/62">{fundingStatus}</p>
               {!PAYSTACK_PUBLIC_KEY ? (
-                <p className="mt-3 text-[10px] font-black uppercase tracking-[0.25em] text-[#ff7a00] italic">
+                <p className="mt-3 font-data text-[11px] uppercase tracking-[0.2em] text-[#c79c5c]">
                   Missing `VITE_PAYSTACK_PUBLIC_KEY`
                 </p>
               ) : null}
             </div>
           </div>
 
-          <div className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-8 shadow-2xl">
+          <div className="rounded-[1.75rem] border border-[#2b3139] bg-[#12161b] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.16)]">
             <div className="flex items-center gap-3">
-              <span className="h-12 w-12 rounded-2xl bg-[#ff7a00]/10 border border-[#ff7a00]/20 flex items-center justify-center text-[#ff7a00]">
+              <span className="flex h-11 w-11 items-center justify-center rounded-[1rem] border border-[#7c90a5]/20 bg-[#7c90a5]/10 text-[#aab9c8]">
                 <ArrowUpCircle size={20} />
               </span>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">
+                <p className="font-data text-[11px] uppercase tracking-[0.22em] text-[#f1e8d7]/38">
                   Withdraw Funds
                 </p>
-                <p className="mt-2 text-white font-black uppercase italic tracking-tight text-xl">
-                  Request payout
+                <p className="mt-2 font-editorial text-[1.7rem] leading-tight text-[#f4ecdf]">
+                  Request a payout to your bank
                 </p>
               </div>
             </div>
 
-            <div className="mt-8 space-y-4">
+            <div className="mt-7 space-y-4">
               <label className="block">
-                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/20 italic">
+                <span className="font-data text-[11px] uppercase tracking-[0.2em] text-[#f1e8d7]/40">
                   Amount (NGN)
                 </span>
                 <input
@@ -533,12 +567,12 @@ function WalletPage() {
                   }
                   placeholder="2500"
                   inputMode="decimal"
-                  className="mt-3 w-full rounded-[1.75rem] border border-white/10 bg-[#0a0f1a] px-5 py-4 text-lg font-black italic tracking-tight text-white placeholder:text-white/10"
+                  className="mt-3 w-full rounded-[1rem] border border-[#313844] bg-[#0d1116] px-4 py-4 text-lg font-medium tracking-tight text-[#f4ecdf] placeholder:text-[#f4ecdf]/18"
                 />
               </label>
 
               <label className="block">
-                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/20 italic">
+                <span className="font-data text-[11px] uppercase tracking-[0.2em] text-[#f1e8d7]/40">
                   Bank
                 </span>
                 <select
@@ -552,7 +586,7 @@ function WalletPage() {
                       accountName: '',
                     }))
                   }}
-                  className="mt-3 w-full rounded-[1.75rem] border border-white/10 bg-[#0a0f1a] px-5 py-4 text-sm font-black italic tracking-tight text-white"
+                  className="mt-3 w-full rounded-[1rem] border border-[#313844] bg-[#0d1116] px-4 py-4 text-sm font-medium text-[#f4ecdf]"
                 >
                   <option value="">Select bank</option>
                   {banks.map((bank) => (
@@ -564,7 +598,7 @@ function WalletPage() {
               </label>
 
               <label className="block">
-                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/20 italic">
+                <span className="font-data text-[11px] uppercase tracking-[0.2em] text-[#f1e8d7]/40">
                   Account Number
                 </span>
                 <input
@@ -578,7 +612,7 @@ function WalletPage() {
                   }
                   placeholder="0123456789"
                   inputMode="numeric"
-                  className="mt-3 w-full rounded-[1.75rem] border border-white/10 bg-[#0a0f1a] px-5 py-4 text-lg font-black italic tracking-tight text-white placeholder:text-white/10"
+                  className="mt-3 w-full rounded-[1rem] border border-[#313844] bg-[#0d1116] px-4 py-4 text-lg font-medium tracking-tight text-[#f4ecdf] placeholder:text-[#f4ecdf]/18"
                 />
               </label>
 
@@ -587,7 +621,7 @@ function WalletPage() {
                   type="button"
                   onClick={handleResolveAccount}
                   disabled={isResolvingAccount || banksLoading}
-                  className="rounded-[1.75rem] border border-white/10 bg-white/5 px-5 py-4 text-[10px] font-black uppercase tracking-[0.25em] text-white transition-all disabled:opacity-50"
+                  className="rounded-[1rem] border border-[#313844] bg-[#151a21] px-5 py-4 text-sm font-medium text-[#f4ecdf] transition-all hover:bg-[#1a2028] disabled:opacity-50"
                 >
                   {isResolvingAccount ? 'Resolving' : banksLoading ? 'Loading Banks' : 'Resolve Account'}
                 </button>
@@ -595,17 +629,17 @@ function WalletPage() {
                   type="button"
                   onClick={handleWithdrawalRequest}
                   disabled={isWithdrawing}
-                  className="rounded-[1.75rem] bg-[#ff7a00] px-5 py-4 text-[10px] font-black uppercase tracking-[0.25em] text-white transition-all disabled:opacity-50"
+                  className="rounded-[1rem] bg-[#7c90a5] px-5 py-4 text-sm font-medium text-[#f7f0e4] transition-all hover:brightness-110 disabled:opacity-50"
                 >
-                  {isWithdrawing ? 'Submitting' : 'Request Withdrawal'}
+                  {isWithdrawing ? 'Submitting' : 'Request withdrawal'}
                 </button>
               </div>
 
-              <div className="rounded-[1.75rem] border border-white/10 bg-[#0a0f1a] px-5 py-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/20 italic">
+              <div className="rounded-[1rem] border border-[#313844] bg-[#0d1116] px-4 py-4">
+                <p className="font-data text-[11px] uppercase tracking-[0.2em] text-[#f1e8d7]/40">
                   Resolved account
                 </p>
-                <p className="mt-2 text-sm text-white/70 italic">
+                <p className="mt-2 text-sm text-[#f1e8d7]/62">
                   {withdrawalForm.accountName || 'Resolve the destination account before submitting.'}
                 </p>
               </div>
@@ -613,34 +647,23 @@ function WalletPage() {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          <StatPanel label="Pending deposits" value={formatMoney(overview.pendingDeposits)} helper={`${overview.pendingDepositCount} items`} />
-          <StatPanel label="Pending withdrawals" value={formatMoney(overview.pendingWithdrawals)} helper={`${overview.pendingWithdrawalCount} items`} />
-          <StatPanel label="Awaiting funding" value={formatMoney(overview.awaitingFunding)} helper="Protocols not yet activated" />
-          <StatPanel label="Total staked" value={formatMoney(overview.totalStaked)} helper={`${overview.activeProtocols} active protocols`} />
-          <StatPanel label="Total deposited" value={formatMoney(overview.totalDeposited)} helper="Completed wallet topups" />
-          <StatPanel label="Total withdrawn" value={formatMoney(overview.totalWithdrawn)} helper="Completed payouts" />
-          <StatPanel label="Refunded" value={formatMoney(overview.totalRefunded)} helper="Recovered payment value" />
-          <StatPanel label="Shields" value={overview.shieldsBalance.toLocaleString()} helper="Non-cash protection credits" />
-        </section>
-
-        <section className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-6">
-          <div className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-8 shadow-2xl">
+        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-[1.75rem] border border-[#2b3139] bg-[#12161b] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.16)]">
             <div className="flex items-center gap-3">
-              <span className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60">
+              <span className="flex h-11 w-11 items-center justify-center rounded-[1rem] border border-[#313844] bg-[#151a21] text-[#f1e8d7]/60">
                 <Receipt size={20} />
               </span>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">
+                <p className="font-data text-[11px] uppercase tracking-[0.22em] text-[#f1e8d7]/38">
                   Pending Movement
                 </p>
-                <p className="mt-2 text-white font-black uppercase italic tracking-tight text-xl">
-                  What is still settling
+                <p className="mt-2 font-editorial text-[1.7rem] leading-tight text-[#f4ecdf]">
+                  Items still settling
                 </p>
               </div>
             </div>
 
-            <div className="mt-8 space-y-3">
+            <div className="mt-6 space-y-3">
               {pendingActivity.length === 0 ? (
                 <EmptyState
                   icon={<History size={28} />}
@@ -655,22 +678,22 @@ function WalletPage() {
             </div>
           </div>
 
-          <div className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-8 shadow-2xl">
+          <div className="rounded-[1.75rem] border border-[#2b3139] bg-[#12161b] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.16)]">
             <div className="flex items-center gap-3">
-              <span className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/60">
+              <span className="flex h-11 w-11 items-center justify-center rounded-[1rem] border border-[#313844] bg-[#151a21] text-[#f1e8d7]/60">
                 <Target size={20} />
               </span>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">
+                <p className="font-data text-[11px] uppercase tracking-[0.22em] text-[#f1e8d7]/38">
                   Stake History
                 </p>
-                <p className="mt-2 text-white font-black uppercase italic tracking-tight text-xl">
-                  Protocol capital trail
+                <p className="mt-2 font-editorial text-[1.7rem] leading-tight text-[#f4ecdf]">
+                  Capital deployed into protocols
                 </p>
               </div>
             </div>
 
-            <div className="mt-8 space-y-3">
+            <div className="mt-6 space-y-3">
               {stakeHistory.length === 0 ? (
                 <EmptyState
                   icon={<Target size={28} />}
@@ -684,14 +707,14 @@ function WalletPage() {
           </div>
         </section>
 
-        <section className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-8 shadow-2xl">
+        <section className="rounded-[1.75rem] border border-[#2b3139] bg-[#12161b] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.16)]">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 italic">
-                Complete Ledger
+              <p className="font-data text-[11px] uppercase tracking-[0.22em] text-[#f1e8d7]/38">
+                Complete ledger
               </p>
-              <p className="mt-2 text-white font-black uppercase italic tracking-tight text-2xl">
-                Every financial activity in Lockedin
+              <p className="mt-2 font-editorial text-[2rem] leading-tight text-[#f4ecdf]">
+                Every recorded financial activity in Lockedin
               </p>
             </div>
 
@@ -707,10 +730,10 @@ function WalletPage() {
                   key={value}
                   type="button"
                   onClick={() => setLedgerFilter(value)}
-                  className={`rounded-2xl px-4 py-2 text-[10px] font-black uppercase tracking-[0.25em] transition-all ${
+                  className={`rounded-full px-4 py-2 text-xs font-medium transition-all ${
                     ledgerFilter === value
-                      ? 'bg-white text-black'
-                      : 'bg-white/5 border border-white/10 text-white/50'
+                      ? 'bg-[#c79c5c] text-[#17130d]'
+                      : 'border border-[#313844] bg-[#151a21] text-[#f1e8d7]/52'
                   }`}
                 >
                   {label}
@@ -727,19 +750,34 @@ function WalletPage() {
                 body="Financial activity will appear here as you fund, stake, withdraw, receive refunds, or earn rewards."
               />
             ) : (
-              filteredActivity.map((entry) => <LedgerRow key={entry.entryId} entry={entry} />)
+              pagedActivity.map((entry) => <LedgerRow key={entry.entryId} entry={entry} />)
             )}
           </div>
 
-          <div className="mt-8 flex justify-center">
-            <button
-              type="button"
-              onClick={() => setActivityLimit((current) => Math.min(current + 20, 100))}
-              disabled={activity.length < activityLimit || activityLimit >= 100}
-              className="rounded-[1.75rem] border border-white/10 bg-white/5 px-5 py-4 text-[10px] font-black uppercase tracking-[0.25em] text-white transition-all disabled:opacity-40"
-            >
-              Load More Entries
-            </button>
+          <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="font-data text-[11px] uppercase tracking-[0.16em] text-[#f1e8d7]/42">
+              Page {currentLedgerPage} of {totalLedgerPages}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setLedgerPage((current) => Math.max(1, current - 1))}
+                disabled={currentLedgerPage <= 1}
+                className="rounded-full border border-[#313844] bg-[#151a21] px-5 py-3 text-sm font-medium text-[#f1e8d7] transition-all hover:bg-[#1a2028] disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setLedgerPage((current) => Math.min(totalLedgerPages, current + 1))
+                }
+                disabled={currentLedgerPage >= totalLedgerPages}
+                className="rounded-full border border-[#313844] bg-[#151a21] px-5 py-3 text-sm font-medium text-[#f1e8d7] transition-all hover:bg-[#1a2028] disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </section>
       </main>
@@ -760,13 +798,13 @@ function MetricCard({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-5 shadow-2xl"
+      className="rounded-[1.25rem] border border-[#313844] bg-[#0d1116] p-5"
     >
-      <div className="flex items-center gap-3 text-white/40">
+      <div className="flex items-center gap-3 text-[#f1e8d7]/44">
         {icon}
-        <p className="text-[10px] font-black uppercase tracking-[0.25em] italic">{label}</p>
+        <p className="font-data text-[11px] uppercase tracking-[0.2em]">{label}</p>
       </div>
-      <p className="mt-4 text-xl font-black uppercase italic tracking-tight text-white">{value}</p>
+      <p className="mt-4 font-editorial text-[1.9rem] leading-none text-[#f4ecdf]">{value}</p>
     </motion.div>
   )
 }
@@ -781,10 +819,10 @@ function StatPanel({
   helper: string
 }) {
   return (
-    <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-5">
-      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/20 italic">{label}</p>
-      <p className="mt-4 text-xl font-black uppercase italic tracking-tight text-white">{value}</p>
-      <p className="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/25 italic">{helper}</p>
+    <div className="rounded-[1.25rem] border border-[#313844] bg-[#0d1116] p-4">
+      <p className="font-data text-[11px] uppercase tracking-[0.2em] text-[#f1e8d7]/40">{label}</p>
+      <p className="mt-3 font-editorial text-[1.45rem] leading-none text-[#f4ecdf]">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-[#f1e8d7]/48">{helper}</p>
     </div>
   )
 }
@@ -799,12 +837,12 @@ function EmptyState({
   body: string
 }) {
   return (
-    <div className="rounded-[2rem] border border-dashed border-white/10 bg-[#0a0f1a] px-6 py-8 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-white/40">
+    <div className="rounded-[1.25rem] border border-dashed border-[#313844] bg-[#0d1116] px-6 py-8 text-center">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[1rem] border border-[#313844] bg-[#151a21] text-[#f1e8d7]/40">
         {icon}
       </div>
-      <p className="mt-4 text-[10px] font-black uppercase tracking-[0.25em] text-white italic">{title}</p>
-      <p className="mt-3 text-sm text-white/35 italic leading-relaxed">{body}</p>
+      <p className="mt-4 font-editorial text-xl leading-none text-[#f4ecdf]">{title}</p>
+      <p className="mt-3 text-sm leading-7 text-[#f1e8d7]/48">{body}</p>
     </div>
   )
 }
@@ -823,16 +861,16 @@ function LedgerRow({ entry }: { entry: any }) {
       : formatMoney(entry.amount)
 
   return (
-    <div className="rounded-[2rem] border border-white/10 bg-[#0a0f1a] px-5 py-4">
+    <div className="rounded-[1.25rem] border border-[#313844] bg-[#0d1116] px-5 py-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white italic">
+          <p className="font-editorial text-xl leading-tight text-[#f4ecdf]">
             {entry.title}
           </p>
           {entry.subtitle ? (
-            <p className="mt-2 text-sm text-white/45 italic leading-relaxed">{entry.subtitle}</p>
+            <p className="mt-2 text-sm leading-7 text-[#f1e8d7]/52">{entry.subtitle}</p>
           ) : null}
-          <div className="mt-3 flex flex-wrap gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/25 italic">
+          <div className="mt-3 flex flex-wrap gap-2 font-data text-[11px] uppercase tracking-[0.12em] text-[#f1e8d7]/38">
             <span>{new Date(entry.createdAt).toLocaleString()}</span>
             <span>{entry.status}</span>
             {entry.reference ? <span>Receipt {entry.reference}</span> : null}
@@ -840,10 +878,10 @@ function LedgerRow({ entry }: { entry: any }) {
         </div>
 
         <div className="text-left lg:text-right shrink-0">
-          <p className={`text-lg font-black uppercase italic tracking-tight ${amountTone}`}>
+          <p className={`font-editorial text-[1.65rem] leading-none ${amountTone}`}>
             {amountLabel}
           </p>
-          <p className="mt-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/20 italic">
+          <p className="mt-2 font-data text-[11px] uppercase tracking-[0.14em] text-[#f1e8d7]/38">
             {entry.category.replaceAll('_', ' ')}
           </p>
         </div>

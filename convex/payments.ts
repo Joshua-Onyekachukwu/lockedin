@@ -171,6 +171,179 @@ export const initializeVaultFunding = mutation({
   },
 });
 
+export const fundVaultFromWalletBalance = internalMutation({
+  args: {
+    userId: v.id("users"),
+    vaultId: v.id("vaults"),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    status: v.union(
+      v.literal("activated"),
+      v.literal("already_active"),
+      v.literal("insufficient_balance"),
+      v.literal("vault_not_found"),
+      v.literal("unauthorized"),
+    ),
+    message: v.string(),
+    balanceRemaining: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const [user, vault] = await Promise.all([
+      ctx.db.get("users", args.userId),
+      ctx.db.get("vaults", args.vaultId),
+    ]);
+
+    if (!user) {
+      return {
+        success: false,
+        status: "unauthorized" as const,
+        message: "Unauthorized",
+        balanceRemaining: 0,
+      };
+    }
+
+    if (!vault) {
+      return {
+        success: false,
+        status: "vault_not_found" as const,
+        message: "Protocol not found.",
+        balanceRemaining: user.balance || 0,
+      };
+    }
+
+    if (vault.userId !== user._id) {
+      return {
+        success: false,
+        status: "unauthorized" as const,
+        message: "Unauthorized",
+        balanceRemaining: user.balance || 0,
+      };
+    }
+
+    if (vault.status !== "awaiting_funding") {
+      return {
+        success: true,
+        status: "already_active" as const,
+        message: "Protocol is already active.",
+        balanceRemaining: user.balance || 0,
+      };
+    }
+
+    if ((user.balance || 0) < vault.amount) {
+      return {
+        success: false,
+        status: "insufficient_balance" as const,
+        message: "Insufficient wallet balance to activate this protocol.",
+        balanceRemaining: user.balance || 0,
+      };
+    }
+
+    const activatedAt = Date.now();
+    const balanceRemaining = (user.balance || 0) - vault.amount;
+
+    await ctx.db.patch("users", user._id, {
+      balance: balanceRemaining,
+    });
+
+    await ctx.db.patch("vaults", vault._id, {
+      status: "active",
+      startDate: activatedAt,
+      endDate: activatedAt + vault.duration_weeks * 7 * 24 * 60 * 60 * 1000,
+      fundedAt: activatedAt,
+    });
+
+    await ctx.db.insert("transactions", {
+      userId: user._id,
+      amount: -vault.amount,
+      type: "stake",
+      vaultId: vault._id,
+      status: "completed",
+      description: "Protocol funded from wallet balance",
+    });
+
+    await ctx.db.insert("notifications", {
+      userId: user._id,
+      title: "Protocol Activated",
+      message: `₦${(vault.amount / 100).toLocaleString()} moved from wallet balance into your protocol.`,
+      type: "protocol_created",
+      link: "/dashboard",
+      read: false,
+    });
+
+    return {
+      success: true,
+      status: "activated" as const,
+      message: "Protocol activated using wallet balance.",
+      balanceRemaining,
+    };
+  },
+});
+
+export const activateVaultFromWallet = mutation({
+  args: {
+    vaultId: v.id("vaults"),
+  },
+  returns: v.object({
+    success: v.boolean(),
+    status: v.union(
+      v.literal("activated"),
+      v.literal("already_active"),
+      v.literal("insufficient_balance"),
+      v.literal("vault_not_found"),
+      v.literal("unauthorized"),
+    ),
+    message: v.string(),
+    balanceRemaining: v.number(),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    success: boolean;
+    status:
+      | "activated"
+      | "already_active"
+      | "insufficient_balance"
+      | "vault_not_found"
+      | "unauthorized";
+    message: string;
+    balanceRemaining: number;
+  }> => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      return {
+        success: false,
+        status: "unauthorized" as const,
+        message: "Unauthorized",
+        balanceRemaining: 0,
+      };
+    }
+
+    const user = await ctx.db.get("users", userId);
+    if (!user || !user.emailVerificationTime) {
+      throw new Error("Email verification required.");
+    }
+
+    const result: {
+      success: boolean;
+      status:
+        | "activated"
+        | "already_active"
+        | "insufficient_balance"
+        | "vault_not_found"
+        | "unauthorized";
+      message: string;
+      balanceRemaining: number;
+    } = await ctx.runMutation(internal.payments.fundVaultFromWalletBalance, {
+      userId,
+      vaultId: args.vaultId,
+    });
+
+    return result;
+  },
+});
+
 /**
  * Verify a Paystack payment (Action because it calls an external API)
  */

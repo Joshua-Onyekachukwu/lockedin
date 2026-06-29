@@ -29,6 +29,10 @@ type ContextLink = {
   icon?: any
 }
 
+function formatWalletBalance(amount?: number) {
+  return `₦${((amount ?? 0) / 100).toLocaleString()}`
+}
+
 function notificationMeta(n: any) {
   switch (n.type) {
     case 'wallet_funded':
@@ -133,6 +137,7 @@ export function AppTopNav({
 
   const unreadCount =
     (notifications as Array<any>)?.filter?.((n: any) => !n.read).length || 0
+  const walletBalanceLabel = formatWalletBalance(effectiveUser?.balance)
 
   const closeAll = () => {
     setShowNotifications(false)
@@ -192,6 +197,17 @@ export function AppTopNav({
         </div>
 
         <div className="hidden sm:flex items-center gap-3 sm:gap-8 text-left font-bold">
+          {isAuthenticated && effectiveUser ? (
+            <Link
+              to="/wallet"
+              className="inline-flex items-center gap-2 rounded-full border border-[#c28b48]/20 bg-[#c28b48]/10 px-4 py-2 text-[#e3c08e] transition-all hover:bg-[#c28b48]/15"
+              onClick={() => closeAll()}
+            >
+              <Wallet size={15} />
+              <span className="text-sm font-semibold tracking-tight">{walletBalanceLabel}</span>
+            </Link>
+          ) : null}
+
           {contextLinks && contextLinks.length ? (
             <div className="hidden sm:flex items-center gap-6 text-sm font-black uppercase tracking-widest text-white/40 italic">
               {contextLinks.map((l) => (
@@ -252,6 +268,16 @@ export function AppTopNav({
         {variant === 'dashboard' ? (
           <div className="sm:hidden flex flex-col items-end gap-2 w-full">
             <div className="flex items-center gap-2">
+              {isAuthenticated && effectiveUser ? (
+                <Link
+                  to="/wallet"
+                  onClick={() => closeAll()}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#c28b48]/20 bg-[#c28b48]/10 px-3 py-2 text-[#e3c08e]"
+                >
+                  <Wallet size={15} />
+                  <span className="text-xs font-semibold tracking-tight">{walletBalanceLabel}</span>
+                </Link>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
