@@ -11,6 +11,7 @@
 // Import Routes
 
 import { Route as rootRoute } from './routes/__root'
+import { Route as WalletImport } from './routes/wallet'
 import { Route as VerifyRequiredImport } from './routes/verify-required'
 import { Route as VerifyEmailImport } from './routes/verify-email'
 import { Route as VerifyBvnImport } from './routes/verify-bvn'
@@ -31,6 +32,12 @@ import { Route as AdminTxTxIdImport } from './routes/admin.tx.$txId'
 import { Route as AdminAuditAuditIdImport } from './routes/admin.audit.$auditId'
 
 // Create/Update Routes
+
+const WalletRoute = WalletImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => rootRoute,
+} as any)
 
 const VerifyRequiredRoute = VerifyRequiredImport.update({
   id: '/verify-required',
@@ -214,6 +221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyRequiredImport
       parentRoute: typeof rootRoute
     }
+    '/wallet': {
+      id: '/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof WalletImport
+      parentRoute: typeof rootRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -302,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/verify-bvn': typeof VerifyBvnRoute
   '/verify-email': typeof VerifyEmailRoute
   '/verify-required': typeof VerifyRequiredRoute
+  '/wallet': typeof WalletRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
@@ -323,6 +338,7 @@ export interface FileRoutesByTo {
   '/verify-bvn': typeof VerifyBvnRoute
   '/verify-email': typeof VerifyEmailRoute
   '/verify-required': typeof VerifyRequiredRoute
+  '/wallet': typeof WalletRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
@@ -345,6 +361,7 @@ export interface FileRoutesById {
   '/verify-bvn': typeof VerifyBvnRoute
   '/verify-email': typeof VerifyEmailRoute
   '/verify-required': typeof VerifyRequiredRoute
+  '/wallet': typeof WalletRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/invite/$vaultId': typeof InviteVaultIdRoute
@@ -368,6 +385,7 @@ export interface FileRouteTypes {
     | '/verify-bvn'
     | '/verify-email'
     | '/verify-required'
+    | '/wallet'
     | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
@@ -388,6 +406,7 @@ export interface FileRouteTypes {
     | '/verify-bvn'
     | '/verify-email'
     | '/verify-required'
+    | '/wallet'
     | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
@@ -408,6 +427,7 @@ export interface FileRouteTypes {
     | '/verify-bvn'
     | '/verify-email'
     | '/verify-required'
+    | '/wallet'
     | '/admin/settings'
     | '/auth/callback'
     | '/invite/$vaultId'
@@ -430,6 +450,7 @@ export interface RootRouteChildren {
   VerifyBvnRoute: typeof VerifyBvnRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   VerifyRequiredRoute: typeof VerifyRequiredRoute
+  WalletRoute: typeof WalletRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   InviteVaultIdRoute: typeof InviteVaultIdRoute
   ShareVaultIdRoute: typeof ShareVaultIdRoute
@@ -447,6 +468,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerifyBvnRoute: VerifyBvnRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   VerifyRequiredRoute: VerifyRequiredRoute,
+  WalletRoute: WalletRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   InviteVaultIdRoute: InviteVaultIdRoute,
   ShareVaultIdRoute: ShareVaultIdRoute,
@@ -473,6 +495,7 @@ export const routeTree = rootRoute
         "/verify-bvn",
         "/verify-email",
         "/verify-required",
+        "/wallet",
         "/auth/callback",
         "/invite/$vaultId",
         "/share/$vaultId",
@@ -514,6 +537,9 @@ export const routeTree = rootRoute
     },
     "/verify-required": {
       "filePath": "verify-required.tsx"
+    },
+    "/wallet": {
+      "filePath": "wallet.tsx"
     },
     "/admin/settings": {
       "filePath": "admin.settings.tsx",

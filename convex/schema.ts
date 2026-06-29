@@ -131,6 +131,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_week", ["week_number"])
+    .index("by_user", ["userId"])
     .index("by_week_and_user", ["week_number", "userId"]),
 
   penalty_events: defineTable({

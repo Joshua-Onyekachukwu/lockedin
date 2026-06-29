@@ -1695,3 +1695,238 @@ export const getBalance = query({
     return user?.balance || 0;
   },
 });
+
+const walletOverviewValidator = v.object({
+  availableBalance: v.number(),
+  lockedFunds: v.number(),
+  awaitingFunding: v.number(),
+  pendingDeposits: v.number(),
+  pendingWithdrawals: v.number(),
+  pendingMovementTotal: v.number(),
+  totalDeposited: v.number(),
+  totalWithdrawn: v.number(),
+  totalRefunded: v.number(),
+  totalStaked: v.number(),
+  creditsBalance: v.number(),
+  shieldsBalance: v.number(),
+  activeProtocols: v.number(),
+  pendingDepositCount: v.number(),
+  pendingWithdrawalCount: v.number(),
+});
+
+const walletActivityEntryValidator = v.object({
+  entryId: v.string(),
+  source: v.string(),
+  category: v.string(),
+  valueKind: v.union(v.literal("money"), v.literal("credits")),
+  amount: v.number(),
+  status: v.string(),
+  title: v.string(),
+  subtitle: v.optional(v.string()),
+  reference: v.optional(v.string()),
+  createdAt: v.number(),
+  vaultId: v.optional(v.id("vaults")),
+});
+
+export const getWalletOverview = query({
+  args: {},
+  returns: walletOverviewValidator,
+  handler: async (ctx) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      return {
+        availableBalance: 0,
+        lockedFunds: 0,
+        awaitingFunding: 0,
+        pendingDeposits: 0,
+        pendingWithdrawals: 0,
+        pendingMovementTotal: 0,
+        totalDeposited: 0,
+        totalWithdrawn: 0,
+        totalRefunded: 0,
+        totalStaked: 0,
+        creditsBalance: 0,
+        shieldsBalance: 0,
+        activeProtocols: 0,
+        pendingDepositCount: 0,
+        pendingWithdrawalCount: 0,
+      };
+    }
+
+    const [user, vaults, deposits, withdrawals, transactions] = await Promise.all([
+      ctx.db.get("users", userId),
+      ctx.db.query("vaults").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
+      ctx.db.query("deposits").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
+      ctx.db.query("withdrawals").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
+      ctx.db.query("transactions").withIndex("by_user", (q) => q.eq("userId", userId)).collect(),
+    ]);
+
+    const activeVaults = vaults.filter((vault) => vault.status === "active");
+    const lockedFunds = activeVaults.reduce(
+      (sum, vault) => sum + Math.max(0, vault.amount - (vault.penaltyAccrued ?? 0)),
+      0,
+    );
+    const awaitingFunding = vaults
+      .filter((vault) => vault.status === "awaiting_funding")
+      .reduce((sum, vault) => sum + vault.amount, 0);
+
+    const walletDeposits = deposits.filter((deposit) => deposit.kind !== "vault_funding");
+    const pendingDeposits = walletDeposits
+      .filter((deposit) => deposit.status === "pending")
+      .reduce((sum, deposit) => sum + deposit.amount, 0);
+    const pendingWithdrawals = withdrawals
+      .filter((withdrawal) =>
+        withdrawal.status === "pending" ||
+        withdrawal.status === "processing" ||
+        withdrawal.status === "approved",
+      )
+      .reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
+
+    return {
+      availableBalance: user?.balance ?? 0,
+      lockedFunds,
+      awaitingFunding,
+      pendingDeposits,
+      pendingWithdrawals,
+      pendingMovementTotal: pendingDeposits + pendingWithdrawals,
+      totalDeposited: walletDeposits
+        .filter((deposit) => deposit.status === "completed")
+        .reduce((sum, deposit) => sum + deposit.amount, 0),
+      totalWithdrawn: withdrawals
+        .filter((withdrawal) => withdrawal.status === "completed")
+        .reduce((sum, withdrawal) => sum + withdrawal.amount, 0),
+      totalRefunded: transactions
+        .filter((tx) => tx.type === "refund" && tx.status === "completed" && tx.amount > 0)
+        .reduce((sum, tx) => sum + tx.amount, 0),
+      totalStaked: transactions
+        .filter((tx) => tx.type === "stake")
+        .reduce((sum, tx) => sum + Math.abs(tx.amount), 0),
+      creditsBalance: user?.credits ?? 0,
+      shieldsBalance: user?.shields ?? 0,
+      activeProtocols: activeVaults.length,
+      pendingDepositCount: walletDeposits.filter((deposit) => deposit.status === "pending").length,
+      pendingWithdrawalCount: withdrawals.filter((withdrawal) =>
+        withdrawal.status === "pending" ||
+        withdrawal.status === "processing" ||
+        withdrawal.status === "approved",
+      ).length,
+    };
+  },
+});
+
+export const getWalletActivity = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(walletActivityEntryValidator),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) return [];
+
+    const limit = Math.max(20, Math.min(args.limit ?? 40, 100));
+    const [deposits, withdrawals, transactions, rewardDistributions] = await Promise.all([
+      ctx.db
+        .query("deposits")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .order("desc")
+        .take(limit),
+      ctx.db
+        .query("withdrawals")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .order("desc")
+        .take(limit),
+      ctx.db
+        .query("transactions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .order("desc")
+        .take(limit * 2),
+      ctx.db
+        .query("weekly_reward_distributions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .order("desc")
+        .take(limit),
+    ]);
+
+    const activity = [
+      ...deposits
+        .filter((deposit) => deposit.kind !== "vault_funding")
+        .map((deposit) => ({
+          entryId: `deposit:${deposit._id}`,
+          source: "deposit",
+          category: deposit.status === "pending" ? "pending_deposit" : "deposit",
+          valueKind: "money" as const,
+          amount: deposit.amount,
+          status: deposit.status,
+          title: deposit.status === "completed" ? "Wallet funded" : "Wallet funding pending",
+          subtitle: `Paystack receipt ${deposit.reference}`,
+          reference: deposit.reference,
+          createdAt: deposit._creationTime,
+        })),
+      ...withdrawals.map((withdrawal) => ({
+        entryId: `withdrawal:${withdrawal._id}`,
+        source: "withdrawal",
+        category: "withdrawal",
+        valueKind: "money" as const,
+        amount: -withdrawal.amount,
+        status: withdrawal.status,
+        title:
+          withdrawal.status === "completed"
+            ? "Withdrawal completed"
+            : withdrawal.status === "failed" || withdrawal.status === "rejected"
+              ? "Withdrawal failed"
+              : "Withdrawal in progress",
+        subtitle:
+          withdrawal.bank_details?.account_number && withdrawal.bank_details?.bank_name
+            ? formatMaskedWithdrawalDestination(
+                withdrawal.bank_details.bank_name,
+                withdrawal.bank_details.account_number,
+              )
+            : undefined,
+        reference: withdrawal.paystack_reference,
+        createdAt: withdrawal.processed_at ?? withdrawal.requested_at,
+      })),
+      ...transactions
+        .filter((tx) => tx.type !== "deposit" && tx.type !== "platform_fee")
+        .map((tx) => ({
+          entryId: `transaction:${tx._id}`,
+          source: "transaction",
+          category: tx.type,
+          valueKind: "money" as const,
+          amount: tx.amount,
+          status: tx.status,
+          title:
+            tx.type === "stake"
+              ? "Stake locked"
+              : tx.type === "penalty"
+                ? "Penalty applied"
+                : tx.type === "refund"
+                  ? tx.amount >= 0
+                    ? "Refund credited"
+                    : "Refund hold"
+                  : tx.type === "dividend"
+                    ? "Reward distributed"
+                    : "Wallet activity",
+          subtitle: tx.description,
+          reference: tx.description?.includes(": ")
+            ? tx.description.split(": ")[tx.description.split(": ").length - 1]
+            : undefined,
+          createdAt: tx._creationTime,
+          vaultId: tx.vaultId,
+        })),
+      ...rewardDistributions.map((reward) => ({
+        entryId: `reward:${reward._id}`,
+        source: "reward",
+        category: "reward_distribution",
+        valueKind: "credits" as const,
+        amount: reward.credits,
+        status: "completed",
+        title: "Protocol credits distributed",
+        subtitle: `Week ${reward.week_number} • Pool ${reward.pool_credits.toLocaleString()} credits`,
+        reference: `WK-${reward.week_number}`,
+        createdAt: reward.createdAt,
+      })),
+    ]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, limit);
+
+    return activity;
+  },
+});

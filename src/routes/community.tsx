@@ -104,7 +104,10 @@ function CommunityPage() {
         title="Community Hub"
         subtitle="Network Protocol"
         backTo="/dashboard"
-        contextLinks={[{ to: '/leaderboard', label: 'Leaderboard' }]}
+        contextLinks={[
+          { to: '/wallet', label: 'Wallet' },
+          { to: '/leaderboard', label: 'Leaderboard' },
+        ]}
         user={user}
       />
 

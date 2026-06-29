@@ -65,7 +65,10 @@ function LeaderboardPage() {
         title="Protocol Ranking"
         subtitle="Integrity Board"
         backTo="/dashboard"
-        contextLinks={[{ to: '/community', label: 'Community' }]}
+        contextLinks={[
+          { to: '/wallet', label: 'Wallet' },
+          { to: '/community', label: 'Community' },
+        ]}
         user={user}
       />
 

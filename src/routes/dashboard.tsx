@@ -214,6 +214,7 @@ function DashboardContent({ user }: { user: any }) {
         title="Lockedin"
         subtitle="Operational Protocol"
         contextLinks={[
+          { to: '/wallet', label: 'Wallet' },
           { to: '/leaderboard', label: 'Leaderboard', icon: <Trophy size={14} className="text-yellow-500" /> },
           { to: '/community', label: 'Community' },
           { to: '/profile', label: 'Wallet', icon: <Wallet size={14} className="text-[#ff7a00]" /> },

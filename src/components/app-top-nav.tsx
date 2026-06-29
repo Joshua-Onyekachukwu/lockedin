@@ -24,7 +24,7 @@ import { useToast } from './toast'
 const EMPTY_ARGS: Record<string, never> = {}
 
 type ContextLink = {
-  to: '/leaderboard' | '/community' | '/dashboard' | '/profile' | '/admin'
+  to: '/leaderboard' | '/community' | '/dashboard' | '/profile' | '/admin' | '/wallet'
   label: string
   icon?: any
 }
@@ -386,6 +386,21 @@ export function AppTopNav({
                 </p>
               </div>
               <div className="p-4 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileMenu(false)
+                    navigate({ to: '/wallet' })
+                  }}
+                  className="w-full p-4 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:bg-white/[0.05] transition-all text-left"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest italic text-white">
+                    Wallet
+                  </p>
+                  <p className="text-[9px] text-white/30 uppercase tracking-widest mt-2 italic font-black">
+                    Funds, receipts & ledger
+                  </p>
+                </button>
                 <button
                   type="button"
                   onClick={() => {
