@@ -104,6 +104,24 @@ function AdminDashboard() {
   const queryClient = useQueryClient();
   const formatCompact = (n: number) =>
     new Intl.NumberFormat('en-NG', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+  const formatTransactionTypeLabel = (type?: string) => {
+    switch (type) {
+      case 'wallet_withdrawal':
+        return 'Wallet Withdrawal';
+      case 'dividend':
+        return 'Reward Distribution';
+      case 'platform_fee':
+        return 'Platform Fee';
+      case 'deposit':
+        return 'Wallet Deposit';
+      case 'stake':
+        return 'Stake Locked';
+      case 'refund':
+        return 'Refund';
+      default:
+        return type ? type.replace(/_/g, ' ') : 'Unknown';
+    }
+  };
 
   const userQuery = convexQuery(api.users.current, EMPTY_ARGS as any) as any;
   const {
@@ -496,7 +514,7 @@ function AdminDashboard() {
         <div className="flex flex-wrap gap-3 sm:gap-4 mb-8">
             {([
               { key: 'overview', label: 'Overview', count: null },
-              { key: 'withdrawals', label: 'Extractions', count: pendingWithdrawals?.length || 0 },
+              { key: 'withdrawals', label: 'Withdrawals', count: pendingWithdrawals?.length || 0 },
               { key: 'breaches', label: 'Breaches', count: breachCandidates?.length || 0 },
               { key: 'users', label: 'Users', count: stats?.totalUsers || 0 },
               { key: 'transactions', label: 'Transactions', count: null },
@@ -555,7 +573,7 @@ function AdminDashboard() {
                                 </p>
                               </div>
                               <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/10 shadow-inner text-left">
-                                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic">Pending Extractions</p>
+                                <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic">Pending Withdrawals</p>
                                 <p className="mt-4 text-3xl font-black italic uppercase tracking-tight text-white">
                                   {overview?.pendingWithdrawals ?? 0}
                                 </p>
@@ -566,7 +584,7 @@ function AdminDashboard() {
                               <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/10 shadow-inner text-left">
                                 <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.3em] italic">Admin Signals</p>
                                 <p className="mt-4 text-[10px] text-white/40 font-black uppercase tracking-widest italic leading-relaxed">
-                                  {overview?.pendingWithdrawals ? 'Extraction queue pending. Review before EOD.' : 'No extraction queue backlog.'}
+                                  {overview?.pendingWithdrawals ? 'Withdrawal queue pending. Review before EOD.' : 'No withdrawal queue backlog.'}
                                 </p>
                                 <p className="mt-3 text-[10px] text-white/20 font-black uppercase tracking-widest italic leading-relaxed">
                                   {breachCandidates?.length ? 'Active breach candidates require enforcement review.' : 'No breach enforcement flagged.'}
@@ -582,7 +600,7 @@ function AdminDashboard() {
                         >
                             <div className="px-4 sm:px-10 py-6 sm:py-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02] text-left">
                                 <div className="text-left font-black italic uppercase">
-                                    <h3 className="text-lg text-white">Extraction Protocol</h3>
+                                    <h3 className="text-lg text-white">Withdrawal Queue</h3>
                                     <p className="text-[10px] text-white/20 tracking-widest mt-1">Pending Capital Transfers</p>
                                 </div>
                             </div>
@@ -598,7 +616,7 @@ function AdminDashboard() {
                                     </thead>
                                     <tbody>
                                         {!pendingWithdrawals || pendingWithdrawals.length === 0 ? (
-                                            <tr><td colSpan={4} className="px-4 sm:px-10 py-16 sm:py-20 text-center text-white/20 font-black italic uppercase tracking-widest">No pending extractions</td></tr>
+                                            <tr><td colSpan={4} className="px-4 sm:px-10 py-16 sm:py-20 text-center text-white/20 font-black italic uppercase tracking-widest">No pending withdrawals</td></tr>
                                         ) : (
                                             pendingWithdrawals.map((w: any) => (
                                                 <tr key={w._id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
@@ -1102,7 +1120,7 @@ function AdminDashboard() {
                                           params={{ txId: t._id }}
                                           className="text-white font-black uppercase italic tracking-tight hover:text-blue-500 transition-colors"
                                         >
-                                          {t.type}
+                                          {formatTransactionTypeLabel(t.type)}
                                         </Link>
                                       </td>
                                       <td className="px-4 sm:px-8 py-4 sm:py-6">
@@ -1201,8 +1219,8 @@ function AdminDashboard() {
                         <button 
                             onClick={() => setConfirm({
                               open: true,
-                              title: 'Distribute dividends?',
-                              description: 'This triggers the weekly distribution protocol for eligible citizens.',
+                              title: 'Distribute rewards?',
+                              description: 'This triggers the weekly reward distribution protocol for eligible citizens.',
                               confirmLabel: 'Distribute',
                               tone: 'primary',
                               run: async () => {
@@ -1213,7 +1231,7 @@ function AdminDashboard() {
                             })}
                             className="w-full py-5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-orange-600/20 hover:border-orange-500/30 transition-all text-center active:scale-95"
                         >
-                            Distribute Dividends
+                            Distribute Rewards
                         </button>
                         <button
                             type="button"
@@ -2091,7 +2109,7 @@ function AdminDashboard() {
                                 {paymentsExplorerResult.recentTransactions.slice(0, 8).map((t: any) => (
                                   <div key={t._id} className="flex items-center justify-between gap-6">
                                     <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic">
-                                      {t.type} • {t.status}
+                                      {formatTransactionTypeLabel(t.type)} • {t.status}
                                     </p>
                                     <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic">
                                       ₦{((t.amount ?? 0) / 100).toLocaleString()}
@@ -2221,7 +2239,7 @@ function AdminDashboard() {
                                 {paymentsExplorerResult.recentTransactions.slice(0, 8).map((t: any) => (
                                   <div key={t._id} className="flex items-center justify-between gap-6">
                                     <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic">
-                                      {t.type} • {t.status}
+                                      {formatTransactionTypeLabel(t.type)} • {t.status}
                                     </p>
                                     <p className="text-[10px] text-white/40 font-black uppercase tracking-widest italic">
                                       ₦{((t.amount ?? 0) / 100).toLocaleString()}
@@ -2762,7 +2780,7 @@ function AdminDashboard() {
                     <>
                       <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/10">
                         <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
-                          Pending Extractions
+                          Pending Withdrawals
                         </p>
                         <p className="mt-3 text-white font-black uppercase italic tracking-tight text-lg">
                           {overview?.pendingWithdrawals ?? 0}

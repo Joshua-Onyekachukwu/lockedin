@@ -2,6 +2,12 @@
 
 This document explains what Lockedin can do right now, how testers should use it, what to test, and what is planned next.
 
+Important testing note:
+
+- `main` is still protocol-first at the time of this update.
+- A first-class wallet dashboard is currently being built on branch `phase-wallet-v1-foundation`.
+- Until that branch merges, testers should treat wallet behavior on `main` as profile-led visibility plus withdrawal support, not the new wallet dashboard experience.
+
 ## What Lockedin Is
 
 Lockedin is a non-custodial behavior enforcement app. Users create a protocol (goal), stake capital per protocol, execute evidence logs each cycle, and optionally add witnesses who authorize those logs. Penalties accrue internally when requirements aren’t met and are settled when the protocol ends.
@@ -100,6 +106,14 @@ Lockedin is a non-custodial behavior enforcement app. Users create a protocol (g
 - The profile route shows wallet balance, recent transaction history, and withdrawal queue status.
 - Withdrawal destination account numbers are masked on read surfaces.
 - A user can only have one in-flight withdrawal at a time, and withdrawal requests are rate-limited.
+
+### 12) Active Branch Work To Expect Next
+
+- A dedicated `/wallet` route
+- Wallet summary cards for available, locked, and pending movement
+- Unified wallet ledger/activity visibility
+- Wallet-first funding and withdrawal entry points
+- Better alignment between wallet activity and admin finance tooling
 
 ## Step-by-Step Tester Flow
 

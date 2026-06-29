@@ -9,6 +9,12 @@ Its purpose is to prevent split-brain failures where:
 - OAuth is configured for a different domain
 - local developers deploy to the wrong Convex target
 
+Current delivery rule:
+
+- only one primary implementation phase should be active at a time
+- each phase should be built, validated, PR-reviewed, and merged before the next implementation phase begins
+- the current active implementation phase is `Phase F` on branch `phase-wallet-v1-foundation`
+
 ## 1. Deployment Principle
 
 At any moment, there must be exactly one active backend target for a given frontend environment.
@@ -190,6 +196,13 @@ After any frontend env change or frontend code release:
 - create protocol
 - fund protocol
 - open public share link
+
+If the active branch includes wallet work, also test:
+
+- `/wallet`
+- wallet funding entry point
+- withdrawal request flow
+- wallet/admin status consistency for deposits and withdrawals
 
 ## 8. Paystack Configuration
 

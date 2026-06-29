@@ -31,7 +31,8 @@ The current codebase is operating in the stake-per-vault model:
 
 Important product note:
 
-- Wallet reintroduction has been discussed and approved for future work, but it is not the current production model in this codebase
+- Wallet reintroduction has now been approved as an active engineering workstream, but it is not yet merged as the current production model on `main`
+- The active wallet productization branch is `phase-wallet-v1-foundation`
 
 ## Tech Stack
 
@@ -86,6 +87,7 @@ Important product note:
 - `/community`: discovery and witness recruitment
 - `/leaderboard`: Hall of Integrity
 - `/admin`: admin command center
+- `/wallet`: first-class wallet dashboard (active branch work, not yet merged at the time of this update)
 - `/verify-required`: verification gate for signed-in but unverified users
 
 ## Important Backend Modules
@@ -182,6 +184,8 @@ Start with these documents:
 
 - [ENGINEERING_HANDOVER.md](file:///c:/Users/Semek/Webstrom/Lockedin/ENGINEERING_HANDOVER.md): system handoff for developers
 - [CURRENT_DEVELOPMENT_STATUS.md](file:///c:/Users/Semek/Webstrom/Lockedin/CURRENT_DEVELOPMENT_STATUS.md): what is done, in progress, and next
+- [EXECUTION_TRACKER.md](file:///c:/Users/Semek/Webstrom/Lockedin/EXECUTION_TRACKER.md): phase-by-phase execution truth
+- [AI_OPERATING_MODEL.md](file:///c:/Users/Semek/Webstrom/Lockedin/AI_OPERATING_MODEL.md): multi-agent company operating model and department heads
 - [DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md](file:///c:/Users/Semek/Webstrom/Lockedin/DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md): deployment, env, and migration process
 - [LOCKEDIN_SYSTEM_DOCUMENTATION.md](file:///c:/Users/Semek/Webstrom/Lockedin/LOCKEDIN_SYSTEM_DOCUMENTATION.md): system behavior and business logic detail
 - [SECURITY.md](file:///c:/Users/Semek/Webstrom/Lockedin/SECURITY.md): security rules and sensitive areas

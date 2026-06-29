@@ -14,7 +14,7 @@ if (sentryDsn) {
     beforeSend(event) {
       const req: any = (event as any).request
       if (req?.headers) {
-        const headers = { ...(req.headers as any) }
+        const headers = { ...req.headers }
         if (headers.Authorization) headers.Authorization = '[redacted]'
         if (headers.authorization) headers.authorization = '[redacted]'
         if (headers.Cookie) headers.Cookie = '[redacted]'

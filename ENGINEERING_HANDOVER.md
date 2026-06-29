@@ -25,7 +25,13 @@ That means:
 - Users fund that specific vault through Paystack
 - The vault becomes active only after successful payment verification
 
-Do not assume wallet funding is the current live flow just because wallet-related tables and admin tools still exist. Those are legacy or supporting surfaces. Full wallet reintroduction was discussed as future work and is currently paused.
+Do not assume wallet funding is the current live flow on `main` just because wallet-related tables and admin tools still exist. Those are legacy or supporting surfaces.
+
+Important current update:
+
+- wallet-first productization has now been approved as an active engineering workstream
+- the active branch for that work is `phase-wallet-v1-foundation`
+- until that branch is validated and merged, `main` should still be treated as protocol-first
 
 ## 3. Stack
 
@@ -154,6 +160,7 @@ These tables support payment accounting and older wallet-related mechanics. They
 - `src/routes/community.tsx`
 - `src/routes/leaderboard.tsx`
 - `src/routes/profile.tsx`
+- `src/routes/wallet.tsx` (active branch work, not yet merged at the time of this update)
 - `src/routes/share.$vaultId.tsx`
 
 ### Admin
@@ -290,14 +297,14 @@ See [DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md](file:///c:/Users/Semek/Webstrom/Locke
 ### Active Concerns
 
 - Payment flow still needs continued runtime verification and future production monitoring
-- Wallet-first reintroduction is not yet implemented
+- Wallet-first reintroduction is now actively being implemented but is not merged yet
 - Docs outside the current handoff set may reflect earlier decisions
 - Admin access will fail closed if `ADMIN_EMAIL_ALLOWLIST` is missing or `SITE_URL` is not configured correctly
 
 ### Recommended Next Work
 
-- Finish Phase D validation, release checks, and operator-runbook review
-- Decide whether wallet-first returns as a true product direction
+- Finish `Phase F` wallet foundation and merge it safely
+- Validate admin/payment alignment against the new wallet experience
 - Continue the approved monitoring roadmap once Sentry access/setup is ready
 - Continue final system sweep and retention feature planning
 
@@ -308,6 +315,8 @@ Treat these as the current source of truth:
 - `README.md`
 - `ENGINEERING_HANDOVER.md`
 - `CURRENT_DEVELOPMENT_STATUS.md`
+- `EXECUTION_TRACKER.md`
+- `AI_OPERATING_MODEL.md`
 - `DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md`
 - `LOCKEDIN_SYSTEM_DOCUMENTATION.md`
 - `SECURITY.md`

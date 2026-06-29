@@ -10,6 +10,25 @@ export const Route = createFileRoute('/admin/tx/$txId')({
   component: TransactionDetail,
 })
 
+function formatTransactionTypeLabel(type?: string) {
+  switch (type) {
+    case 'wallet_withdrawal':
+      return 'Wallet Withdrawal'
+    case 'dividend':
+      return 'Reward Distribution'
+    case 'platform_fee':
+      return 'Platform Fee'
+    case 'deposit':
+      return 'Wallet Deposit'
+    case 'stake':
+      return 'Stake Locked'
+    case 'refund':
+      return 'Refund'
+    default:
+      return type ? type.replace(/_/g, ' ') : 'Unknown'
+  }
+}
+
 function TransactionDetail() {
   const { txId } = Route.useParams()
   const navigate = useNavigate()
@@ -120,7 +139,7 @@ function TransactionDetail() {
         <div className="rounded-[3rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-10 shadow-2xl text-left">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic flex items-center gap-3">
             <ReceiptText size={16} className="text-white/20" />
-            {tx.type} • {tx.status}
+            {formatTransactionTypeLabel(tx.type)} • {tx.status}
           </p>
           <p className="mt-6 text-[clamp(1.25rem,2vw,1.75rem)] font-black text-white italic tracking-tighter uppercase whitespace-nowrap overflow-hidden text-ellipsis">
             ₦{((tx.amount ?? 0) / 100).toLocaleString()}

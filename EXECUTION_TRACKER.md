@@ -1,11 +1,12 @@
 # Lockedin Execution Tracker
 
-Last updated: 2026-06-23
+Last updated: 2026-06-27
 
 ## How To Use
 - This file is the running execution source of truth for implementation work.
 - Check tasks off as they are completed and merged to `main`.
 - Add short notes under each phase when scope changes or new blockers are discovered.
+- When a phase is active on a branch but not merged yet, keep it marked in progress here.
 
 ## Phase Status
 - [x] Phase A: Payment system fixes, payment/auth observability, and high-risk security fixes in those paths
@@ -13,6 +14,7 @@ Last updated: 2026-06-23
 - [x] Phase C: Wallet system audit and targeted improvements
 - [x] Phase E: Goal management controls and wallet top-nav access
 - [x] Phase D: Documentation updates, security sweep, and production-readiness/release sweep
+- [ ] Phase F: Wallet productization and first-class wallet dashboard
 - [ ] UX Audit: Admin page, auth flow, and core page redesign recommendations
 
 ## Phase A
@@ -109,6 +111,38 @@ Notes:
 - Withdrawal requests are rate-limited and show masked destination account numbers on admin/user read surfaces.
 - Phase D added operator documentation in `ADMIN_PAYMENTS_RUNBOOK.md`, `ADMIN_SETTINGS_RUNBOOK.md`, and `RESPONSIVE_QA_CHECKLIST.md`.
 
+## Phase F
+Status: In progress on branch `phase-wallet-v1-foundation`
+
+- [x] Re-sync wallet implementation branch onto latest `origin/main`
+- [x] Restore in-progress wallet work after branch rebase/recreation
+- [x] Resolve the current `convex/payments.ts` merge conflict cleanly
+- [x] Add dedicated `/wallet` route as a first-class product surface
+- [x] Add wallet summary queries for available, locked, pending, and total movement
+- [x] Add normalized wallet ledger/activity feed for deposits, withdrawals, stake activity, refunds, and rewards
+- [x] Add wallet page funding flow
+- [x] Add wallet page withdrawal request flow
+- [ ] Review and align admin finance surfaces with wallet-facing activity/state
+- [x] Validate with `npm run lint`
+- [x] Validate with `npx convex dev --once --env-file .env.local`
+- [x] Validate with `npm run build`
+- [x] Perform smoke checks on the wallet and finance surfaces
+- [ ] Push branch, open PR, and merge to `main`
+
+Notes:
+- This phase is not a rollback to the old wallet implementation.
+- This phase is a controlled wallet productization pass on top of the current stake-per-vault platform.
+- The goal is to make wallet a first-class financial dashboard without breaking the existing protocol lifecycle.
+- Admin surfaces are expected to remain operationally authoritative, but user wallet visibility must align with what operators see.
+- Current validation status:
+  - `npm run lint` passes
+  - `npm run build` passes
+  - `npx convex dev --once --env-file .env.local` passes
+  - local runtime smoke check confirms `/`, `/wallet`, and `/dashboard` load/redirect correctly for an unauthenticated user
+- Current follow-up items discovered during smoke testing:
+  - React hydration mismatch warning in dev
+  - aborted script requests during dev navigation, including one reference to `react-paystack.js`
+
 ## UX Audit
 Status: Pending approval before implementation
 
@@ -119,5 +153,6 @@ Status: Pending approval before implementation
 
 ## Open Items
 - Sentry/bug-log coverage still needs a fuller pass beyond the targeted Phase A improvements.
-- Security documentation still contains drift that should be reconciled in Phase D.
+- Some documentation still needs another refresh now that Phase F is active.
 - Wallet architecture must stay aligned with licensed-partner/compliance direction before any live wallet rollout.
+- Finance semantics must remain consistent across wallet, payments, admin, and audit surfaces.

@@ -196,7 +196,7 @@ function VaultPage() {
       const result = await updatePendingStakeAmount({
         vaultId,
         amount: Math.round(amountNgn * 100),
-      } as any)
+      })
       if (!result?.success) {
         toast.error(result?.message || 'Unable to update protocol amount.', {
           title: 'Stake Update Blocked',
@@ -228,7 +228,7 @@ function VaultPage() {
       confirmLabel: 'Delete Protocol',
       run: async () => {
         try {
-          const result = await deleteOwnedVault({ vaultId } as any)
+          const result = await deleteOwnedVault({ vaultId })
           if (!result?.success) {
             toast.error(result?.message || 'Unable to delete protocol.', {
               title: 'Delete Blocked',

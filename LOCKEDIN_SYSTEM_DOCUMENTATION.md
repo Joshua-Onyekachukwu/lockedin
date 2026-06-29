@@ -1,7 +1,9 @@
 # Lockedin System Documentation
 
 Important note:
-- Use `README.md`, `ENGINEERING_HANDOVER.md`, `CURRENT_DEVELOPMENT_STATUS.md`, and `DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md` as the primary handoff set. This document is a supporting system-behavior reference.
+- Use `README.md`, `ENGINEERING_HANDOVER.md`, `CURRENT_DEVELOPMENT_STATUS.md`, `EXECUTION_TRACKER.md`, `AI_OPERATING_MODEL.md`, and `DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md` as the primary handoff set. This document is a supporting system-behavior reference.
+- `main` remains protocol-first at the time of this update.
+- A dedicated wallet productization phase is actively in progress on `phase-wallet-v1-foundation`, but it is not yet merged into `main`.
 
 ## 1) Product summary
 Lockedin is a commitment and accountability system where users stake principal against a goal (a “Vault/Protocol”) and submit periodic evidence logs. Witnesses (accountability partners) approve/reject logs. Penalties accrue over time based on missed requirements, and settle at the end of the vault.
@@ -12,7 +14,8 @@ The system is designed around:
 - **Privacy controls** (users can opt out of being discoverable in Community/Leaderboard/Witness Pool)
 - **Admin operability** (manual overrides, audits, payment tools, maintenance tools)
 - **Stable environment alignment** (Vercel frontend + Convex backend + Paystack webhooks must point to the same deployment to avoid split-brain)
-- **Non-custodial posture for MVP**: no wallet top-ups/balance; users fund each vault directly (stake-per-vault).
+- **Current merged MVP posture**: users fund each vault directly (stake-per-vault).
+- **Active branch evolution**: wallet is being restored as a first-class dashboard and finance surface without replacing the core protocol lifecycle.
 
 ## 2) Key terms (how the app names map to the backend)
 - **User**: A record in `users`.

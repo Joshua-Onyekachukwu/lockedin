@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
-import { useAction, useConvexAuth, useMutation } from 'convex/react';
+import { useConvexAuth, useMutation } from 'convex/react';
 import { 
   ArrowLeft, 
   Camera, 
@@ -35,33 +35,19 @@ function ProfileSettings() {
     ...userQuery,
     enabled: isAuthenticated,
   });
+  const walletOverviewQuery = convexQuery(api.payments.getWalletOverview, {} as any) as any;
+  const { data: walletOverview } = useQuery({
+    ...walletOverviewQuery,
+    enabled: isAuthenticated,
+    placeholderData: null,
+  }) as any;
   const updateProfile = useMutation(api.users.updateProfile);
   const generateUploadUrl = useMutation(api.users.generateProfileImageUploadUrl as any);
   const setProfileImage = useMutation(api.users.setProfileImage as any);
-  const requestWithdrawal = useMutation(api.payments.requestWithdrawal);
-  const listPaystackBanks = useAction(api.payments.listPaystackBanks);
-  const resolvePaystackAccount = useAction(api.payments.resolvePaystackAccount);
-  const walletTransactionsQuery = convexQuery(api.payments.getTransactionsPage, { limit: 8 } as any) as any;
-  const { data: walletTransactions } = useQuery({
-    ...walletTransactionsQuery,
-    enabled: isAuthenticated,
-    placeholderData: { page: [], isDone: true, continueCursor: null },
-  }) as any;
-  const withdrawalRequestsQuery = convexQuery(api.payments.getWithdrawalRequests, { limit: 5 } as any) as any;
-  const { data: withdrawalRequests } = useQuery({
-    ...withdrawalRequestsQuery,
-    enabled: isAuthenticated,
-    placeholderData: [],
-  }) as any;
   
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [withdrawalOpen, setWithdrawalOpen] = useState(false);
-  const [loadingBanks, setLoadingBanks] = useState(false);
-  const [resolvingAccount, setResolvingAccount] = useState(false);
-  const [withdrawing, setWithdrawing] = useState(false);
-  const [banks, setBanks] = useState<Array<{ name: string; code: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -70,14 +56,6 @@ function ProfileSettings() {
     is_discoverable: user?.is_discoverable ?? true,
     witness_discoverable: user?.witness_discoverable ?? true,
   });
-  const [withdrawalForm, setWithdrawalForm] = useState({
-    amountNgn: '',
-    bankCode: '',
-    bankName: '',
-    accountNumber: '',
-    accountName: '',
-  });
-
   useEffect(() => {
     if (isEditing) return;
     setFormData({
@@ -103,32 +81,6 @@ function ProfileSettings() {
     }
   }, [authLoading, isAuthenticated, isVerified, navigate, user]);
 
-  useEffect(() => {
-    if (!withdrawalOpen || banks.length > 0 || loadingBanks) return;
-    let cancelled = false;
-    void (async () => {
-      setLoadingBanks(true);
-      try {
-        const result = await listPaystackBanks({});
-        if (cancelled) return;
-        if (!result.success) {
-          toast.error(result.message || 'Failed to load banks.', { title: 'Bank List Unavailable' });
-          return;
-        }
-        setBanks(result.banks);
-      } catch (err: any) {
-        if (!cancelled) {
-          toast.error(toUserMessage(err, 'Failed to load banks.'), { title: 'Bank List Unavailable' });
-        }
-      } finally {
-        if (!cancelled) setLoadingBanks(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [banks.length, listPaystackBanks, loadingBanks, toast, withdrawalOpen]);
-
   if (authLoading || !isAuthenticated || !user || !isVerified) {
     return (
       <div className="min-h-screen bg-[#050810] flex items-center justify-center">
@@ -138,89 +90,6 @@ function ProfileSettings() {
   }
 
   const formatMoney = (amountKobo: number) => `₦${(amountKobo / 100).toLocaleString()}`;
-  const pendingWithdrawals = ((withdrawalRequests ?? []) as Array<any>).filter(
-    (row) => row.status === 'pending' || row.status === 'processing' || row.status === 'approved',
-  );
-  const pendingWithdrawalTotal = pendingWithdrawals.reduce(
-    (sum, row) => sum + Number(row.amount ?? 0),
-    0,
-  );
-  const recentTransactions = ((walletTransactions?.page ?? []) as Array<any>).slice(0, 6);
-
-  const resetWithdrawalForm = () => {
-    setWithdrawalForm({
-      amountNgn: '',
-      bankCode: '',
-      bankName: '',
-      accountNumber: '',
-      accountName: '',
-    });
-  };
-
-  const resolveAccountDetails = async () => {
-    if (!withdrawalForm.bankCode || withdrawalForm.accountNumber.trim().length !== 10) {
-      toast.warning('Select a bank and enter a valid 10-digit account number first.', {
-        title: 'Account Details Needed',
-      });
-      return;
-    }
-    setResolvingAccount(true);
-    try {
-      const result = await resolvePaystackAccount({
-        bankCode: withdrawalForm.bankCode,
-        accountNumber: withdrawalForm.accountNumber.trim(),
-      });
-      if (!result.success || !result.accountName) {
-        toast.error(result.message || 'Unable to resolve account.', { title: 'Account Resolution Failed' });
-        return;
-      }
-      setWithdrawalForm((current) => ({ ...current, accountName: result.accountName ?? '' }));
-      toast.success('Account name resolved successfully.', { title: 'Account Verified' });
-    } catch (err: any) {
-      toast.error(toUserMessage(err, 'Unable to resolve account.'), { title: 'Account Resolution Failed' });
-    } finally {
-      setResolvingAccount(false);
-    }
-  };
-
-  const submitWithdrawal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const amountNgn = Number(withdrawalForm.amountNgn);
-    if (!Number.isFinite(amountNgn) || amountNgn <= 0) {
-      toast.warning('Enter a valid amount in naira.', { title: 'Invalid Amount' });
-      return;
-    }
-    if (!withdrawalForm.accountName) {
-      toast.warning('Resolve the destination account before requesting a withdrawal.', {
-        title: 'Account Verification Required',
-      });
-      return;
-    }
-    setWithdrawing(true);
-    try {
-      const result = await requestWithdrawal({
-        amount: Math.round(amountNgn * 100),
-        accountNumber: withdrawalForm.accountNumber.trim(),
-        bankCode: withdrawalForm.bankCode,
-        bankName: withdrawalForm.bankName,
-        accountName: withdrawalForm.accountName,
-      });
-      if (!result.success) {
-        toast.error(result.message, { title: 'Withdrawal Blocked' });
-        return;
-      }
-      await queryClient.invalidateQueries({ queryKey: userQuery.queryKey });
-      await queryClient.invalidateQueries({ queryKey: walletTransactionsQuery.queryKey });
-      await queryClient.invalidateQueries({ queryKey: withdrawalRequestsQuery.queryKey });
-      toast.success(result.message, { title: 'Withdrawal Requested' });
-      resetWithdrawalForm();
-      setWithdrawalOpen(false);
-    } catch (err: any) {
-      toast.error(toUserMessage(err, 'Failed to request withdrawal.'), { title: 'Withdrawal Failed' });
-    } finally {
-      setWithdrawing(false);
-    }
-  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -401,20 +270,17 @@ function ProfileSettings() {
           <section className="space-y-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Wallet Operations</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20 italic">Wallet Access</p>
                 <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                  Visibility for balance, pending withdrawals, and recent ledger events.
+                  Your financial dashboard now lives on the dedicated wallet route.
                 </p>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setWithdrawalOpen((current) => !current);
-                  if (withdrawalOpen) resetWithdrawalForm();
-                }}
+                onClick={() => navigate({ to: '/wallet' })}
                 className="px-5 py-3 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest italic hover:scale-[1.02] active:scale-95 transition-all"
               >
-                {withdrawalOpen ? 'Close Withdrawal' : 'Request Withdrawal'}
+                Open Wallet
               </button>
             </div>
 
@@ -431,171 +297,46 @@ function ProfileSettings() {
               <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
                 <div className="flex items-center gap-3 text-white/30">
                   <Landmark size={18} />
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] italic">Pending Withdrawal</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] italic">Pending Movement</p>
                 </div>
                 <p className="mt-4 text-2xl text-white font-black italic tracking-tight">
-                  {formatMoney(pendingWithdrawalTotal)}
+                  {formatMoney(walletOverview?.pendingMovementTotal ?? 0)}
                 </p>
                 <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                  {pendingWithdrawals.length} request(s) currently in review
+                  Wallet shows withdrawals, deposits, and pending settlement state.
                 </p>
               </div>
               <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 shadow-2xl">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/30">Last Ledger Event</p>
-                <p className="mt-4 text-sm text-white font-black italic uppercase tracking-tight">
-                  {recentTransactions[0]?.description || 'No wallet activity yet'}
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] italic text-white/30">Locked Stake</p>
+                <p className="mt-4 text-2xl text-white font-black italic tracking-tight">
+                  {formatMoney(walletOverview?.lockedFunds ?? 0)}
                 </p>
                 <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                  {recentTransactions[0]?._creationTime
-                    ? new Date(recentTransactions[0]._creationTime).toLocaleString()
-                    : 'Awaiting first wallet event'}
+                  Review funding receipts, withdrawals, refunds, and ledger history in Wallet.
                 </p>
               </div>
             </div>
-
-            {withdrawalOpen ? (
-              <div className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-8 shadow-2xl">
-                <form onSubmit={submitWithdrawal} className="space-y-6">
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/20 italic">Withdrawal Request</p>
-                    <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                      Funds move from your available balance into escrow until admin disbursement is completed.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label className="space-y-3">
-                      <span className="block text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">Amount (NGN)</span>
-                      <input
-                        type="number"
-                        min="1"
-                        step="0.01"
-                        value={withdrawalForm.amountNgn}
-                        onChange={(e) => setWithdrawalForm((current) => ({ ...current, amountNgn: e.target.value }))}
-                        className="w-full rounded-2xl bg-white/[0.02] border border-white/10 px-6 py-4 text-white font-black italic outline-none focus:border-blue-500"
-                        placeholder="5000"
-                      />
-                    </label>
-                    <label className="space-y-3">
-                      <span className="block text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">Bank</span>
-                      <select
-                        value={withdrawalForm.bankCode}
-                        onChange={(e) => {
-                          const selected = banks.find((bank) => bank.code === e.target.value);
-                          setWithdrawalForm((current) => ({
-                            ...current,
-                            bankCode: e.target.value,
-                            bankName: selected?.name ?? '',
-                            accountName: '',
-                          }));
-                        }}
-                        className="w-full rounded-2xl bg-[#0a0f1a] border border-white/10 px-6 py-4 text-white font-black italic outline-none focus:border-blue-500"
-                        disabled={loadingBanks}
-                      >
-                        <option value="">{loadingBanks ? 'Loading banks...' : 'Select bank'}</option>
-                        {banks.map((bank) => (
-                          <option key={bank.code} value={bank.code}>
-                            {bank.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="space-y-3">
-                      <span className="block text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">Account Number</span>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={10}
-                        value={withdrawalForm.accountNumber}
-                        onChange={(e) =>
-                          setWithdrawalForm((current) => ({
-                            ...current,
-                            accountNumber: e.target.value.replace(/\D/g, '').slice(0, 10),
-                            accountName: '',
-                          }))
-                        }
-                        className="w-full rounded-2xl bg-white/[0.02] border border-white/10 px-6 py-4 text-white font-black italic outline-none focus:border-blue-500"
-                        placeholder="0123456789"
-                      />
-                    </label>
-                    <div className="space-y-3">
-                      <span className="block text-[10px] font-black uppercase tracking-[0.3em] text-white/20 italic">Account Name</span>
-                      <div className="rounded-2xl bg-white/[0.02] border border-white/10 px-6 py-4 text-white font-black italic min-h-[56px] flex items-center">
-                        {withdrawalForm.accountName || 'Resolve account to confirm the beneficiary name'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <button
-                      type="button"
-                      onClick={resolveAccountDetails}
-                      disabled={resolvingAccount || loadingBanks}
-                      className="flex-1 rounded-2xl bg-white/5 border border-white/10 px-6 py-4 text-white font-black uppercase tracking-[0.3em] italic hover:bg-white/10 active:scale-[0.98] transition-all disabled:opacity-60"
-                    >
-                      {resolvingAccount ? 'Resolving...' : 'Resolve Account'}
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={withdrawing}
-                      className="flex-1 rounded-2xl bg-white text-black px-6 py-4 font-black uppercase tracking-[0.3em] italic hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-60"
-                    >
-                      {withdrawing ? 'Submitting...' : 'Submit Withdrawal'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            ) : null}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-8 shadow-2xl">
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/20 italic">Recent Wallet Activity</p>
-                <div className="mt-6 space-y-4">
-                  {recentTransactions.length ? recentTransactions.map((tx: any) => (
-                    <div key={tx._id} className="rounded-2xl border border-white/5 bg-[#0a0f1a]/70 px-5 py-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <p className="text-sm font-black italic uppercase tracking-tight text-white">
-                          {tx.description || tx.type}
-                        </p>
-                        <p className={`text-sm font-black italic ${Number(tx.amount) >= 0 ? 'text-green-400' : 'text-[#ff7a00]'}`}>
-                          {Number(tx.amount) >= 0 ? '+' : '-'}{formatMoney(Math.abs(Number(tx.amount ?? 0)))}
-                        </p>
-                      </div>
-                      <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                        {tx.type} • {tx.status} • {new Date(tx._creationTime).toLocaleString()}
-                      </p>
-                    </div>
-                  )) : (
-                    <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                      No wallet transactions recorded yet.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-8 shadow-2xl">
-                <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/20 italic">Withdrawal Queue</p>
-                <div className="mt-6 space-y-4">
-                  {((withdrawalRequests ?? []) as Array<any>).length ? ((withdrawalRequests ?? []) as Array<any>).map((row: any) => (
-                    <div key={row._id} className="rounded-2xl border border-white/5 bg-[#0a0f1a]/70 px-5 py-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <p className="text-sm font-black italic uppercase tracking-tight text-white">
-                          {formatMoney(Number(row.amount ?? 0))}
-                        </p>
-                        <p className="text-[10px] font-black uppercase tracking-widest italic text-white/30">
-                          {row.status}
-                        </p>
-                      </div>
-                      <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                        {row.bank_details?.bank_name || 'Bank pending'} • {row.bank_details?.account_number || '—'} • {new Date(row.requested_at).toLocaleString()}
-                      </p>
-                    </div>
-                  )) : (
-                    <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
-                      No withdrawal requests yet.
-                    </p>
-                  )}
-                </div>
+            <div className="rounded-[2.5rem] border border-white/10 bg-white/[0.02] p-8 shadow-2xl">
+              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-white/20 italic">Wallet Dashboard</p>
+              <p className="mt-4 text-sm text-white/60 italic leading-relaxed">
+                Use the dedicated wallet page for funding, withdrawal requests, receipts, stake history,
+                refund visibility, reward distributions, and the full financial ledger.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: '/wallet' })}
+                  className="rounded-2xl bg-white px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] italic text-black transition-all hover:scale-[1.02] active:scale-95"
+                >
+                  Open Wallet Command
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: '/dashboard' })}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-[10px] font-black uppercase tracking-[0.3em] italic text-white/60 transition-all hover:bg-white/10 hover:text-white"
+                >
+                  Return To Dashboard
+                </button>
               </div>
             </div>
           </section>
