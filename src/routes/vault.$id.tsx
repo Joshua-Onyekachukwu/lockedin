@@ -294,7 +294,7 @@ function VaultPage() {
             </p>
           </header>
 
-          <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+          <div className="p-6 sm:p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left">
               Visibility Rule
             </p>
@@ -412,7 +412,7 @@ function VaultPage() {
                 <p className="mt-6 text-white/40 text-lg leading-relaxed text-left font-medium max-w-2xl">{vault.goal?.description}</p>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 text-left">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12 text-left">
                 <div className="lg:col-span-4 space-y-8 text-left">
                     {isOwner && isAwaitingFunding ? (
                       <div className="p-8 rounded-[3rem] bg-yellow-600/10 border border-yellow-500/20 text-left shadow-2xl">
@@ -436,7 +436,7 @@ function VaultPage() {
                         </button>
                       </div>
                     ) : null}
-                    <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                    <div className="p-6 sm:p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
                           {isAwaitingFunding ? 'Stake Amount' : 'Staked Principal'}
                         </p>
@@ -453,7 +453,7 @@ function VaultPage() {
                     </div>
 
                     {isOwner && (isAwaitingFunding || status === 'completed') ? (
-                      <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                      <div className="p-6 sm:p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
                           Protocol Controls
                         </p>
@@ -541,11 +541,11 @@ function VaultPage() {
                     ) : null}
 
                     {!isAwaitingFunding ? (
-                      <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                      <div className="p-6 sm:p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
                           Penalty Accounting
                         </p>
-                        <div className="flex items-baseline justify-between gap-6">
+                        <div className="flex flex-col gap-6 sm:flex-row sm:items-baseline sm:justify-between">
                           <div className="min-w-0">
                             <p className="text-[10px] text-white/20 font-black uppercase tracking-widest italic">
                               Accrued Penalties
@@ -641,7 +641,7 @@ function VaultPage() {
                                   </button>
                                 ) : null}
                                 {witnessRows.map((w) => (
-                                    <div key={w._id} className="p-6 rounded-[2.5rem] bg-[#050810]/40 border border-white/5 flex items-center justify-between gap-4">
+                                    <div key={w._id} className="p-6 rounded-[2.5rem] bg-[#050810]/40 border border-white/5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                         <div className="flex items-center gap-4 min-w-0">
                                             <div className="h-10 w-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
                                                 {w.user?.image ? (
@@ -701,7 +701,7 @@ function VaultPage() {
                         )}
                     </div>
 
-                    <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                    <div className="p-6 sm:p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">Pain Tier</p>
                         <p className="text-2xl font-bold mt-2 text-[#ff7a00] text-left uppercase italic font-black tracking-tight">{vault.painTier || 'Serious Mode'}</p>
                         <p className="text-xs text-white/30 mt-4 leading-relaxed font-medium italic">
@@ -710,7 +710,7 @@ function VaultPage() {
                     </div>
 
                     {canExecuteLog ? (
-                      <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                      <div className="p-6 sm:p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 text-left mb-6">
                           Enforcement
                         </p>
@@ -730,7 +730,7 @@ function VaultPage() {
 
                 <div className="lg:col-span-8 text-left">
                     {penaltyEvents.length > 0 ? (
-                      <div className="mb-12 p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
+                      <div className="mb-12 p-6 sm:p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 text-left shadow-2xl">
                         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/10 mb-8 text-left">
                           Penalty Timeline
                         </p>
@@ -779,7 +779,7 @@ function VaultPage() {
 
                     <div className="space-y-4 text-left">
                         {vault.logs?.length === 0 ? (
-                             <div className="p-20 rounded-[3rem] border border-white/5 bg-white/[0.01] text-center shadow-inner group transition-all">
+                             <div className="p-10 sm:p-20 rounded-[3rem] border border-white/5 bg-white/[0.01] text-center shadow-inner group transition-all">
                                 <Clock size={40} className="mx-auto text-white/5 mb-6 opacity-20" />
                                 <p className="text-sm text-white/20 italic font-medium">No behavioral logs recorded for this protocol cycle.</p>
                              </div>
@@ -905,7 +905,7 @@ function VaultPage() {
                   onClick={() => setActiveLog(null)}
                 />
                 <div className="relative w-full max-w-3xl rounded-[3rem] bg-[#0a0f1a]/95 border border-white/10 shadow-[0_0_120px_rgba(0,0,0,0.9)] overflow-hidden max-h-[90vh] flex flex-col">
-                  <div className="p-10 border-b border-white/10 flex items-start justify-between gap-6 shrink-0">
+                  <div className="p-6 sm:p-10 border-b border-white/10 flex items-start justify-between gap-6 shrink-0">
                     <div className="text-left">
                       <p className="text-white font-black uppercase italic tracking-tight text-lg leading-tight">
                         {activeLog.date ? `Check-in • ${activeLog.date}` : `Week ${activeLog.week_number} Check-in`}
@@ -922,7 +922,7 @@ function VaultPage() {
                       <X size={18} />
                     </button>
                   </div>
-                  <div className="p-10 overflow-y-auto custom-scrollbar">
+                  <div className="p-6 sm:p-10 overflow-y-auto custom-scrollbar">
                     {(
                       Array.isArray(activeLog.proofUrls)
                         ? activeLog.proofUrls
@@ -947,7 +947,7 @@ function VaultPage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="p-10 rounded-[2.5rem] border border-white/10 bg-white/[0.02]">
+                      <div className="p-6 sm:p-10 rounded-[2.5rem] border border-white/10 bg-white/[0.02]">
                         <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.28em] italic">
                           No image attached.
                         </p>

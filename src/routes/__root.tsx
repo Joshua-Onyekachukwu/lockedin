@@ -31,9 +31,23 @@ export const Route = createRootRouteWithContext<{
       {
         title: 'Lockedin | Behavioral Commitment Platform',
       },
+      {
+        name: 'theme-color',
+        content: '#050810',
+      },
+      {
+        name: 'apple-mobile-web-app-capable',
+        content: 'yes',
+      },
+      {
+        name: 'apple-mobile-web-app-title',
+        content: 'Lockedin',
+      },
     ],
     links: [
       { rel: 'icon', href: '/favicon.ico' },
+      { rel: 'manifest', href: '/manifest.json' },
+      { rel: 'apple-touch-icon', href: '/icon.svg' },
       { rel: 'stylesheet', href: appCssUrl },
     ],
   }),
@@ -44,6 +58,7 @@ export const Route = createRootRouteWithContext<{
 function RootComponent() {
   return (
     <RootDocument>
+      <ServiceWorkerRegistration />
       <AuthGate>
         <Outlet />
       </AuthGate>
@@ -173,6 +188,18 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </body>
     </html>
   )
+}
+
+function ServiceWorkerRegistration() {
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return
+
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Keep app boot resilient even if PWA registration fails.
+    })
+  }, [])
+
+  return null
 }
 
 function RouterAssetLinks() {

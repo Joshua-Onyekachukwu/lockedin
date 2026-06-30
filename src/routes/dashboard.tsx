@@ -222,11 +222,11 @@ function DashboardContent({ user }: { user: any }) {
       <main className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-12 text-left relative z-10">
         <header className="mb-10 sm:mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 text-left">
           <div className="text-left">
-            <h1 className="text-4xl font-black tracking-tight md:text-5xl lg:text-7xl text-left text-white leading-tight uppercase italic">
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl lg:text-7xl text-left text-white leading-tight uppercase italic">
               {activeTab === 'protocols' ? 'Operational ' : 'Witness '}
               <span className="text-blue-500 text-left">{activeTab === 'protocols' ? 'Intelligence.' : 'Authority.'}</span>
             </h1>
-            <p className="text-white/30 mt-6 text-lg max-w-2xl leading-relaxed text-left font-medium italic">
+            <p className="text-white/30 mt-4 sm:mt-6 text-base sm:text-lg max-w-2xl leading-relaxed text-left font-medium italic">
                 {activeTab === 'protocols' 
                     ? `Integrity Score: ${user.integrityScore || 100}%. Adherence to active goals is non-negotiable.`
                     : activeTab === 'witnessing'
@@ -236,12 +236,12 @@ function DashboardContent({ user }: { user: any }) {
             </p>
           </div>
           
-          <div className="flex bg-white/5 p-1.5 rounded-[2rem] border border-white/10">
+          <div className="flex w-full overflow-x-auto bg-white/5 p-1.5 rounded-[2rem] border border-white/10 md:w-auto">
              {(['protocols', 'witnessing'] as const).map((tab) => (
                 <button 
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-black shadow-xl' : 'text-white/30 hover:text-white/60'}`}
+                    className={`shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-black shadow-xl' : 'text-white/30 hover:text-white/60'}`}
                 >
                     {tab}
                 </button>
@@ -257,7 +257,7 @@ function DashboardContent({ user }: { user: any }) {
                     className="space-y-12"
                 >
                     {activationDismissed || activationStatus?.hasFundedVault ? null : (
-                      <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/10 shadow-2xl">
+                      <div className="p-6 sm:p-10 rounded-[3rem] bg-white/[0.02] border border-white/10 shadow-2xl">
                         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
                           <div className="text-left">
                             <p className="text-[10px] text-white/20 font-black uppercase tracking-[0.35em] italic">
@@ -359,7 +359,7 @@ function DashboardContent({ user }: { user: any }) {
                         
                         <button 
                             onClick={() => setIsCreating(true)}
-                            className="group relative rounded-[4rem] border border-dashed border-white/10 bg-white/[0.01] flex flex-col items-center justify-center text-center p-12 hover:bg-white/[0.03] hover:border-blue-500/20 transition-all min-h-[350px] shadow-inner"
+                            className="group relative rounded-[4rem] border border-dashed border-white/10 bg-white/[0.01] flex flex-col items-center justify-center text-center p-8 sm:p-12 hover:bg-white/[0.03] hover:border-blue-500/20 transition-all min-h-[280px] sm:min-h-[350px] shadow-inner"
                         >
                             <Plus size={48} className="text-white/5 mb-8 group-hover:scale-110 group-hover:text-blue-500 transition-all" />
                             <p className="text-white/30 font-black uppercase tracking-[0.3em] text-xs italic">Initiate New Protocol</p>
@@ -491,7 +491,7 @@ function DashboardContent({ user }: { user: any }) {
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                                 {(incomingApplications as Array<any>).map((req: any) => (
-                                    <div key={req._id} className="p-8 rounded-[3rem] border border-white/5 bg-white/[0.02] flex items-center justify-between group hover:border-blue-500/20 transition-all text-left shadow-2xl">
+                                    <div key={req._id} className="p-6 sm:p-8 rounded-[3rem] border border-white/5 bg-white/[0.02] flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between group hover:border-blue-500/20 transition-all text-left shadow-2xl">
                                         <div className="flex items-center gap-6">
                                             <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20">
                                                 <Users size={20} />
@@ -525,7 +525,7 @@ function DashboardContent({ user }: { user: any }) {
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                                 {(incomingRequests as Array<any>).map((req: any) => (
-                                    <div key={req._id} className="p-8 rounded-[3rem] border border-white/5 bg-white/[0.02] flex items-center justify-between group hover:border-blue-500/20 transition-all text-left shadow-2xl">
+                                    <div key={req._id} className="p-6 sm:p-8 rounded-[3rem] border border-white/5 bg-white/[0.02] flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between group hover:border-blue-500/20 transition-all text-left shadow-2xl">
                                         <div className="flex items-center gap-6">
                                             <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/20">
                                                 <Users size={20} />
@@ -677,7 +677,7 @@ function DashboardContent({ user }: { user: any }) {
                             {(discoverableVaults as Array<any>)
                                 .filter((v: any) => v.userId !== user._id)
                                 .map((v: any) => (
-                                <div key={v._id} className="p-10 rounded-[3.5rem] border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all text-left shadow-2xl relative overflow-hidden group">
+                                <div key={v._id} className="p-6 sm:p-10 rounded-[3.5rem] border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all text-left shadow-2xl relative overflow-hidden group">
                                     <div className="absolute top-0 right-0 p-8 text-white/[0.02] group-hover:scale-110 transition-transform">
                                         <Users size={120} />
                                     </div>

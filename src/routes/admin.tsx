@@ -521,24 +521,24 @@ function AdminDashboard() {
 
       <main className="max-w-7xl mx-auto p-4 sm:p-8 relative z-10">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12">
             <button
               type="button"
               onClick={() => setStatsDetail('revenue')}
-              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-blue-500/20 transition-all text-left w-full"
+              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-6 sm:p-8 shadow-2xl group hover:border-blue-500/20 transition-all text-left w-full"
             >
                 <div className="flex items-center justify-between mb-6">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">Protocol Revenue</span>
                     <TrendingUp size={18} className="text-blue-500" />
                 </div>
-                <p className="text-4xl font-black text-white italic tracking-tighter uppercase">₦{formatCompact(stats.revenue / 100)}</p>
+                <p className="text-3xl sm:text-4xl font-black text-white italic tracking-tighter uppercase">₦{formatCompact(stats.revenue / 100)}</p>
                 <p className="mt-2 text-[10px] text-green-500 font-black uppercase tracking-widest italic">Captured Liquidity</p>
             </button>
 
             <button
               type="button"
               onClick={() => setStatsDetail('staked')}
-              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-[#ff7a00]/20 transition-all text-left w-full"
+              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-6 sm:p-8 shadow-2xl group hover:border-[#ff7a00]/20 transition-all text-left w-full"
             >
                 <div className="flex items-center justify-between mb-6">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">Active Stakes</span>
@@ -553,31 +553,32 @@ function AdminDashboard() {
             <button
               type="button"
               onClick={() => setStatsDetail('citizens')}
-              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-blue-500/20 transition-all text-left w-full"
+              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-6 sm:p-8 shadow-2xl group hover:border-blue-500/20 transition-all text-left w-full"
             >
                 <div className="flex items-center justify-between mb-6">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">Total Citizens</span>
                     <Users size={18} className="text-blue-500" />
                 </div>
-                <p className="text-4xl font-black text-white italic tracking-tighter uppercase">{stats.totalUsers}</p>
+                <p className="text-3xl sm:text-4xl font-black text-white italic tracking-tighter uppercase">{stats.totalUsers}</p>
                 <p className="mt-2 text-[10px] text-blue-500 font-black uppercase tracking-widest italic">Identity Anchored</p>
             </button>
 
             <button
               type="button"
               onClick={() => setStatsDetail('health')}
-              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-8 shadow-2xl group hover:border-green-500/20 transition-all text-left w-full"
+              className="rounded-[2.5rem] border border-white/5 bg-[#0a0f1a]/40 backdrop-blur-3xl p-6 sm:p-8 shadow-2xl group hover:border-green-500/20 transition-all text-left w-full"
             >
                 <div className="flex items-center justify-between mb-6">
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 italic">System Health</span>
                     <Activity size={18} className="text-green-500" />
                 </div>
-                <p className="text-4xl font-black text-white italic tracking-tighter uppercase">STABLE</p>
+                <p className="text-3xl sm:text-4xl font-black text-white italic tracking-tighter uppercase">STABLE</p>
                 <p className="mt-2 text-[10px] text-white/20 font-black uppercase tracking-widest italic">Crons Executing</p>
             </button>
         </div>
 
-        <div className="flex flex-wrap gap-3 sm:gap-4 mb-8">
+        <div className="mb-8 overflow-x-auto pb-2">
+            <div className="flex min-w-max gap-3 sm:gap-4">
             {([
               { key: 'overview', label: 'Overview', count: null },
               { key: 'withdrawals', label: 'Withdrawals', count: pendingWithdrawals?.length || 0 },
@@ -590,7 +591,7 @@ function AdminDashboard() {
               <button
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
-                className={`px-4 sm:px-8 py-2.5 sm:py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`shrink-0 px-4 sm:px-8 py-2.5 sm:py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
                   activeTab === (t.key as any)
                     ? 'bg-white text-black shadow-xl'
                     : 'bg-white/5 text-white/40 hover:bg-white/10'
@@ -604,6 +605,7 @@ function AdminDashboard() {
                 ) : null}
               </button>
             ))}
+            </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
