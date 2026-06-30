@@ -1,10 +1,10 @@
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useAction, useConvexAuth } from 'convex/react';
+import { useConvexAuth } from 'convex/react';
 import { convexQuery } from '@convex-dev/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useAuthActions } from '@convex-dev/auth/react';
-import { ArrowLeft, CheckCircle2, Loader2, Mail, RefreshCw } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { api } from '../../convex/_generated/api';
 
@@ -19,8 +19,6 @@ function VerifyRequiredPage() {
   const { signOut } = useAuthActions();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const requestEmailVerification = useAction(api.emailVerification.requestEmailVerification);
-  const confirmEmailVerification = useAction(api.emailVerification.confirmEmailVerification);
 
   const userQuery = useMemo(
     () => convexQuery(api.users.current, EMPTY_ARGS as any) as any,
@@ -33,32 +31,9 @@ function VerifyRequiredPage() {
     refetchOnMount: 'always',
   });
 
-  const emailBackendQuery = useMemo(
-    () => convexQuery(api.emailVerification.isEmailBackendConfigured, EMPTY_ARGS as any) as any,
-    [],
-  );
-  const {
-    data: emailBackendConfigured,
-    isLoading: emailBackendLoading,
-    isError: emailBackendError,
-  }: { data: any; isLoading: boolean; isError: boolean } = useQuery({
-    ...emailBackendQuery,
-    enabled: isAuthenticated,
-    staleTime: 1000 * 60,
-  });
-
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
-  const [consuming, setConsuming] = useState(false);
-  const emailBackendOffline = emailBackendConfigured === false && !emailBackendLoading && !emailBackendError;
-  const pendingToken = useMemo(() => {
-    try {
-      return localStorage.getItem('pendingEmailVerificationToken');
-    } catch {
-      return null;
-    }
-  }, []);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -72,65 +47,10 @@ function VerifyRequiredPage() {
     }
   }, [authLoading, isAuthenticated, navigate, user]);
 
-  useEffect(() => {
-    if (authLoading || !isAuthenticated) return;
-    if (user?.emailVerificationTime) return;
-    if (!pendingToken) return;
-    if (consuming) return;
-
-    const run = async () => {
-      setConsuming(true);
-      try {
-        const res = await confirmEmailVerification({ token: pendingToken });
-        if (res?.success) {
-          try {
-            localStorage.removeItem('pendingEmailVerificationToken');
-          } catch {}
-          await queryClient.invalidateQueries({ queryKey: userQuery.queryKey });
-          navigate({ to: '/dashboard' });
-        }
-      } finally {
-        setConsuming(false);
-      }
-    };
-    run();
-  }, [
-    authLoading,
-    confirmEmailVerification,
-    consuming,
-    isAuthenticated,
-    navigate,
-    pendingToken,
-    queryClient,
-    user?.emailVerificationTime,
-    userQuery.queryKey,
-  ]);
-
-  const send = async () => {
-    setStatus('sending');
-    setMessage(null);
-    try {
-      const res = await requestEmailVerification(EMPTY_ARGS);
-      setStatus('sent');
-      setMessage(res?.message ?? 'Verification email sent.');
-    } catch (e: any) {
-      setStatus('error');
-      setMessage(e?.message ?? 'Failed to send verification email.');
-    }
-  };
-
   const checkAgain = async () => {
     setChecking(true);
     setMessage(null);
     try {
-      if (pendingToken) {
-        const res = await confirmEmailVerification({ token: pendingToken });
-        if (res?.success) {
-          try {
-            localStorage.removeItem('pendingEmailVerificationToken');
-          } catch {}
-        }
-      }
       await queryClient.invalidateQueries({ queryKey: userQuery.queryKey });
       await queryClient.refetchQueries({ queryKey: userQuery.queryKey, exact: true });
       const refreshed = queryClient.getQueryData<any>(userQuery.queryKey);
@@ -139,11 +59,7 @@ function VerifyRequiredPage() {
         return;
       }
       setStatus('error');
-      setMessage(
-        pendingToken
-          ? 'Still unverified. If you just clicked the email link, wait a moment and try again.'
-          : 'Still unverified. Send the email, open the link, then try again.',
-      );
+      setMessage('Still unverified. An admin needs to mark this account as verified from the admin panel.');
     } catch (e: any) {
       setStatus('error');
       setMessage(e?.message ?? 'Failed to refresh verification status.');
@@ -184,7 +100,7 @@ function VerifyRequiredPage() {
         <div className="bg-[#0a0f1a]/80 backdrop-blur-3xl border border-white/5 rounded-[2.5rem] p-10 shadow-2xl text-left">
           <div className="flex items-center gap-3 mb-6">
             <div className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-              <Mail size={18} className="text-blue-500" />
+              <ShieldCheck size={18} className="text-blue-500" />
             </div>
             <div className="flex flex-col">
               <p className="text-xs font-black uppercase tracking-[0.3em] italic text-white">Verification Required</p>
@@ -202,9 +118,9 @@ function VerifyRequiredPage() {
           <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 mb-6">
             <p className="text-[10px] font-black uppercase tracking-[0.25em] italic text-white/40">How Verification Works</p>
             <div className="mt-4 space-y-2 text-xs text-white/40 font-bold italic tracking-tight uppercase">
-              <p>1) Send the verification email.</p>
-              <p>2) Open the link in your inbox (same account).</p>
-              <p>3) Return here and press “I Already Verified”.</p>
+              <p>1) Sign in with the email you want to use on Lockedin.</p>
+              <p>2) An admin reviews and verifies the account from the admin panel.</p>
+              <p>3) Return here and press “Check Again” after the admin confirms verification.</p>
             </div>
           </div>
 
@@ -221,44 +137,24 @@ function VerifyRequiredPage() {
                     : 'bg-green-500/10 border-green-500/20 text-green-500'
                 }`}
               >
-                {status === 'error' ? <RefreshCw size={16} /> : <CheckCircle2 size={16} />}
+                {status === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
                 {message}
               </motion.div>
             ) : null}
           </AnimatePresence>
 
-          {emailBackendOffline ? (
-            <div className="mb-6 p-5 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-200 text-xs font-bold uppercase italic tracking-tight">
-              Email verification is currently manual. Please contact an admin/support to verify your email.
-            </div>
-          ) : null}
+          <div className="mb-6 p-5 rounded-2xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-200 text-xs font-bold uppercase italic tracking-tight">
+            Email verification is currently manual. Only an admin can verify your account from the admin panel right now.
+          </div>
 
           <div className="flex flex-col gap-3">
-            {!emailBackendOffline ? (
-              <button
-                onClick={send}
-                disabled={status === 'sending' || checking}
-                className="w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white text-black py-5 font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/5 disabled:opacity-60"
-              >
-                {status === 'sending' ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />}
-                Send Verification Email
-              </button>
-            ) : null}
-            {pendingToken ? (
-              <button
-                onClick={() => navigate({ to: `/verify-email?token=${encodeURIComponent(pendingToken)}` as any })}
-                className="w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white/5 border border-white/10 text-white py-5 font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all"
-              >
-                Continue Verification
-              </button>
-            ) : null}
             <button
               onClick={checkAgain}
-              disabled={checking || consuming}
+              disabled={checking}
               className="w-full inline-flex items-center justify-center gap-3 rounded-2xl bg-white/5 border border-white/10 text-white py-5 font-black text-xs uppercase tracking-[0.2em] hover:bg-white/10 transition-all disabled:opacity-60"
             >
-              {checking || consuming ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-              {checking || consuming ? 'Checking…' : 'I Already Verified'}
+              {checking ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+              {checking ? 'Checking…' : 'Check Again'}
             </button>
           </div>
         </div>

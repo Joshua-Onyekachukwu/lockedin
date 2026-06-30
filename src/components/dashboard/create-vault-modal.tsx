@@ -329,6 +329,14 @@ export default function CreateVaultModal({
                     </button>
                   ))}
                 </div>
+                <div className="mt-4 rounded-[1.5rem] border border-[#ff7a00]/20 bg-[#ff7a00]/8 px-5 py-4">
+                  <p className="text-[9px] font-black uppercase tracking-[0.24em] text-[#ffb36b]">
+                    Anti-Gaming Notice
+                  </p>
+                  <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-white/45 font-black italic leading-relaxed">
+                    Missed check-ins follow the selected penalty tier. Separate from that, fabricated proof, witness collusion, or any attempt to game or manipulate enforcement can trigger admin breach review and full forfeiture of the remaining stake for this protocol.
+                  </p>
+                </div>
               </div>
 
               <button

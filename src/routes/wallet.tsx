@@ -520,10 +520,10 @@ function WalletPage() {
               <button
                 type="button"
                 onClick={handleStartTopup}
-                disabled={isFunding}
+                disabled={isFunding || fundAmountKobo <= 0 || !PAYSTACK_PUBLIC_KEY}
                 className="self-end rounded-[1rem] bg-[#c79c5c] px-6 py-4 text-sm font-semibold tracking-tight text-[#17130d] transition-all hover:brightness-105 disabled:opacity-50"
               >
-                {isFunding ? 'Processing' : 'Fund wallet'}
+                {!PAYSTACK_PUBLIC_KEY ? 'Paystack unavailable' : isFunding ? 'Processing' : 'Fund wallet'}
               </button>
             </div>
 

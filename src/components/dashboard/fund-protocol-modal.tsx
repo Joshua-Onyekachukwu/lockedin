@@ -434,6 +434,14 @@ export default function FundProtocolModal({
           <p className="mt-4 text-xs text-white/35 leading-relaxed">
             If Paystack shows a processor fee before authorization, only the stake amount above is locked into this protocol.
           </p>
+          <div className="mt-4 rounded-[1.25rem] border border-[#ff7a00]/20 bg-[#ff7a00]/8 px-4 py-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ffb36b]">
+              Anti-gaming notice
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-white/55">
+              Missed check-ins follow your selected penalty tier. Fabricated proof, witness collusion, or any attempt to manipulate enforcement can trigger admin breach review and full forfeiture of the remaining stake on this protocol.
+            </p>
+          </div>
 
           {showProgressPanel ? (
             <div className="mt-8 rounded-[1.5rem] border border-[#c28b48]/20 bg-[#c28b48]/8 p-5">
@@ -477,10 +485,14 @@ export default function FundProtocolModal({
             <button
               type="button"
               onClick={handleStartPayment}
-              disabled={loading}
+              disabled={loading || !PAYSTACK_PUBLIC_KEY}
               className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-semibold tracking-tight text-white transition-all hover:bg-white/10 active:scale-[0.98] disabled:opacity-45"
             >
-              {loading && stage !== 'verifying' ? 'Preparing...' : 'Pay with Paystack'}
+              {!PAYSTACK_PUBLIC_KEY
+                ? 'Paystack unavailable'
+                : loading && stage !== 'verifying'
+                  ? 'Preparing...'
+                  : 'Pay with Paystack'}
             </button>
           </div>
         </div>

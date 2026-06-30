@@ -112,7 +112,7 @@ Notes:
 - Phase D added operator documentation in `ADMIN_PAYMENTS_RUNBOOK.md`, `ADMIN_SETTINGS_RUNBOOK.md`, and `RESPONSIVE_QA_CHECKLIST.md`.
 
 ## Phase F
-Status: In progress on branch `phase-wallet-v1-foundation`
+Status: In progress, latest slice merged to `main`
 
 - [x] Re-sync wallet implementation branch onto latest `origin/main`
 - [x] Restore in-progress wallet work after branch rebase/recreation
@@ -134,13 +134,17 @@ Status: In progress on branch `phase-wallet-v1-foundation`
 - [x] Validate with `npm run build`
 - [x] Validate with `npx tsc --noEmit`
 - [x] Perform smoke checks on the wallet and finance surfaces
-- [ ] Push branch, open PR, and merge to `main`
+- [x] Push branch and move the validated slice to `main`
 
 Notes:
 - This phase is not a rollback to the old wallet implementation.
 - This phase is a controlled wallet productization pass on top of the current stake-per-vault platform.
 - The goal is to make wallet a first-class financial dashboard without breaking the existing protocol lifecycle.
 - Admin surfaces are expected to remain operationally authoritative, but user wallet visibility must align with what operators see.
+- Latest merge/deploy:
+  - branch pushed: `phase-wallet-v1-foundation`
+  - commit on `main`: `a2e4237`
+  - backend deployed with `npx convex deploy --env-file .env.local`
 - Current validation status:
   - `npm run lint` passes
   - `npm run build` passes
