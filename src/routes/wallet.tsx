@@ -23,7 +23,8 @@ import { toUserMessage } from '~/lib/errors'
 const EMPTY_ARGS: Record<string, never> = {}
 const PAYSTACK_PUBLIC_KEY =
   import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.VITE_PAYSTACK_PUBLIC_KEY
-const LEDGER_PAGE_SIZE = 12
+const LEDGER_PAGE_SIZE = 7
+const LEDGER_MAX_ITEMS = 200
 
 type LedgerFilter = 'all' | 'money' | 'stake' | 'refund' | 'reward'
 
@@ -87,7 +88,7 @@ function WalletPage() {
     [],
   )
 
-  const [activityLimit] = useState(100)
+  const [activityLimit] = useState(LEDGER_MAX_ITEMS)
   const [ledgerPage, setLedgerPage] = useState(1)
   const walletActivityQuery = useMemo(
     () => convexQuery(api.payments.getWalletActivity, { limit: activityLimit } as any) as any,
@@ -440,35 +441,35 @@ function WalletPage() {
         user={user}
       />
 
-      <main className="relative z-10 mx-auto max-w-5xl space-y-6 p-6 lg:p-10">
+      <main className="relative z-10 mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-12">
         <header className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <section className="rounded-[1.75rem] border border-[#2b3139] bg-[#12161b] p-7 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-            <p className="font-data text-[11px] uppercase tracking-[0.24em] text-[#c79c5c]">
+            <p className="text-[10px] font-black uppercase tracking-[0.32em] italic text-[#c79c5c]">
               Wallet ledger
             </p>
-            <h1 className="mt-4 max-w-2xl font-editorial text-3xl leading-tight text-[#f4ecdf] md:text-[3.2rem]">
+            <h1 className="mt-4 max-w-2xl text-3xl font-black italic uppercase tracking-tight leading-tight text-[#f4ecdf] md:text-5xl">
               Your money, clearly accounted for.
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#f1e8d7]/62">
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-[#f1e8d7]/62 font-medium">
               Use this page to top up your balance, request withdrawals, and review every
               deposit, stake, refund, and payout without digging through profile settings.
             </p>
 
             <div className="mt-8 rounded-[1.5rem] border border-[#3a3123] bg-[#17130f] px-6 py-6">
-              <p className="font-data text-[11px] uppercase tracking-[0.22em] text-[#c79c5c]/82">
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] italic text-[#c79c5c]/82">
                 Available to spend
               </p>
-              <p className="mt-3 font-editorial text-4xl leading-none text-[#f8f0e2] md:text-5xl">
+              <p className="mt-3 text-4xl font-black italic tracking-tight leading-none text-[#f8f0e2] md:text-5xl">
                 {formatMoney(overview.availableBalance)}
               </p>
-              <p className="mt-3 text-sm leading-6 text-[#f1e8d7]/56">
+              <p className="mt-3 text-sm leading-6 text-[#f1e8d7]/56 font-medium">
                 This is the balance you can move into a new protocol or withdraw to your bank.
               </p>
             </div>
           </section>
 
           <section className="rounded-[1.75rem] border border-[#2b3139] bg-[#12161b] p-6 shadow-[0_24px_60px_rgba(0,0,0,0.18)]">
-            <p className="font-data text-[11px] uppercase tracking-[0.24em] text-[#8fa1b4]">
+            <p className="text-[10px] font-black uppercase tracking-[0.32em] italic text-[#8fa1b4]">
               At a glance
             </p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
@@ -494,10 +495,10 @@ function WalletPage() {
                 <ArrowDownCircle size={20} />
               </span>
               <div>
-                <p className="font-data text-[11px] uppercase tracking-[0.22em] text-[#f1e8d7]/38">
+                <p className="text-[10px] font-black uppercase tracking-[0.28em] italic text-[#f1e8d7]/38">
                   Fund Wallet
                 </p>
-                <p className="mt-2 font-editorial text-[1.7rem] leading-tight text-[#f4ecdf]">
+                <p className="mt-2 text-[1.35rem] font-black italic uppercase tracking-tight leading-tight text-[#f4ecdf]">
                   Add money to your available balance
                 </p>
               </div>
@@ -505,7 +506,7 @@ function WalletPage() {
 
             <div className="mt-7 grid gap-4 md:grid-cols-[1fr_auto]">
               <label className="block">
-                <span className="font-data text-[11px] uppercase tracking-[0.2em] text-[#f1e8d7]/40">
+                <span className="text-[10px] font-black uppercase tracking-[0.28em] italic text-[#f1e8d7]/40">
                   Amount (NGN)
                 </span>
                 <input
@@ -528,7 +529,7 @@ function WalletPage() {
             </div>
 
             <div className="mt-5 rounded-[1rem] border border-[#313844] bg-[#0d1116] px-4 py-4">
-              <p className="font-data text-[11px] uppercase tracking-[0.2em] text-[#f1e8d7]/40">
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] italic text-[#f1e8d7]/40">
                 Funding status
               </p>
               <p className="mt-2 text-sm leading-relaxed text-[#f1e8d7]/62">{fundingStatus}</p>
@@ -663,7 +664,7 @@ function WalletPage() {
               </div>
             </div>
 
-            <div className="mt-6 space-y-3">
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {pendingActivity.length === 0 ? (
                 <EmptyState
                   icon={<History size={28} />}
@@ -755,8 +756,9 @@ function WalletPage() {
           </div>
 
           <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="font-data text-[11px] uppercase tracking-[0.16em] text-[#f1e8d7]/42">
-              Page {currentLedgerPage} of {totalLedgerPages}
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] italic text-[#f1e8d7]/42">
+              Page {currentLedgerPage} of {totalLedgerPages} · {LEDGER_PAGE_SIZE} per page · showing latest{' '}
+              {Math.min(activityLimit, filteredActivity.length)}
             </p>
             <div className="flex gap-3">
               <button

@@ -1,5 +1,5 @@
 import { Link, Outlet, createFileRoute, useNavigate, useRouterState } from '@tanstack/react-router';
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { convexQuery } from '@convex-dev/react-query';
 import { useAction, useConvexAuth, useMutation } from 'convex/react';
 import { 
@@ -154,40 +154,46 @@ function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'transactions' | 'audit' | 'waitlist' | 'withdrawals' | 'breaches'>('overview');
 
   const statsQuery = convexQuery(api.admin.getSystemStats, EMPTY_ARGS as any) as any;
-  const { data: stats }: { data: any } = useSuspenseQuery({
+  const { data: stats }: { data: any } = useQuery({
     ...statsQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
+    placeholderData: null,
   });
 
   const waitlistQuery = convexQuery(api.waitlist.list, EMPTY_ARGS as any) as any;
-  const { data: waitlist }: { data: any } = useSuspenseQuery({
+  const { data: waitlist }: { data: any } = useQuery({
     ...waitlistQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
+    placeholderData: [],
   });
   const deleteWaitlistEntry = useMutation((api as any).admin.deleteWaitlistEntry);
 
   const pendingWithdrawalsQuery = convexQuery(api.admin.getPendingWithdrawals, EMPTY_ARGS as any) as any;
-  const { data: pendingWithdrawals }: { data: any } = useSuspenseQuery({
+  const { data: pendingWithdrawals }: { data: any } = useQuery({
     ...pendingWithdrawalsQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
+    placeholderData: [],
   });
 
   const breachCandidatesQuery = convexQuery(api.admin.getBreachCandidates, EMPTY_ARGS as any) as any;
-  const { data: breachCandidates }: { data: any } = useSuspenseQuery({
+  const { data: breachCandidates }: { data: any } = useQuery({
     ...breachCandidatesQuery,
     enabled: isAuthenticated && isVerified && isAdmin && activeTab === 'breaches',
+    placeholderData: [],
   });
 
   const overviewQuery = convexQuery(api.admin.getOverview, EMPTY_ARGS as any) as any;
-  const { data: overview }: { data: any } = useSuspenseQuery({
+  const { data: overview }: { data: any } = useQuery({
     ...overviewQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
+    placeholderData: null,
   });
 
   const auditQuery = convexQuery((api as any).admin.getAuditLog, { limit: 100 } as any) as any;
-  const { data: auditLog }: { data: any } = useSuspenseQuery({
+  const { data: auditLog }: { data: any } = useQuery({
     ...auditQuery,
     enabled: isAuthenticated && isVerified && isAdmin,
+    placeholderData: [],
   });
   
   const sweep = useMutation(api.admin.triggerMidnightSweep);
@@ -343,7 +349,7 @@ function AdminDashboard() {
             </div>
           </div>
           <div className="text-white/40 text-xs font-bold italic uppercase tracking-widest leading-relaxed">
-            Email verification is required before accessing admin tools.
+            Admin access is restricted. An admin must verify your account before you can open the command center.
           </div>
           <div className="mt-6 flex gap-3">
             <button
@@ -405,6 +411,58 @@ function AdminDashboard() {
               className="flex-1 py-4 rounded-2xl bg-white/10 border border-white/10 text-white/70 font-black text-xs uppercase tracking-[0.2em] hover:text-white transition-all italic"
             >
               Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (adminStatus && !adminStatus.isAdmin) {
+    const reason = typeof adminStatus.reason === 'string' ? adminStatus.reason : 'Administrative privileges required.';
+    const debug = adminStatus.debug;
+    return (
+      <div className="min-h-screen bg-[#050810] flex flex-col items-center justify-center px-8 text-white">
+        <div className="max-w-2xl w-full bg-white/5 border border-white/10 rounded-3xl p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <Lock className="text-red-500" size={22} />
+            <div className="font-black italic uppercase tracking-[0.2em] text-sm text-white/70">
+              Access Denied
+            </div>
+          </div>
+          <div className="text-white/40 text-xs font-bold italic uppercase tracking-widest leading-relaxed">
+            {reason}
+          </div>
+          {debug ? (
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 text-[10px] font-black uppercase tracking-[0.2em] italic text-white/30">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                Email: {debug.email ?? 'unknown'}
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                Verified: {debug.isVerified ? 'yes' : 'no'}
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                DB Admin: {debug.isDbAdmin ? 'yes' : 'no'}
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                Allowlist: {debug.isAllowlistAdmin ? 'yes' : 'no'}
+              </div>
+            </div>
+          ) : null}
+          <div className="mt-8 flex gap-3">
+            <button
+              onClick={() => navigate({ to: '/dashboard' })}
+              className="flex-1 py-4 rounded-2xl bg-white text-black font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all italic"
+            >
+              Back to dashboard
+            </button>
+            <button
+              onClick={async () => {
+                await queryClient.invalidateQueries();
+              }}
+              className="flex-1 py-4 rounded-2xl bg-white/10 border border-white/10 text-white/70 font-black text-xs uppercase tracking-[0.2em] hover:text-white transition-all italic"
+            >
+              Refresh
             </button>
           </div>
         </div>

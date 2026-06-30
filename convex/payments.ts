@@ -20,6 +20,31 @@ function formatMaskedWithdrawalDestination(bankName: string, accountNumber: stri
   return bankName ? `${bankName} (${masked})` : masked;
 }
 
+function normalizeNameTokens(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+}
+
+function isVerifiedNameMatch(verifiedName: string, destinationName: string) {
+  const verifiedTokens = normalizeNameTokens(verifiedName);
+  const destinationTokens = normalizeNameTokens(destinationName);
+  if (verifiedTokens.length === 0 || destinationTokens.length === 0) return false;
+
+  const destinationSet = new Set(destinationTokens);
+  const lastToken = verifiedTokens[verifiedTokens.length - 1];
+  if (!destinationSet.has(lastToken)) return false;
+
+  if (verifiedTokens.length === 1) return true;
+  for (const token of verifiedTokens.slice(0, -1)) {
+    if (destinationSet.has(token)) return true;
+  }
+  return false;
+}
+
 function derivePaystackDomainFromSecret(secret: string) {
   if (secret.startsWith("sk_test_")) return "test" as const;
   if (secret.startsWith("sk_live_")) return "live" as const;
@@ -1674,7 +1699,7 @@ export const requestWithdrawal = mutation({
     accountNumber: v.string(),
     bankCode: v.string(),
     bankName: v.string(),
-    accountName: v.string(),
+    accountName: v.optional(v.string()),
   },
   returns: v.object({ success: v.boolean(), message: v.string() }),
   handler: async (ctx, args) => {
@@ -1689,7 +1714,6 @@ export const requestWithdrawal = mutation({
     const accountNumber = args.accountNumber.trim();
     const bankCode = args.bankCode.trim();
     const bankName = args.bankName.trim();
-    const accountName = args.accountName.trim();
 
     if (!Number.isFinite(amount) || amount <= 0) {
       return { success: false, message: "Enter a valid withdrawal amount." };
@@ -1697,8 +1721,44 @@ export const requestWithdrawal = mutation({
     if (!/^\d{10}$/.test(accountNumber)) {
       return { success: false, message: "Enter a valid 10-digit account number." };
     }
-    if (!bankCode || !bankName || !accountName) {
+    if (!bankCode || !bankName) {
       return { success: false, message: "Resolve your bank account details before requesting a withdrawal." };
+    }
+
+    let resolvedAccountName: string | undefined = undefined;
+    try {
+      assertPaystackConfig();
+      const url = `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.status) {
+        return { success: false, message: json?.message || "Unable to resolve account." };
+      }
+      resolvedAccountName = json?.data?.account_name as string | undefined;
+    } catch (e: any) {
+      return { success: false, message: e?.message || "Unable to resolve account." };
+    }
+
+    if (!resolvedAccountName) {
+      return { success: false, message: "Unable to resolve account name." };
+    }
+
+    if (!user.bvn_verified || !user.name) {
+      return { success: false, message: "BVN verification is required before withdrawals." };
+    }
+
+    if (!isVerifiedNameMatch(user.name, resolvedAccountName)) {
+      return {
+        success: false,
+        message:
+          "Withdrawal blocked: destination account name does not match your verified identity. Update your bank details or contact support.",
+      };
     }
 
     const rate = await ctx.runMutation((internal as any).rateLimit.consume, {
@@ -1740,7 +1800,7 @@ export const requestWithdrawal = mutation({
         account_number: accountNumber,
         bank_code: bankCode,
         bank_name: bankName,
-        account_name: accountName,
+        account_name: resolvedAccountName,
       },
     });
 
