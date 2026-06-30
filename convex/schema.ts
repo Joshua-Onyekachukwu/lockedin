@@ -278,6 +278,15 @@ export default defineSchema({
     .index("by_reference", ["reference"])
     .index("by_credited_user", ["creditedUserId"]),
 
+  bank_account_resolutions: defineTable({
+    userId: v.id("users"),
+    account_number: v.string(),
+    bank_code: v.string(),
+    bank_name: v.optional(v.string()),
+    account_name: v.string(),
+    createdAt: v.number(),
+  }).index("by_user_and_bank_account", ["userId", "bank_code", "account_number"]),
+
   email_verification_tokens: defineTable({
     userId: v.id("users"),
     tokenHash: v.string(),

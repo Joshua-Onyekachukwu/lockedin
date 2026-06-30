@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 import { api, internal } from "./_generated/api";
+import { endOpenPartnerRelationshipsForVault } from "./partners";
 import type { Id } from "./_generated/dataModel";
 
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
@@ -108,6 +109,10 @@ async function checkAdmin(ctx: any) {
 
 
 const MISSION_VAULT_STATUSES = ["active", "completed", "failed"] as const;
+const BREACH_RECENT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+const BREACH_MIN_PENALTY_EVENTS = 3;
+const BREACH_MIN_RECENT_EVENTS = 2;
+const BREACH_MIN_ACCRUAL_RATIO = 0.5;
 
 async function buildMissionCountMap(ctx: any, userIds: Array<Id<"users">>) {
   const allowed = new Set(userIds);
@@ -123,6 +128,55 @@ async function buildMissionCountMap(ctx: any, userIds: Array<Id<"users">>) {
     }
   }
   return counts;
+}
+
+async function getVaultBreachRisk(ctx: any, vault: { _id: Id<"vaults">; amount: number; penaltyAccrued?: number }) {
+  const events = await ctx.db
+    .query("penalty_events")
+    .withIndex("by_vault", (q: any) => q.eq("vaultId", vault._id))
+    .collect();
+  const recentCutoff = Date.now() - BREACH_RECENT_WINDOW_MS;
+  const recentPenaltyEvents = events.filter((event: any) => event.createdAt >= recentCutoff);
+  const penaltyAccrued = vault.penaltyAccrued ?? 0;
+  const penaltyRatio = vault.amount > 0 ? penaltyAccrued / vault.amount : 0;
+
+  return {
+    penaltyEventCount: events.length,
+    recentPenaltyEventCount: recentPenaltyEvents.length,
+    penaltyRatio,
+    principalRemaining: Math.max(0, vault.amount - penaltyAccrued),
+    lastPenaltyAt: events.reduce(
+      (latest: number | null, event: any) =>
+        latest === null || event.createdAt > latest ? event.createdAt : latest,
+      null,
+    ),
+  };
+}
+
+function isEligibleForManualBreach(risk: {
+  penaltyEventCount: number;
+  recentPenaltyEventCount: number;
+  penaltyRatio: number;
+  principalRemaining: number;
+}) {
+  return (
+    risk.principalRemaining > 0 &&
+    risk.penaltyEventCount >= BREACH_MIN_PENALTY_EVENTS &&
+    risk.recentPenaltyEventCount >= BREACH_MIN_RECENT_EVENTS &&
+    risk.penaltyRatio >= BREACH_MIN_ACCRUAL_RATIO
+  );
+}
+
+function isVisibleBreachCandidate(risk: {
+  penaltyEventCount: number;
+  recentPenaltyEventCount: number;
+  principalRemaining: number;
+}) {
+  return (
+    risk.principalRemaining > 0 &&
+    risk.penaltyEventCount >= 1 &&
+    risk.recentPenaltyEventCount >= 1
+  );
 }
 
 export const logAudit = internalMutation({
@@ -2023,24 +2077,25 @@ export const getBreachCandidates = query({
     handler: async (ctx, args) => {
         await checkAdmin(ctx);
         const limit = Math.max(1, Math.min(args.limit ?? 50, 100));
-        // Vaults that are active and might need manual failure enforcement
         const activeVaults = await ctx.db
             .query("vaults")
             .withIndex("by_status", q => q.eq("status", "active"))
             .order("desc")
-            .take(limit);
+            .take(limit * 3);
         
         const results = [];
         for (const vault of activeVaults) {
+            const risk = await getVaultBreachRisk(ctx, vault);
+            if (!isVisibleBreachCandidate(risk)) continue;
+
             const user = await ctx.db.get("users", vault.userId);
             const goal = await ctx.db
                 .query("goals")
                 .withIndex("by_vault", q => q.eq("vaultId", vault._id))
                 .first();
             
-            // Check if they missed a check-in recently
-            // This is just a basic list for now
-            results.push({ ...vault, user, goal });
+            results.push({ ...vault, user, goal, ...risk });
+            if (results.length >= limit) break;
         }
         return results;
     }
@@ -2048,11 +2103,25 @@ export const getBreachCandidates = query({
 
 export const enforceProtocolBreach = mutation({
     args: { vaultId: v.id("vaults") },
-    returns: v.null(),
+    returns: v.object({ success: v.boolean(), message: v.string() }),
     handler: async (ctx, args) => {
         const admin = await checkAdmin(ctx);
         const vault = await ctx.db.get("vaults", args.vaultId);
-        if (!vault || vault.status !== "active") return null;
+        if (!vault) {
+          return { success: false, message: "Protocol not found." };
+        }
+        if (vault.status !== "active") {
+          return { success: false, message: "Only active protocols can be manually forfeited." };
+        }
+
+        const risk = await getVaultBreachRisk(ctx, vault);
+        if (!isEligibleForManualBreach(risk)) {
+          return {
+            success: false,
+            message:
+              "Manual full forfeiture is reserved for severe repeated breaches after substantial accrued penalties.",
+          };
+        }
 
         const existingAccrued = vault.penaltyAccrued ?? 0;
         const remaining = Math.max(0, vault.amount - existingAccrued);
@@ -2062,7 +2131,7 @@ export const enforceProtocolBreach = mutation({
           penaltyAccrued: vault.amount,
         });
 
-        await ctx.runMutation(internal.partners.endAllForVault, { vaultId: args.vaultId });
+        await endOpenPartnerRelationshipsForVault(ctx, args.vaultId);
 
         // Logic for penalty distribution
         await ctx.db.insert("transactions", {
@@ -2088,10 +2157,10 @@ export const enforceProtocolBreach = mutation({
             message: `Forfeiture enforced. Vault: ${args.vaultId}`,
             targetType: "vault",
             targetId: args.vaultId,
-            metadata: { amount: remaining }
+            metadata: { amount: remaining, ...risk }
         });
 
-        return null;
+        return { success: true, message: "Full forfeiture enforced for a severe repeated breach." };
     }
 });
 
@@ -2130,28 +2199,30 @@ export const listRecentBreachEnforcements = query({
       const vaultId = entry.targetId as any;
       const vault = await ctx.db.get("vaults", vaultId);
       if (!vault) continue;
+      if (vault.status !== "failed" || (vault.penaltyAccrued ?? 0) !== vault.amount) continue;
 
       const user = await ctx.db.get("users", vault.userId);
       const goal = await ctx.db
         .query("goals")
         .withIndex("by_vault", (q) => q.eq("vaultId", vault._id))
         .first();
+      const entryMetadata = entry.metadata as { amount?: number } | undefined;
 
       const remainingForfeited = Math.max(
         0,
-        typeof (entry.metadata as any)?.amount === "number"
-          ? (entry.metadata as any).amount
+        typeof entryMetadata?.amount === "number"
+          ? entryMetadata.amount
           : vault.amount,
       );
 
       results.push({
-        auditId: entry._id as any,
+        auditId: entry._id,
         enforcedAt: entry._creationTime,
         vaultId: vault._id,
         remainingForfeited,
         user,
         goal,
-        canRevert: vault.status === "failed" && (vault.penaltyAccrued ?? 0) === vault.amount,
+        canRevert: true,
       });
 
       if (results.length >= limit) break;
@@ -2180,10 +2251,11 @@ export const revertProtocolBreach = mutation({
     if (!breachAudit) {
       return { success: false, message: "No breach enforcement record found for this protocol." };
     }
+    const breachMetadata = breachAudit.metadata as { amount?: number } | undefined;
 
     const remainingForfeited =
-      typeof (breachAudit.metadata as any)?.amount === "number"
-        ? (breachAudit.metadata as any).amount
+      typeof breachMetadata?.amount === "number"
+        ? breachMetadata.amount
         : vault.amount;
     const previousPenaltyAccrued = Math.max(0, vault.amount - Math.max(0, remainingForfeited));
 

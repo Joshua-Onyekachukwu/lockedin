@@ -87,6 +87,10 @@ function WalletPage() {
     () => convexQuery(api.payments.getWalletOverview, EMPTY_ARGS as any) as any,
     [],
   )
+  const withdrawalRequestsQuery = useMemo(
+    () => convexQuery(api.payments.getWithdrawalRequests, { limit: 10 } as any) as any,
+    [],
+  )
 
   const [activityLimit] = useState(LEDGER_MAX_ITEMS)
   const [ledgerPage, setLedgerPage] = useState(1)
@@ -105,6 +109,11 @@ function WalletPage() {
     ...walletOverviewQuery,
     enabled: isAuthenticated && isVerified,
   })
+  const { data: withdrawalRequests } = useQuery({
+    ...withdrawalRequestsQuery,
+    enabled: isAuthenticated && isVerified,
+    placeholderData: [] as Array<any>,
+  }) as { data: Array<any> }
   const { data: activity }: { data: Array<any> } = useSuspenseQuery({
     ...walletActivityQuery,
     enabled: isAuthenticated && isVerified,
@@ -113,6 +122,7 @@ function WalletPage() {
   const initializeDeposit = useMutation(api.payments.initializeDeposit)
   const verifyPayment = useAction(api.payments.verifyPayment)
   const requestWithdrawal = useMutation(api.payments.requestWithdrawal)
+  const cancelWithdrawalRequest = useMutation(api.payments.cancelWithdrawalRequest)
   const listPaystackBanks = useAction(api.payments.listPaystackBanks)
   const resolvePaystackAccount = useAction(api.payments.resolvePaystackAccount)
 
@@ -237,6 +247,7 @@ function WalletPage() {
   async function refreshWalletQueries() {
     await queryClient.invalidateQueries({ queryKey: userQuery.queryKey })
     await queryClient.invalidateQueries({ queryKey: walletOverviewQuery.queryKey })
+    await queryClient.invalidateQueries({ queryKey: withdrawalRequestsQuery.queryKey })
     await queryClient.invalidateQueries({ queryKey: walletActivityQuery.queryKey })
     await queryClient.invalidateQueries({
       queryKey: (convexQuery((api as any).notifications.list, { limit: 50 } as any) as any).queryKey,
@@ -322,6 +333,7 @@ function WalletPage() {
       const result = await resolvePaystackAccount({
         accountNumber: withdrawalForm.accountNumber.trim(),
         bankCode: withdrawalForm.bankCode,
+        bankName: withdrawalForm.bankName,
       })
       if (!result.success || !result.accountName) {
         toast.error(result.message || 'Unable to resolve account.', {
@@ -409,10 +421,29 @@ function WalletPage() {
     entry.status === 'pending' || entry.status === 'processing' || entry.status === 'approved',
   )
   const stakeHistory = activity.filter((entry) => entry.category === 'stake').slice(0, 6)
+  const cancellableWithdrawals = (withdrawalRequests ?? []).filter(
+    (entry) => entry.status === 'pending',
+  )
 
   useEffect(() => {
     setLedgerPage(1)
   }, [ledgerFilter])
+
+  async function handleCancelWithdrawal(withdrawalId: string) {
+    try {
+      const result = await cancelWithdrawalRequest({ withdrawalId: withdrawalId as any })
+      if (!result.success) {
+        toast.error(result.message, { title: 'Cancellation Blocked' })
+        return
+      }
+      await refreshWalletQueries()
+      toast.success(result.message, { title: 'Withdrawal Cancelled' })
+    } catch (error: any) {
+      toast.error(toUserMessage(error, 'Unable to cancel this withdrawal right now.'), {
+        title: 'Cancellation Failed',
+      })
+    }
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#0a0d10] pb-20 font-ui text-[#f1e8d7]">
@@ -677,6 +708,37 @@ function WalletPage() {
                 ))
               )}
             </div>
+            {cancellableWithdrawals.length > 0 ? (
+              <div className="mt-6 rounded-[1.25rem] border border-[#3a3123] bg-[#17130f] p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] italic text-[#c79c5c]">
+                  Pending withdrawals you can release
+                </p>
+                <div className="mt-4 space-y-3">
+                  {cancellableWithdrawals.map((withdrawal) => (
+                    <div
+                      key={withdrawal._id}
+                      className="flex flex-col gap-3 rounded-[1rem] border border-[#3a3123] bg-[#0d1116] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-editorial text-lg leading-tight text-[#f4ecdf]">
+                          {formatMoney(withdrawal.amount)}
+                        </p>
+                        <p className="mt-1 text-xs leading-6 text-[#f1e8d7]/56">
+                          Requested {new Date(withdrawal.requested_at).toLocaleString()}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCancelWithdrawal(String(withdrawal._id))}
+                        className="rounded-full border border-[#c79c5c]/40 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#f4ecdf] transition-all hover:bg-[#c79c5c]/10"
+                      >
+                        Cancel withdrawal
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-[1.75rem] border border-[#2b3139] bg-[#12161b] p-7 shadow-[0_20px_50px_rgba(0,0,0,0.16)]">
