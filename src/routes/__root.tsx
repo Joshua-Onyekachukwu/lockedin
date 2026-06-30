@@ -163,7 +163,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html>
       <head>
         <HeadContent />
-        <CssAssetBootstrap />
         <RouterAssetLinks />
       </head>
       <body>
@@ -172,18 +171,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Analytics />
       </body>
     </html>
-  )
-}
-
-function CssAssetBootstrap() {
-  return (
-    <script
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{
-        __html:
-          "(function(){try{if(document.querySelector('link[rel=\"stylesheet\"]'))return;var u='/_build/.vite/manifest.json';fetch(u,{cache:'no-store'}).then(function(r){return r.json()}).then(function(m){var e=m['virtual:$vinxi/handler/client'];if(!e&&m){for(var k in m){if(m[k]&&m[k].isEntry){e=m[k];break}}}var css=null;if(e&&e.imports&&e.imports[0]&&m[e.imports[0]]&&m[e.imports[0]].css&&m[e.imports[0]].css[0]){css=m[e.imports[0]].css[0]}if(!css){for(var k2 in m){if(m[k2]&&m[k2].css&&m[k2].css[0]){css=m[k2].css[0];break}}}if(!css)return;var l=document.createElement('link');l.rel='stylesheet';l.href='/_build/'+css.replace(/^\\//,'');l.fetchPriority='high';document.head.appendChild(l)}).catch(function(){});}catch(e){}})();",
-      }}
-    />
   )
 }
 
