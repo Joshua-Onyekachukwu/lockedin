@@ -66,7 +66,7 @@ function PublicSharePage() {
                 {preview.goal?.description || 'A visible commitment protocol running on Lockedin.'}
               </p>
 
-              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="mt-8 flex flex-wrap gap-4">
                 <MetricCard
                   icon={<Target size={16} />}
                   label="Frequency"
@@ -141,12 +141,16 @@ function MetricCard({
   value: string
 }) {
   return (
-    <div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-5 text-left">
+    <div className="min-w-[170px] flex-1 rounded-[2rem] border border-white/10 bg-white/[0.02] p-5 text-left">
       <div className="flex items-center gap-3 text-blue-400">
         {icon}
         <p className="text-[9px] font-black uppercase tracking-[0.28em] text-white/20 italic">{label}</p>
       </div>
-      <p className="mt-4 text-lg font-black uppercase italic text-white">{value}</p>
+      <div className="mt-4">
+        <span className="inline-flex w-fit max-w-full flex-wrap items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-white sm:text-[12px]">
+          <span className="break-words leading-tight">{value}</span>
+        </span>
+      </div>
     </div>
   )
 }
