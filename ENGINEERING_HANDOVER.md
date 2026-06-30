@@ -16,22 +16,22 @@ The current build is centered on:
 
 ## 2. Current Product Posture
 
-The active codebase currently uses the stake-per-vault model, not a wallet-first product.
+The active codebase currently uses the stake-per-vault model with a first-class wallet surface on top.
 
 That means:
 
 - Users create a protocol first
-- The vault starts in `awaiting_funding`
-- Users fund that specific vault through Paystack
-- The vault becomes active only after successful payment verification
+- The vault starts in `awaiting_funding` unless wallet balance already covers the stake
+- Users can fund that specific vault through Paystack or activate it from wallet balance when eligible
+- The vault becomes active after successful payment verification, reconciliation, or wallet activation
 
-Do not assume wallet funding is the current live flow on `main` just because wallet-related tables and admin tools still exist. Those are legacy or supporting surfaces.
+Do not confuse this with a full wallet-first rewrite. Protocol funding is still tied to the vault lifecycle, but wallet has been restored as a real user surface on `main`.
 
 Important current update:
 
-- wallet-first productization has now been approved as an active engineering workstream
-- the active branch for that work is `phase-wallet-v1-foundation`
-- until that branch is validated and merged, `main` should still be treated as protocol-first
+- the wallet productization foundation has already been merged to `main`
+- recent follow-up merges also added admin forfeiture revert tooling, pending-withdrawal cancellation, mobile responsiveness fixes, and a light PWA shell
+- the next major engineering tranche is the remaining framework-security upgrade plus authenticated QA
 
 ## 3. Stack
 
@@ -160,7 +160,7 @@ These tables support payment accounting and older wallet-related mechanics. They
 - `src/routes/community.tsx`
 - `src/routes/leaderboard.tsx`
 - `src/routes/profile.tsx`
-- `src/routes/wallet.tsx` (active branch work, not yet merged at the time of this update)
+- `src/routes/wallet.tsx`
 - `src/routes/share.$vaultId.tsx`
 
 ### Admin
@@ -293,20 +293,28 @@ See [DEPLOYMENT_SINGLE_SOURCE_OF_TRUTH.md](file:///c:/Users/Semek/Webstrom/Locke
 - Goal-owner controls for pre-funding amount edits and safe unfunded/completed deletion
 - Wallet visibility improvements plus deterministic withdrawal linkage/rejection handling
 - Phase D hardening: fail-closed email verification URL handling, internal-only direct Mono lookup, stricter admin gating, and masked withdrawal account displays
+- Dedicated wallet route, wallet overview cards, and normalized activity feed
+- Wallet-funded activation and create-flow auto-activation when balance covers the stake
+- Pending-withdrawal cancellation and bank-resolution caching
+- Admin breach-forfeiture revert flow and stricter manual-forfeiture eligibility
+- Reduced `completeMaturedVaults` timeout risk
+- First mobile responsiveness pass on dashboard, vault detail, and admin
+- Light PWA shell with manifest, icon, service worker registration, and offline fallback
 
 ### Active Concerns
 
 - Payment flow still needs continued runtime verification and future production monitoring
-- Wallet-first reintroduction is now actively being implemented but is not merged yet
+- Remaining `npm audit` findings are concentrated in the pinned TanStack Start stack and require a coordinated upgrade
 - Docs outside the current handoff set may reflect earlier decisions
 - Admin access will fail closed if `ADMIN_EMAIL_ALLOWLIST` is missing or `SITE_URL` is not configured correctly
+- Full authenticated QA is still needed for wallet recovery and admin recovery workflows
 
 ### Recommended Next Work
 
-- Finish `Phase F` wallet foundation and merge it safely
-- Validate admin/payment alignment against the new wallet experience
+- Complete the coordinated framework-security upgrade for the remaining TanStack Start advisory chain
+- Validate admin/payment alignment against the current wallet experience
 - Continue the approved monitoring roadmap once Sentry access/setup is ready
-- Continue final system sweep and retention feature planning
+- Extend the responsive QA pass beyond the first high-risk routes
 
 ## 12. Authoritative Handoff Set
 

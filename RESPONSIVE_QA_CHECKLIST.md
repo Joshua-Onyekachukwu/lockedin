@@ -45,9 +45,18 @@ Use this checklist for every responsive verification pass before shipping UI-hea
 - Fund a protocol and confirm the post-payment state is readable.
 - Submit a check-in with note and images.
 - Open profile wallet surfaces and review the withdrawal queue.
+- Open `/wallet`, confirm funding and withdrawal panels remain usable, and test pending-withdrawal cancellation.
 - Open admin tables and confirm overflow is intentional and discoverable.
+- Confirm recent forfeitures and breach-monitor tables remain readable and actionable on mobile widths.
 
 ## Regression Notes
 
 - Record the route, viewport width, browser/device, and a screenshot for any overflow or clipped-control issue.
 - If a table requires horizontal scrolling, note whether the affordance is obvious without instructions.
+
+## Current Highest-Risk Surfaces
+
+- `/dashboard` mobile hero, tab rail, and protocol cards
+- `/vault/$id` stacked detail cards, witness rows, and modal padding
+- `/admin` stat cards, tab rail, dense finance tables, and breach-monitor surfaces
+- `/wallet` funding, withdrawal, and pending-release controls

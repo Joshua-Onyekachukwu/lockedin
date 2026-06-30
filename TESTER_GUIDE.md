@@ -4,9 +4,9 @@ This document explains what Lockedin can do right now, how testers should use it
 
 Important testing note:
 
-- `main` is still protocol-first at the time of this update.
-- A first-class wallet dashboard is currently being built on branch `phase-wallet-v1-foundation`.
-- Until that branch merges, testers should treat wallet behavior on `main` as profile-led visibility plus withdrawal support, not the new wallet dashboard experience.
+- `main` now includes the first-class wallet dashboard and the recent recovery/safety follow-up work.
+- Protocol funding is still stake-per-vault, but wallet balance can now activate eligible protocols.
+- Full authenticated QA is still needed on some flows because local verification email sending may remain restricted.
 
 ## What Lockedin Is
 
@@ -36,16 +36,17 @@ Lockedin is a non-custodial behavior enforcement app. Users create a protocol (g
 - **Protocols tab**: Manage your own protocols (create, fund, execute logs).
 - **Witnessing tab**: Review protocols you witness, handle incoming witness requests/applications, and authorize logs.
 
-### 3) Create Protocol (Goal) → Starts as Awaiting Funding
+### 3) Create Protocol (Goal) → Starts Awaiting Funding Or Auto-Activates
 
-- Creating a protocol always creates it in **awaiting_funding** state.
-- User is prompted to fund immediately (recommended flow) or later.
-- A notification is generated: “Protocol Created… Complete funding to activate”.
+- Creating a protocol may create it in **awaiting_funding** or immediately activate it if wallet balance already covers the stake.
+- User is prompted to fund immediately or later only when wallet balance does not already cover activation.
+- A notification is generated for created/activated state.
 
-### 4) Fund Protocol (Paystack)
+### 4) Fund Protocol (Paystack Or Wallet)
 
-- Funding is per protocol (stake-per-vault). There is no wallet top-up model.
-- Paystack initialize + verify flow is used to activate a protocol.
+- Funding is still per protocol (stake-per-vault), but wallet top-up and wallet-funded activation now exist on `main`.
+- Paystack initialize + verify flow can activate a protocol.
+- Wallet balance can also activate a protocol when sufficient.
 - Payment safety checks are enforced (server-side):
   - Rate limits on repeated initialization/verification attempts
   - Test/live mismatch protection (prevents verifying on a different Paystack domain mode)
@@ -101,19 +102,17 @@ Lockedin is a non-custodial behavior enforcement app. Users create a protocol (g
   - completed protocols
 - Active protocols cannot be deleted.
 
-### 11) Wallet Visibility + Withdrawals
+### 11) Wallet Dashboard + Withdrawals
 
-- The profile route shows wallet balance, recent transaction history, and withdrawal queue status.
+- The dedicated `/wallet` route shows wallet balance, recent transaction history, and withdrawal queue status.
 - Withdrawal destination account numbers are masked on read surfaces.
 - A user can only have one in-flight withdrawal at a time, and withdrawal requests are rate-limited.
+- A user can cancel a `pending` withdrawal before admin processing begins to release funds back to wallet balance.
 
-### 12) Active Branch Work To Expect Next
+### 12) Recent Admin Recovery And Safety Work
 
-- A dedicated `/wallet` route
-- Wallet summary cards for available, locked, and pending movement
-- Unified wallet ledger/activity visibility
-- Wallet-first funding and withdrawal entry points
-- Better alignment between wallet activity and admin finance tooling
+- Admin can review recent forfeitures and revert a mistaken manual forfeiture when the vault is still in the reversible state.
+- Manual full forfeiture is now restricted to severe repeated breach candidates instead of appearing as a broad generic action.
 
 ## Step-by-Step Tester Flow
 
@@ -131,8 +130,8 @@ Expected:
 2. Create a protocol (title, description, category, frequency, target, duration, staked amount, pain tier).
 
 Expected:
-- Protocol appears in list with status **awaiting_funding**.
-- System prompts “Fund now?” (or similar).
+- Protocol appears in list with status **awaiting_funding** or **active** depending on wallet balance.
+- System prompts “Fund now?” only when activation still requires funding.
 
 ### C) Fund the Protocol
 
@@ -143,6 +142,7 @@ Expected:
 Expected:
 - Protocol moves to **active**.
 - Activation checklist should auto-dismiss once you have a funded protocol.
+- If wallet balance already covers the stake, the Paystack step should not be required.
 
 ### D) Execute Log (Evidence)
 
@@ -249,8 +249,12 @@ How to verify the fix:
   - Verified admin consistently accesses `/admin`
   - Non-admin consistently blocked with clear reason
 - **Withdrawals**
-  - User sees masked destination in profile queue
+  - User sees masked destination in wallet queue
   - Admin sees masked destination in the pending queue before transfer approval
+  - Pending withdrawal can be cancelled and funds return to wallet balance
+- **Admin recovery**
+  - Manual forfeiture shows in recent forfeitures
+  - Reverted forfeitures disappear from the revertable recent list
 
 ## Known Limitations / Expected Rough Edges
 
@@ -260,9 +264,9 @@ How to verify the fix:
 
 ## What’s Planned Next (Near-Term Roadmap)
 
-- Mobile responsiveness pass (systematic audit + UI fixes).
-- Further performance improvements (smaller client chunks, faster route transitions).
-- Expanded growth/activation UX (cleaner checklist UI + better progression feedback).
+- Remaining authenticated QA across wallet/admin/payment recovery flows.
+- Coordinated framework-security upgrade for the remaining TanStack Start advisory chain.
+- Broader mobile QA across auth, community, leaderboard, and secondary admin routes.
 
 ## Reporting Bugs (How Testers Should Send Feedback)
 

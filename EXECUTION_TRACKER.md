@@ -1,6 +1,6 @@
 # Lockedin Execution Tracker
 
-Last updated: 2026-06-29
+Last updated: 2026-06-30
 
 ## How To Use
 - This file is the running execution source of truth for implementation work.
@@ -14,8 +14,9 @@ Last updated: 2026-06-29
 - [x] Phase C: Wallet system audit and targeted improvements
 - [x] Phase E: Goal management controls and wallet top-nav access
 - [x] Phase D: Documentation updates, security sweep, and production-readiness/release sweep
-- [ ] Phase F: Wallet productization and first-class wallet dashboard
-- [ ] UX Audit: Admin page, auth flow, and core page redesign recommendations
+- [x] Phase F: Wallet productization and first-class wallet dashboard
+- [x] UX Audit: Admin page, auth flow, and core page redesign recommendations
+- [ ] Phase G: Framework security remediation and broader authenticated QA
 
 ## Phase A
 Status: Completed and merged
@@ -112,7 +113,7 @@ Notes:
 - Phase D added operator documentation in `ADMIN_PAYMENTS_RUNBOOK.md`, `ADMIN_SETTINGS_RUNBOOK.md`, and `RESPONSIVE_QA_CHECKLIST.md`.
 
 ## Phase F
-Status: In progress, latest slice merged to `main`
+Status: Completed and merged
 
 - [x] Re-sync wallet implementation branch onto latest `origin/main`
 - [x] Restore in-progress wallet work after branch rebase/recreation
@@ -135,6 +136,12 @@ Status: In progress, latest slice merged to `main`
 - [x] Validate with `npx tsc --noEmit`
 - [x] Perform smoke checks on the wallet and finance surfaces
 - [x] Push branch and move the validated slice to `main`
+- [x] Add admin breach-forfeiture revert flow
+- [x] Reduce mistaken full-forfeiture risk by tightening breach-candidate logic
+- [x] Add pending-withdrawal cancellation flow so escrowed wallet funds can be released before processing
+- [x] Cache bank-account resolution results to reduce repeated Paystack resolve pressure
+- [x] Improve mobile responsiveness on admin, dashboard, and vault detail routes
+- [x] Add light PWA shell wiring (manifest, icon, service worker registration, offline fallback)
 
 Notes:
 - This phase is not a rollback to the old wallet implementation.
@@ -152,20 +159,37 @@ Notes:
   - `npx convex dev --once --env-file .env.local` passes
   - local runtime smoke check confirms `/`, `/wallet`, and `/dashboard` load/redirect correctly for an unauthenticated user
   - browser pass confirms the old `completeMaturedVaults` timeout is no longer appearing after the fix window
+- Additional merges after the wallet foundation branch:
+  - `10c0fc3`: reliability, wallet recovery, and breach-safety batch
+  - `bc12b94`: mobile responsiveness, light PWA shell, and safe dependency refresh
 - Current follow-up items discovered during smoke testing:
-  - React hydration mismatch warning in dev
   - authenticated end-to-end wallet/admin QA is still partially blocked by the current email verification sender restriction in local/dev
+  - the remaining production audit findings are now concentrated in the pinned TanStack Start stack
+  - broader route-by-route responsive QA is still needed outside the main dashboard/admin/vault surfaces
 
 ## UX Audit
-Status: Pending approval before implementation
+Status: Implemented in the highest-risk surfaces
 
-- [ ] Audit admin command center UX
+- [x] Audit admin command center UX
 - [ ] Audit auth and verification journey
-- [ ] Audit core product pages for redesign opportunities
-- [ ] Produce recommendations before any redesign implementation begins
+- [x] Audit core product pages for redesign opportunities
+- [x] Produce and implement the first responsive fixes on admin, dashboard, and vault detail
+
+Notes:
+- The first UX/mobile pass is complete on the densest operational routes.
+- Auth, verification, community, leaderboard, and secondary admin routes still need a full responsive review.
+
+## Phase G
+Status: In progress
+
+- [ ] Upgrade the remaining TanStack Start / Vinxi advisory chain in a controlled branch
+- [ ] Revalidate SSR, routing, auth, and Convex integration after that framework upgrade
+- [ ] Run authenticated QA for wallet top-up, wallet-funded activation, withdrawal cancellation, breach revert, and admin payment tooling
+- [ ] Extend responsive QA to auth, community, leaderboard, wallet edge states, and secondary admin routes
+- [ ] Refresh documentation again after the framework-security batch lands
 
 ## Open Items
 - Sentry/bug-log coverage still needs a fuller pass beyond the targeted Phase A improvements.
-- Some documentation still needs another refresh now that Phase F is active.
+- Some historical planning documents still need a later cleanup pass now that Phase F is complete.
 - Wallet architecture must stay aligned with licensed-partner/compliance direction before any live wallet rollout.
 - Finance semantics must remain consistent across wallet, payments, admin, and audit surfaces.

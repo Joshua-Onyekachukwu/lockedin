@@ -13,7 +13,8 @@ Current delivery rule:
 
 - only one primary implementation phase should be active at a time
 - each phase should be built, validated, PR-reviewed, and merged before the next implementation phase begins
-- the current active implementation phase is `Phase F` on branch `phase-wallet-v1-foundation`
+- `Phase F` wallet productization is already merged to `main`
+- the current follow-up implementation phase is framework security remediation plus authenticated QA
 
 ## 1. Deployment Principle
 
@@ -201,8 +202,11 @@ If the active branch includes wallet work, also test:
 
 - `/wallet`
 - wallet funding entry point
+- wallet-funded protocol activation path
 - withdrawal request flow
+- pending withdrawal cancellation flow
 - wallet/admin status consistency for deposits and withdrawals
+- admin breach revert flow after manual forfeiture
 
 ## 8. Paystack Configuration
 
@@ -220,6 +224,12 @@ Set Paystack webhook to:
 - `sk_live_...` must align with `PAYSTACK_MODE=live`
 
 If public and secret keys disagree, funding can fail or behave inconsistently.
+
+### Withdrawal test-mode note
+
+- withdrawal testing may hit provider-side bank resolution limits in Paystack test mode
+- the app now caches resolved bank-account lookups and allows cancellation of pending withdrawals before admin processing begins
+- if a user says wallet funds are "stuck" after a withdrawal test, check whether the withdrawal is still `pending` or `processing` before assuming funding is broken
 
 ## 9. Google OAuth Configuration
 
@@ -336,6 +346,18 @@ Cause:
 Fix:
 
 - align frontend, Convex deploy target, and webhook URL
+
+### Wallet funds appear unavailable after withdrawal testing
+
+Cause:
+
+- a withdrawal request moved capital into escrow
+- the request is still `pending` or `processing`
+
+Fix:
+
+- if status is `pending`, cancel the withdrawal from the wallet UI to release funds back to balance
+- if status is `processing`, review the admin payout queue and webhook/transfer status before retrying funding
 
 ### Verification links appear broken
 

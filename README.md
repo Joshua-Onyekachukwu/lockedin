@@ -19,20 +19,26 @@ Lockedin currently supports:
 - Admin tooling for user review, overrides, payment operations, and audits
 - Goal-owner controls to edit an unfunded stake amount or delete only unfunded/completed protocols
 - Public share pages for protocols via `/share/$vaultId`
+- Dedicated wallet dashboard with overview cards, ledger activity, funding entry point, and withdrawal flow
+- Wallet-funded protocol activation and auto-activation when balance already covers a new protocol stake
+- Pending-withdrawal cancellation before admin processing starts
+- Admin breach-forfeiture revert flow for operator-error recovery
+- Light installable PWA shell with offline fallback page
 
 ## Current Product State
 
-The current codebase is operating in the stake-per-vault model:
+The current codebase is operating in a stake-per-vault model with wallet as a first-class support surface:
 
-- There is no full wallet-first UX enabled in the active product flow
 - Users create a protocol first, then fund that protocol
+- Users can now also activate eligible protocols from wallet balance
 - Penalties accrue against a vault and settle through the platform rules
 - Credits and shields exist as internal product mechanics
+- Wallet is live on `/wallet`, but this is not a full wallet-first rebuild of the product
 
 Important product note:
 
-- Wallet reintroduction has now been approved as an active engineering workstream, but it is not yet merged as the current production model on `main`
-- The active wallet productization branch is `phase-wallet-v1-foundation`
+- Wallet productization foundation is already merged on `main`
+- The next major technical phase is the coordinated TanStack Start security upgrade plus authenticated QA
 
 ## Tech Stack
 
@@ -58,7 +64,7 @@ Important product note:
 2. System creates a `vaults` row in `awaiting_funding`
 3. System creates a linked `goals` row
 4. User funds the protocol through Paystack
-5. Vault becomes active
+5. Vault becomes active through Paystack, reconciliation, or wallet activation
 6. User submits evidence logs
 7. Witnesses approve or reject logs with written reports
 8. Penalties accrue for missed requirements
@@ -87,7 +93,7 @@ Important product note:
 - `/community`: discovery and witness recruitment
 - `/leaderboard`: Hall of Integrity
 - `/admin`: admin command center
-- `/wallet`: first-class wallet dashboard (active branch work, not yet merged at the time of this update)
+- `/wallet`: first-class wallet dashboard
 - `/verify-required`: verification gate for signed-in but unverified users
 
 ## Important Backend Modules

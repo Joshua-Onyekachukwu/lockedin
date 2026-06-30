@@ -85,6 +85,14 @@ When running scans, prioritize fixes based on:
 5. **Admin Access**: Admin authorization is fail-closed and requires all of: authenticated user, verified email, `user.isAdmin === true`, and membership in `ADMIN_EMAIL_ALLOWLIST`.
 6. **Withdrawal PII**: Store only what operations need, mask account numbers in user/admin read surfaces, and avoid putting full destination account numbers into transaction descriptions or bug-report payloads.
 7. **Email Verification Links**: Email verification should fail closed if `SITE_URL` is missing or invalid; never fall back silently to an assumed production URL.
+8. **Withdrawal Recovery**: Pending withdrawals can now be cancelled by the user before admin processing begins; preserve that recovery path and treat any change to withdrawal escrow logic as security-sensitive.
+9. **Manual Forfeiture Controls**: Full protocol forfeiture is now restricted to severe repeated breach conditions and includes an admin revert path. Any change to breach eligibility, revert behavior, or audit logging must receive explicit security review.
+
+### Current Review Status
+
+- A safe dependency refresh has already been completed.
+- Remaining production `npm audit` findings are concentrated in the pinned TanStack Start / Vinxi chain.
+- Treat that remaining framework upgrade as the next required security engineering phase rather than forcing piecemeal `audit fix --force` changes into production.
 
 ### Secret Detection Patterns
 
