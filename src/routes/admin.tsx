@@ -802,8 +802,16 @@ function AdminDashboard() {
                                                           confirmLabel: 'Enforce Forfeiture',
                                                           tone: 'danger',
                                                           run: async () => {
-                                                            await enforceBreach({ vaultId: b._id })
-                                                            toast.success('Forfeiture enforced.', { title: 'Enforcement Complete' })
+                                                            const result = await enforceBreach({ vaultId: b._id })
+                                                            if (!result?.success) {
+                                                              toast.error(result?.message || 'Unable to enforce forfeiture.', {
+                                                                title: 'Enforcement Blocked',
+                                                              })
+                                                              return
+                                                            }
+                                                            toast.success(result.message || 'Forfeiture enforced.', {
+                                                              title: 'Enforcement Complete',
+                                                            })
                                                             await queryClient.invalidateQueries({ queryKey: statsQuery.queryKey })
                                                             await queryClient.invalidateQueries()
                                                           }

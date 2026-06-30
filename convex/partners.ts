@@ -3,6 +3,22 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { auth } from "./auth";
 import { internal } from "./_generated/api";
 
+export async function endOpenPartnerRelationshipsForVault(ctx: any, vaultId: any) {
+  const rows = await ctx.db
+    .query("accountability_partners")
+    .withIndex("by_vault", (q: any) => q.eq("vaultId", vaultId))
+    .collect();
+
+  let endedCount = 0;
+  for (const row of rows) {
+    if (row.status !== "active" && row.status !== "pending") continue;
+    await ctx.db.patch("accountability_partners", row._id, { status: "ended" });
+    endedCount += 1;
+  }
+
+  return endedCount;
+}
+
 async function countActiveWitnesses(ctx: any, vaultId: any) {
   const active = await ctx.db
     .query("accountability_partners")
@@ -545,23 +561,7 @@ export const endAllForVault = internalMutation({
   args: { vaultId: v.id("vaults") },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const activeRows = await ctx.db
-      .query("accountability_partners")
-      .withIndex("by_vault_and_status", (q: any) =>
-        q.eq("vaultId", args.vaultId).eq("status", "active"),
-      )
-      .collect();
-    const pendingRows = await ctx.db
-      .query("accountability_partners")
-      .withIndex("by_vault_and_status", (q: any) =>
-        q.eq("vaultId", args.vaultId).eq("status", "pending"),
-      )
-      .collect();
-    const rows = [...activeRows, ...pendingRows];
-
-    for (const row of rows) {
-      await ctx.db.patch("accountability_partners", row._id, { status: "ended" });
-    }
+    await endOpenPartnerRelationshipsForVault(ctx, args.vaultId);
     return null;
   },
 });

@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { captureToSentry } from "./sentry";
+import { endOpenPartnerRelationshipsForVault } from "./partners";
 
 export const completeMaturedVaults = internalMutation({
   args: {
@@ -11,7 +12,7 @@ export const completeMaturedVaults = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     try {
-      const batchLimit = Math.max(1, Math.min(args.limit ?? 50, 200));
+      const batchLimit = Math.max(1, Math.min(args.limit ?? 20, 100));
       const cutoffTs = args.cutoffTs ?? Date.now();
       const maturedVaults = await ctx.db
         .query("vaults")
@@ -24,7 +25,7 @@ export const completeMaturedVaults = internalMutation({
         if (vault.status !== "active") continue;
 
         await ctx.db.patch("vaults", vault._id, { status: "completed" });
-        await ctx.runMutation(internal.partners.endAllForVault, { vaultId: vault._id });
+        await endOpenPartnerRelationshipsForVault(ctx, vault._id);
 
         await ctx.db.insert("notifications", {
           userId: vault.userId,

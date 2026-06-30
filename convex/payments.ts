@@ -7,6 +7,7 @@ import { captureToSentry } from "./sentry";
 const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 const PAYSTACK_MODE = process.env.PAYSTACK_MODE;
 const PAYSTACK_PUBLIC = process.env.PAYSTACK_PUBLIC_KEY;
+const BANK_RESOLUTION_CACHE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function maskAccountNumber(accountNumber: string) {
   const digits = accountNumber.replace(/\D/g, "");
@@ -73,6 +74,60 @@ function assertPaystackConfig() {
     }
   }
   return expected;
+}
+
+async function getCachedBankResolution(
+  ctx: any,
+  userId: any,
+  bankCode: string,
+  accountNumber: string,
+) {
+  const cached = await ctx.db
+    .query("bank_account_resolutions")
+    .withIndex("by_user_and_bank_account", (q: any) =>
+      q.eq("userId", userId).eq("bank_code", bankCode).eq("account_number", accountNumber),
+    )
+    .unique();
+
+  if (!cached) return null;
+  if (Date.now() - cached.createdAt > BANK_RESOLUTION_CACHE_WINDOW_MS) return null;
+  return cached;
+}
+
+async function persistBankResolution(
+  ctx: any,
+  args: {
+    userId: any;
+    accountNumber: string;
+    bankCode: string;
+    bankName?: string;
+    accountName: string;
+  },
+) {
+  const existing = await ctx.db
+    .query("bank_account_resolutions")
+    .withIndex("by_user_and_bank_account", (q: any) =>
+      q.eq("userId", args.userId)
+        .eq("bank_code", args.bankCode)
+        .eq("account_number", args.accountNumber),
+    )
+    .unique();
+
+  const payload = {
+    userId: args.userId,
+    account_number: args.accountNumber,
+    bank_code: args.bankCode,
+    bank_name: args.bankName?.trim() || existing?.bank_name,
+    account_name: args.accountName,
+    createdAt: Date.now(),
+  };
+
+  if (existing) {
+    await ctx.db.patch("bank_account_resolutions", existing._id, payload);
+    return existing._id;
+  }
+
+  return await ctx.db.insert("bank_account_resolutions", payload);
 }
 
 const PaystackSource = v.union(
@@ -604,7 +659,7 @@ export const listPaystackBanks = action({
 });
 
 export const resolvePaystackAccount = action({
-  args: { accountNumber: v.string(), bankCode: v.string() },
+  args: { accountNumber: v.string(), bankCode: v.string(), bankName: v.optional(v.string()) },
   returns: v.object({
     success: v.boolean(),
     message: v.string(),
@@ -636,10 +691,41 @@ export const resolvePaystackAccount = action({
       if (!res.ok || !json?.status) {
         return { success: false, message: json?.message || "Unable to resolve account." };
       }
-      return { success: true, message: "Account resolved.", accountName: json?.data?.account_name as string | undefined };
+      const accountName = json?.data?.account_name as string | undefined;
+      if (accountName) {
+        await ctx.runMutation(internal.payments.cacheResolvedBankAccount, {
+          userId: user._id,
+          accountNumber,
+          bankCode,
+          bankName: args.bankName,
+          accountName,
+        });
+      }
+      return { success: true, message: "Account resolved.", accountName };
     } catch {
       return { success: false, message: "Unable to resolve account." };
     }
+  },
+});
+
+export const cacheResolvedBankAccount = internalMutation({
+  args: {
+    userId: v.id("users"),
+    accountNumber: v.string(),
+    bankCode: v.string(),
+    bankName: v.optional(v.string()),
+    accountName: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await persistBankResolution(ctx, {
+      userId: args.userId,
+      accountNumber: args.accountNumber.trim(),
+      bankCode: args.bankCode.trim(),
+      bankName: args.bankName,
+      accountName: args.accountName.trim(),
+    });
+    return null;
   },
 });
 
@@ -1725,24 +1811,36 @@ export const requestWithdrawal = mutation({
       return { success: false, message: "Resolve your bank account details before requesting a withdrawal." };
     }
 
-    let resolvedAccountName: string | undefined = undefined;
-    try {
-      assertPaystackConfig();
-      const url = `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`;
-      const res = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const json = await res.json();
-      if (!res.ok || !json?.status) {
-        return { success: false, message: json?.message || "Unable to resolve account." };
+    const cachedResolution = await getCachedBankResolution(ctx, userId, bankCode, accountNumber);
+    let resolvedAccountName: string | undefined = cachedResolution?.account_name;
+    if (!resolvedAccountName) {
+      try {
+        assertPaystackConfig();
+        const url = `https://api.paystack.co/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`;
+        const res = await fetch(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${PAYSTACK_SECRET}`,
+            "Content-Type": "application/json",
+          },
+        });
+        const json = await res.json();
+        if (!res.ok || !json?.status) {
+          return { success: false, message: json?.message || "Unable to resolve account." };
+        }
+        resolvedAccountName = json?.data?.account_name as string | undefined;
+        if (resolvedAccountName) {
+          await persistBankResolution(ctx, {
+            userId,
+            accountNumber,
+            bankCode,
+            bankName,
+            accountName: resolvedAccountName,
+          });
+        }
+      } catch (e: any) {
+        return { success: false, message: e?.message || "Unable to resolve account." };
       }
-      resolvedAccountName = json?.data?.account_name as string | undefined;
-    } catch (e: any) {
-      return { success: false, message: e?.message || "Unable to resolve account." };
     }
 
     if (!resolvedAccountName) {
@@ -1825,6 +1923,65 @@ export const requestWithdrawal = mutation({
     return { 
         success: true, 
         message: "Request logged. Capital held in escrow. Disbursement expected in 24-48 hours." 
+    };
+  },
+});
+
+export const cancelWithdrawalRequest = mutation({
+  args: {
+    withdrawalId: v.id("withdrawals"),
+  },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
+    if (!userId) throw new Error("Unauthorized");
+
+    const withdrawal = await ctx.db.get("withdrawals", args.withdrawalId);
+    if (!withdrawal || withdrawal.userId !== userId) {
+      return { success: false, message: "Withdrawal request not found." };
+    }
+    if (withdrawal.status !== "pending") {
+      return {
+        success: false,
+        message: "Only pending withdrawals can be cancelled before processing starts.",
+      };
+    }
+
+    const user = await ctx.db.get("users", userId);
+    if (user) {
+      await ctx.db.patch("users", user._id, {
+        balance: (user.balance || 0) + withdrawal.amount,
+      });
+    }
+
+    await ctx.db.patch("withdrawals", withdrawal._id, {
+      status: "failed",
+      processed_at: Date.now(),
+      metadata: {
+        ...(withdrawal.metadata ?? {}),
+        cancellationReason: "Cancelled by user before admin processing.",
+      },
+    });
+
+    const tx = await ctx.db
+      .query("transactions")
+      .withIndex("by_withdrawal", (q) => q.eq("withdrawalId", withdrawal._id))
+      .unique();
+    if (tx) {
+      await ctx.db.patch("transactions", tx._id, { status: "failed" });
+    }
+
+    await ctx.db.insert("notifications", {
+      userId,
+      title: "Withdrawal Cancelled",
+      message: `Your pending withdrawal for ₦${(withdrawal.amount / 100).toLocaleString()} was cancelled and returned to your wallet.`,
+      type: "wallet_withdrawal",
+      read: false,
+    });
+
+    return {
+      success: true,
+      message: "Pending withdrawal cancelled and funds returned to your wallet.",
     };
   },
 });
