@@ -182,6 +182,13 @@ function AdminDashboard() {
     placeholderData: [],
   });
 
+  const recentBreachesQuery = convexQuery((api as any).admin.listRecentBreachEnforcements, { limit: 20 } as any) as any;
+  const { data: recentBreaches }: { data: any } = useQuery({
+    ...recentBreachesQuery,
+    enabled: isAuthenticated && isVerified && isAdmin && activeTab === 'breaches',
+    placeholderData: [],
+  });
+
   const overviewQuery = convexQuery(api.admin.getOverview, EMPTY_ARGS as any) as any;
   const { data: overview }: { data: any } = useQuery({
     ...overviewQuery,
@@ -201,6 +208,7 @@ function AdminDashboard() {
   const approveWithdrawal = useAction(api.admin.approveWithdrawal);
   const rejectWithdrawal = useMutation(api.admin.rejectWithdrawal);
   const enforceBreach = useMutation(api.admin.enforceProtocolBreach);
+  const revertBreach = useMutation((api as any).admin.revertProtocolBreach);
   const seedHistory = useAction((api as any).admin.seedDummyUserHistory);
   const populateExistingHistory = useAction((api as any).admin.populateExistingUserHistory);
   const previewPaystackTransaction = useAction((api as any).admin.previewPaystackTransaction);
@@ -809,6 +817,111 @@ function AdminDashboard() {
                                         ))}
                                     </tbody>
                                 </table>
+                            </div>
+                            <div className="mt-10 border-t border-white/5 bg-white/[0.01]">
+                                <div className="px-4 sm:px-10 py-6 sm:py-8 border-b border-white/5 flex items-center justify-between text-left">
+                                    <div className="text-left font-black italic uppercase">
+                                        <h4 className="text-base text-white">Recent Forfeitures</h4>
+                                        <p className="text-[10px] text-white/20 tracking-widest mt-1">
+                                            Revert only works while the protocol is still in the original enforced state.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto text-left">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr className="text-[10px] font-black uppercase tracking-[0.2em] text-white/10 border-b border-white/5">
+                                                <th className="px-4 sm:px-10 py-4 sm:py-6">Protocol</th>
+                                                <th className="px-4 sm:px-10 py-4 sm:py-6">User</th>
+                                                <th className="px-4 sm:px-10 py-4 sm:py-6">Remaining Forfeited</th>
+                                                <th className="px-4 sm:px-10 py-4 sm:py-6 text-right">Recovery</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {recentBreaches.length === 0 ? (
+                                                <tr>
+                                                    <td
+                                                        colSpan={4}
+                                                        className="px-4 sm:px-10 py-6 text-white/30 text-xs font-black italic uppercase tracking-widest"
+                                                    >
+                                                        No recent forfeitures logged yet.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                recentBreaches.map((row: any) => (
+                                                    <tr
+                                                        key={row.auditId ?? row.vaultId}
+                                                        className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors"
+                                                    >
+                                                        <td className="px-4 sm:px-10 py-4 sm:py-6">
+                                                            <p className="font-bold italic text-white text-sm uppercase">
+                                                                {row.goal?.title || '—'}
+                                                            </p>
+                                                            <p className="text-[10px] text-white/20 uppercase font-black italic tracking-widest">
+                                                                Vault: {String(row.vaultId)}
+                                                            </p>
+                                                            <p className="text-[10px] text-white/20 uppercase font-black italic tracking-widest mt-1">
+                                                                {new Date(row.enforcedAt).toLocaleString()}
+                                                            </p>
+                                                        </td>
+                                                        <td className="px-4 sm:px-10 py-4 sm:py-6">
+                                                            <p className="font-bold italic text-white text-sm">
+                                                                {row.user?.name || '—'}
+                                                            </p>
+                                                            <p className="text-[10px] text-white/20 uppercase font-black italic tracking-widest">
+                                                                {row.user?.email || '—'}
+                                                            </p>
+                                                        </td>
+                                                        <td className="px-4 sm:px-10 py-4 sm:py-6 font-black italic text-white text-lg">
+                                                            ₦{(Number(row.remainingForfeited || 0) / 100).toLocaleString()}
+                                                        </td>
+                                                        <td className="px-4 sm:px-10 py-4 sm:py-6 text-right">
+                                                            {row.canRevert ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        setConfirm({
+                                                                            open: true,
+                                                                            title: 'Revert forfeiture?',
+                                                                            description:
+                                                                                'This attempts to restore the protocol back to active and reverses the penalty transaction entry. Partner relationships may need to be restored manually.',
+                                                                            confirmLabel: 'Revert Forfeiture',
+                                                                            tone: 'primary',
+                                                                            run: async () => {
+                                                                                const result = await revertBreach({
+                                                                                    vaultId: row.vaultId,
+                                                                                })
+                                                                                if (!result?.success) {
+                                                                                    toast.error(result?.message || 'Unable to revert forfeiture.', {
+                                                                                        title: 'Revert Failed',
+                                                                                    })
+                                                                                    return
+                                                                                }
+                                                                                toast.success(result?.message || 'Forfeiture reverted.', {
+                                                                                    title: 'Revert Complete',
+                                                                                })
+                                                                                await queryClient.invalidateQueries({ queryKey: statsQuery.queryKey })
+                                                                                await queryClient.invalidateQueries({ queryKey: breachCandidatesQuery.queryKey })
+                                                                                await queryClient.invalidateQueries({ queryKey: recentBreachesQuery.queryKey })
+                                                                            },
+                                                                        })
+                                                                    }
+                                                                    className="px-5 py-2 rounded-xl border border-blue-500/30 text-blue-400 font-black uppercase text-[10px] tracking-widest hover:bg-blue-500/10 transition-all active:scale-95"
+                                                                >
+                                                                    Revert
+                                                                </button>
+                                                            ) : (
+                                                                <span className="px-4 py-2 rounded-xl bg-white/[0.03] border border-white/10 text-white/40 font-black uppercase text-[10px] tracking-widest italic">
+                                                                    Not reversible
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </motion.div>
                     )}

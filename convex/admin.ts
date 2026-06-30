@@ -2095,6 +2095,151 @@ export const enforceProtocolBreach = mutation({
     }
 });
 
+export const listRecentBreachEnforcements = query({
+  args: { limit: v.optional(v.number()) },
+  returns: v.array(
+    v.object({
+      auditId: v.string(),
+      enforcedAt: v.number(),
+      vaultId: v.id("vaults"),
+      remainingForfeited: v.number(),
+      user: v.any(),
+      goal: v.any(),
+      canRevert: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    await checkAdmin(ctx);
+    const limit = Math.max(1, Math.min(args.limit ?? 20, 50));
+
+    const recent = await ctx.db.query("admin_audit").order("desc").take(250);
+    const results: Array<{
+      auditId: string;
+      enforcedAt: number;
+      vaultId: any;
+      remainingForfeited: number;
+      user: any;
+      goal: any;
+      canRevert: boolean;
+    }> = [];
+
+    for (const entry of recent) {
+      if (entry.action !== "enforce_protocol_breach") continue;
+      if (!entry.targetId) continue;
+
+      const vaultId = entry.targetId as any;
+      const vault = await ctx.db.get("vaults", vaultId);
+      if (!vault) continue;
+
+      const user = await ctx.db.get("users", vault.userId);
+      const goal = await ctx.db
+        .query("goals")
+        .withIndex("by_vault", (q) => q.eq("vaultId", vault._id))
+        .first();
+
+      const remainingForfeited = Math.max(
+        0,
+        typeof (entry.metadata as any)?.amount === "number"
+          ? (entry.metadata as any).amount
+          : vault.amount,
+      );
+
+      results.push({
+        auditId: entry._id as any,
+        enforcedAt: entry._creationTime,
+        vaultId: vault._id,
+        remainingForfeited,
+        user,
+        goal,
+        canRevert: vault.status === "failed" && (vault.penaltyAccrued ?? 0) === vault.amount,
+      });
+
+      if (results.length >= limit) break;
+    }
+
+    return results;
+  },
+});
+
+export const revertProtocolBreach = mutation({
+  args: { vaultId: v.id("vaults") },
+  returns: v.object({ success: v.boolean(), message: v.string() }),
+  handler: async (ctx, args) => {
+    const admin = await checkAdmin(ctx);
+    const vault = await ctx.db.get("vaults", args.vaultId);
+    if (!vault) return { success: false, message: "Protocol not found." };
+
+    if (vault.status !== "failed" || (vault.penaltyAccrued ?? 0) !== vault.amount) {
+      return { success: false, message: "This protocol is not in a reversible breach-forfeiture state." };
+    }
+
+    const recent = await ctx.db.query("admin_audit").order("desc").take(250);
+    const breachAudit = recent.find(
+      (a) => a.action === "enforce_protocol_breach" && a.targetId === (args.vaultId as any),
+    );
+    if (!breachAudit) {
+      return { success: false, message: "No breach enforcement record found for this protocol." };
+    }
+
+    const remainingForfeited =
+      typeof (breachAudit.metadata as any)?.amount === "number"
+        ? (breachAudit.metadata as any).amount
+        : vault.amount;
+    const previousPenaltyAccrued = Math.max(0, vault.amount - Math.max(0, remainingForfeited));
+
+    await ctx.db.patch("vaults", vault._id, {
+      status: "active",
+      penaltyAccrued: previousPenaltyAccrued,
+    });
+
+    const recentTx = await ctx.db
+      .query("transactions")
+      .withIndex("by_user", (q) => q.eq("userId", vault.userId))
+      .order("desc")
+      .take(250);
+    const breachTx = recentTx.find(
+      (t) =>
+        t.vaultId === vault._id &&
+        t.type === "penalty" &&
+        t.description === "Protocol Breach: Remaining principal forfeiture enforced by Admin.",
+    );
+    if (breachTx) {
+      await ctx.db.patch("transactions", breachTx._id, {
+        status: "failed",
+        description: "REVERTED: Protocol Breach enforcement was reversed by admin.",
+      });
+    }
+
+    await ctx.db.insert("notifications", {
+      userId: vault.userId,
+      title: "ADMIN ACTION REVERSED",
+      message:
+        "A previous breach forfeiture on your protocol was reversed by an admin. Your protocol has been restored to active.",
+      type: "streak_alert",
+      read: false,
+    });
+
+    await ctx.db.insert("admin_audit", {
+      adminUserId: admin._id,
+      action: "revert_protocol_breach",
+      message: `Forfeiture reversed. Vault: ${args.vaultId}`,
+      targetType: "vault",
+      targetId: args.vaultId,
+      metadata: {
+        previousPenaltyAccrued,
+        remainingForfeited,
+        breachAuditId: breachAudit._id,
+        breachTransactionId: breachTx?._id,
+      },
+    });
+
+    return {
+      success: true,
+      message: "Breach forfeiture reversed. Protocol restored to active (witnesses may need re-inviting).",
+    };
+  },
+});
+
 export const markUserEmailVerified = mutation({
   args: { email: v.string(), reason: v.optional(v.string()) },
   returns: v.object({ success: v.boolean(), message: v.string() }),
