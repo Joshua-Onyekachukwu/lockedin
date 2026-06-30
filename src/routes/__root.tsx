@@ -14,7 +14,7 @@ import { convexQuery } from '@convex-dev/react-query'
 import { useConvexAuth } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { QueryClient } from '@tanstack/react-query'
-import '~/styles/app.css'
+import appCssUrl from '~/styles/app.css?url'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -34,6 +34,7 @@ export const Route = createRootRouteWithContext<{
     ],
     links: [
       { rel: 'icon', href: '/favicon.ico' },
+      { rel: 'stylesheet', href: appCssUrl },
     ],
   }),
   notFoundComponent: () => <div>Route not found</div>,
